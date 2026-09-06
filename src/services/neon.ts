@@ -1,9 +1,30 @@
 import { neon } from '@neondatabase/serverless';
 import { Room, LiturgicalBlock, BlockType } from '../types/liturgy';
 
+// Sanitiza e valida a URL do banco contra erros comuns de digitação/colagem em painéis de env
+function cleanDatabaseUrl(raw?: string): string {
+  if (!raw) return '';
+  let url = raw.trim();
+  // Se foi colado no campo Value com 'VITE_DATABASE_URL=...'
+  if (url.startsWith('VITE_DATABASE_URL=')) {
+    url = url.substring('VITE_DATABASE_URL='.length).trim();
+  } else if (url.startsWith('DATABASE_URL=')) {
+    url = url.substring('DATABASE_URL='.length).trim();
+  }
+  // Remove aspas extras ao redor da URL
+  url = url.replace(/^["']+|["']+$/g, '').trim();
+
+  if (url.startsWith('postgresql://') || url.startsWith('postgres://')) {
+    return url;
+  }
+  return '';
+}
+
+const rawEnvUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DATABASE_URL) 
+  || (typeof process !== 'undefined' && process.env?.VITE_DATABASE_URL);
+
 // Obtém URL do banco configurada em ambiente com fallback seguro
-const databaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DATABASE_URL) 
-  || (typeof process !== 'undefined' && process.env?.VITE_DATABASE_URL)
+const databaseUrl = cleanDatabaseUrl(rawEnvUrl) 
   || 'postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
 // Inicializa o client HTTP serverless do Neon
