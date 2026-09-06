@@ -83,14 +83,11 @@ O design visual do aplicativo une a identidade solene da Assembleia de Deus – 
   - Texto do Alerta: `#78350F` (Marrom escuro de alta nitidez).
   - Borda inferior: `#F59E0B` (1.5px âmbar vivo).
 
-### 3. Logotipos Oficiais da Congregação
-Os dois formatos oficiais de logotipo foram integrados aos ativos do projeto em `public/assets/`:
-- **Versão Horizontal (`public/assets/logo-adutinga-horizontal.png`):**
-  - Aplicação: Cabeçalho superior da Folha 1 na Visão do Pastor (Púlpito) e na barra superior da Visão da Cabine (Obreiro/Controlador).
-  - Proporção: Otimizada para não roubar altura vertical útil na tela de duas folhas em modo paisagem.
-- **Versão Vertical (`public/assets/logo-adutinga-vertical.png`):**
-  - Aplicação: Tela de Entrada de Salas (`/`) acima do campo de código de 6 dígitos, e na Tela de Carregamento (*"Conectando à igreja... Por favor aguarde uns segundos"*).
-  - Slogan institucional: *"AQUI CHEGAMOS PELA FÉ!"*.
+### 3. Logotipo Oficial da Congregação (Uso Estrito Horizontal)
+- **Versão Horizontal Padronizada (`public/assets/logo-adutinga-horizontal.png`):**
+  - **Regra Inviolável:** Uso **exclusivo** do logotipo na versão **horizontal** em todas as interfaces da aplicação (Visão do Pastor/Púlpito, Cabine do Obreiro/Controlador, Tela de Entrada e Tela de Carregamento).
+  - **Motivo de Design:** O formato horizontal preserva ao máximo o espaço vertical útil em todas as telas (evitando scroll no modo paisagem e permitindo proporção equilibrada em tablets e smartphones). O formato vertical fica expressamente banido da UI.
+  - **Elementos:** Contém o emblema da flor dourada, a tipografia *"A.D. UTINGA - PARQUE NOVO ORATÓRIO"* e o lema *"AQUI CHEGAMOS PELA FÉ!"*.
 
 ---
 
