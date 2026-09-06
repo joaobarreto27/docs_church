@@ -89,6 +89,7 @@ O design visual do aplicativo une a identidade solene da Assembleia de Deus – 
 ---
 
 # DIRETRIZES DE ARQUITETURA E QUALIDADE (OBRIGATÓRIO)
+Todas as implementações de frontend e arquitetura DEVEM seguir rigorosamente as boas práticas consolidadas nas skills de engenharia do repositório (`vercel-composition-patterns`, `impeccable`, `high-end-visual-design`, `web-design-guidelines`):
 
 ### 1. Separação Estrita dos 3 Papéis de Usuário (RBAC Leve)
 O acesso à sala é baseado em código simples de 6 dígitos (`room_code`, ex: `742-890`), com segmentação de três papéis sem burocracia de login:
@@ -101,10 +102,56 @@ Para compatibilidade perfeita com a Vercel e o Android 4.4.4:
 - **Canal Push de Alta Velocidade (Pusher / WebSocket com fallback):** Eventos de atualização disparados a cada mutação de dados para atualização imediata (< 100ms).
 - **Smart-Polling com Versão Numérica:** Cada alteração na sala incrementa um inteiro `version` no Neon. Os clientes consultam levemente `/api/rooms/[code]/version`. Caso a versão do cliente seja igual à do servidor, a resposta é `304 Not Modified` / payload vazio, consumindo banda desprezível.
 
-### 3. Modelo de Componentes e Princípios SOLID
-- **Single Responsibility Principle (SRP):** Cada bloco litúrgico (Visitantes, Pedidos, YouTube, Conjuntos) é um componente isolado com validador próprio.
-- **Open/Closed Principle (OCP):** Novos tipos de blocos podem ser adicionados ao array de renderização sem alterar a lógica de paginação das folhas.
-- **Adaptative Typography Engine:** A visão do púlpito calcula dinamicamente o tamanho da fonte (com um limite mínimo confortável para idosos, nunca inferior a 18px em telas normais) para preencher harmonicamente a folha sem overflow.
+### 3. Padrões de Composição React (Vercel Composition Patterns)
+- **Zero Proliferação de Boolean Props (`architecture-avoid-boolean-props`):**
+  - Proibido o uso de flags acumuladas em componentes (ex: `<Block isVisitor isPrayer isEditable isAlert />`).
+  - Utilização de **Compound Components** com Contexto compartilhado para montagem das folhas:
+    ```tsx
+    <LiturgicalSheet pageNumber={1} maxPages={2}>
+      <LiturgicalSheet.Header />
+      <LiturgicalSheet.Columns>
+        <LiturgicalSheet.Column position="left">
+          <LiturgicalBlock variant="visitors" />
+          <LiturgicalBlock variant="prayer" />
+        </LiturgicalSheet.Column>
+        <LiturgicalSheet.Column position="right">
+          <LiturgicalBlock variant="youtube" />
+          <LiturgicalBlock variant="choirs" />
+        </LiturgicalSheet.Column>
+      </LiturgicalSheet.Columns>
+      <LiturgicalSheet.Footer />
+    </LiturgicalSheet>
+    ```
+- **State Decoupling (`state-decouple-implementation`):**
+  - O `RoomProvider` é o único ponto que conhece o mecanismo de sincronização (WebSocket + Polling + Cache Local). Os componentes visuais apenas consomem a interface de estado e disparam ações via Dispatcher, facilitando testes e manutenibilidade.
+- **Variantes Explícitas (`patterns-explicit-variants`):**
+  - Componentes de bloco e botões devem expor variantes claras (`variant="primary" | "ghost" | "urgent"`) ao invés de combinações booleanas.
+
+### 4. Engenharia de Modos de Interface (Impeccable UI Engine)
+A interface é dividida em dois modos de propósito estrito:
+- **Modo `Read` (Visão do Pastor - Púlpito):**
+  - *Objetivo:* O usuário compreende a mensagem em segundos.
+  - *Princípio de Escaneabilidade:* Ausência de qualquer poluição visual, barras de rolagem ou ícones flutuantes distrativos.
+  - *Tipografia Adaptativa:* Tamanho de texto base com piso mínimo de 18px (podendo escalar dinamicamente até 24px-28px para conforto da terceira idade de acordo com o tamanho físico da tela do tablet).
+  - *Zero Cumulative Layout Shift (CLS = 0):* Quando um novo pedido do YouTube ou da congregação é adicionado ao vivo, o texto não "pula" na tela do pastor; novos itens entram com transição suave de opacidade preservando a posição de leitura do pregador.
+- **Modo `Operate` (Visão da Cabine - Obreiro e Controlador):**
+  - *Objetivo:* O usuário conclui tarefas com extrema velocidade e sem erros.
+  - *Formulários de Baixo Atrito:* Campos otimizados para colar blocos de texto (ex: múltiplos pedidos copiados do chat do YouTube divididos em tópicos automaticamente).
+  - *Feedback Háptico/Visual Imediato:* Cada inserção exibe confirmação visual sutil de sincronização bem-sucedida ("Salvo e transmitido ao púlpito").
+
+### 5. Micro-Estética e Acabamento Premium (High-End Visual Design)
+- **Arquitetura "Double-Bezel" (Doppelrand) na Cabine:**
+  - Na tela do operador e controlador, os painéis e blocos utilizam o padrão de invólucro aninhado (bandeja externa areia suave com raio amplo `rounded-2xl` e cartão interno branco puro com raio concêntrico), conferindo toque físico de máquina de alta precisão.
+- **Micro-Badges (Eyebrow Tags):**
+  - Títulos de blocos precedidos por micropílulas institucionais em caixa alta (`rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.2em] uppercase bg-primary/10 text-primary`).
+- **Animações Seguras por GPU:**
+  - Todas as transições operam estritamente sobre `transform` e `opacity`, evitando quebras de desempenho e travamento no tablet do púlpito.
+  - Curvas de interpolação física refinadas (`cubic-bezier(0.32, 0.72, 0, 1)`).
+
+### 6. Acessibilidade e Ergonomia (Web Design Guidelines)
+- **Áreas de Toque (Tap Targets):** Todos os botões, checkboxes de conjuntos e áreas de passagem de página possuem dimensões mínimas de **48x48px**, prevenindo toques acidentais ou falhas de clique por pessoas idosas.
+- **Contraste Cromático:** Contraste de texto preto sobre branco (`#1C1917` sobre `#FFFFFF`) certificado no padrão WCAG AAA (> 7:1) para legibilidade absoluta sob a luz do altar.
+- **Live Regions Acessíveis:** A tela do púlpito implementa `aria-live="polite"` para suportar eventuais leitores de tela ou sinalizadores assistivos para membros com deficiência visual.
 
 ---
 
