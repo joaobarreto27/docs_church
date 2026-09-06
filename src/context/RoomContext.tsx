@@ -359,7 +359,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const meta = await getRoomMeta(room.code);
         if (meta) {
-          setIsConnected(true);
+          setIsConnected(prev => {
+            if (!prev) startPolling(3500);
+            return true;
+          });
 
           // Se a versão mudou, busca blocos atualizados
           if (meta.version !== room.version) {
@@ -384,14 +387,19 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         // Falha silenciosa de rede: continua exibindo a tela sem erros bloqueantes
         setIsConnected(false);
+        // Aplica backoff temporário em caso de erro para não sobrecarregar e evitar rate-limit
+        if (pollTimerRef.current) {
+          clearInterval(pollTimerRef.current);
+          pollTimerRef.current = setInterval(poll, 7000);
+        }
       } finally {
         isPollingRef.current = false;
       }
     };
 
-    const startPolling = () => {
+    const startPolling = (intervalMs = 3500) => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      pollTimerRef.current = setInterval(poll, 2000);
+      pollTimerRef.current = setInterval(poll, intervalMs);
     };
 
     const stopPolling = () => {
