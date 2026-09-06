@@ -11,12 +11,10 @@ import {
   ZoomIn, 
   ZoomOut, 
   CheckSquare, 
-  Square, 
   LogOut, 
   ChevronLeft, 
   ChevronRight,
-  Calendar,
-  Sparkles
+  Calendar
 } from 'lucide-react';
 
 export const PulpitView: React.FC = () => {
@@ -40,11 +38,16 @@ export const PulpitView: React.FC = () => {
   const opps = (oppBlock?.content || []) as OpportunityItem[];
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
-  // Determina se o volume de itens exige dividir em Spread 2 (Páginas 3-4) para garantir ZERO SCROLL
+  // Particionamento dos itens para zero scroll e fluxo natural da esquerda para a direita
+  const sheet1Prayers = prayers.slice(0, 5);
+  const overflowPresencial = prayers.slice(5);
+  const overflowItems: PrayerItem[] = [...overflowPresencial, ...youtube];
+
+  // Se os pedidos excederem a capacidade da Folha 2 (onde estão ancorados Participação e Louvor), cria o Spread 2
   const needsSecondSpread = 
-    prayers.length + youtube.length > 6 || 
-    youtube.length > 2 || 
-    visitors.length + prayers.length > 7 ||
+    overflowItems.length > 4 || 
+    prayers.length > 7 || 
+    youtube.length > 3 || 
     room.current_page === 2;
 
   const totalSpreads = needsSecondSpread ? 2 : 1;
@@ -76,13 +79,68 @@ export const PulpitView: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSpread, totalSpreads, setPage]);
 
-  // Particionamento dos itens por spread para evitar scroll
-  const spread1Prayers = totalSpreads > 1 ? prayers.slice(0, 5) : prayers;
-  const spread2Prayers = totalSpreads > 1 ? prayers.slice(5) : [];
+  // Itens na Folha 2 (Spread 1): os primeiros do overflow
+  const sheet2Items = totalSpreads > 1 ? overflowItems.slice(0, 4) : overflowItems;
+  // Itens na Folha 3 (Spread 2): continuação
+  const sheet3Items = totalSpreads > 1 ? overflowItems.slice(4, 10) : [];
+  // Itens na Folha 4 (Spread 2): se houver mais de 10
+  const sheet4Items = totalSpreads > 1 ? overflowItems.slice(10) : [];
+
+  // Componente Reutilizável de Participação e Louvor Final (Sempre Ancorado no Canto Inferior Direito)
+  const ParticipacaoELouvorAnchor = () => (
+    <div className="mt-auto pt-3 border-t-2 border-church-sand/60 bg-church-parchment/50 rounded-xl p-3 space-y-2.5 shrink-0 shadow-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Participação (Oportunidades) */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5 text-church-gold-dark">
+            <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+            <h4 className="font-title text-[11px] font-bold uppercase tracking-wider">
+              Participação ({opps.length})
+            </h4>
+          </div>
+          {opps.length === 0 ? (
+            <p className="font-serif italic text-church-muted text-xs">Nenhuma escalada.</p>
+          ) : (
+            <ul className="space-y-1 text-xs font-sans text-church-charcoal">
+              {opps.map((op, i) => (
+                <li key={op.id || i} className="font-semibold truncate">
+                  • {op.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Louvor Final (Conjuntos) */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5 text-church-gold-dark">
+            <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+            <h4 className="font-title text-[11px] font-bold uppercase tracking-wider">
+              Louvor Final
+            </h4>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {choirs.filter(ch => ch.checked).map((ch, i) => (
+              <span 
+                key={ch.id || i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-church-gold/15 text-church-charcoal font-bold text-[10px]"
+              >
+                <CheckSquare className="w-3 h-3 text-church-gold-dark" />
+                {ch.name}
+              </span>
+            ))}
+            {choirs.filter(ch => ch.checked).length === 0 && (
+              <span className="font-serif italic text-church-muted text-xs">Nenhum escalado</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="h-screen w-screen flex flex-col bg-church-parchment select-none overflow-hidden relative">
-      {/* ⚠️ FAIXA DE ALERTA NO TOPO (OPÇÃO A) - EMPURRA SUAVEMENTE AS FOLHAS */}
+      {/* ⚠️ FAIXA DE ALERTA NO TOPO - EMPURRA SUAVEMENTE AS FOLHAS */}
       {room.active_alert && (
         <aside 
           aria-live="assertive"
@@ -132,7 +190,7 @@ export const PulpitView: React.FC = () => {
           <>
             {/* ================= FOLHA 1 (ESQUERDA) ================= */}
             <section className="paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
-              {/* Cabeçalho da Folha 1 com Logotipo Horizontal Oficial */}
+              {/* Cabeçalho da Folha 1 */}
               <div className="border-b border-church-sand pb-3 mb-4 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex flex-col">
                   <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
@@ -150,7 +208,7 @@ export const PulpitView: React.FC = () => {
               </div>
 
               {/* Conteúdo Dinâmico da Folha 1 */}
-              <div className="flex-1 space-y-4 overflow-hidden">
+              <div className="flex-1 space-y-4 overflow-hidden flex flex-col">
                 {/* Bloco de Visitantes */}
                 <article className="pb-3 border-b border-church-sand/50">
                   <header className="flex items-center gap-2 mb-2">
@@ -174,19 +232,19 @@ export const PulpitView: React.FC = () => {
                   )}
                 </article>
 
-                {/* Bloco de Pedidos de Oração Presenciais */}
-                <article className="pb-2">
+                {/* Bloco de Pedidos de Oração Presenciais (Primeiros 5) */}
+                <article className="flex-1 overflow-hidden">
                   <header className="flex items-center gap-2 mb-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
                     <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                      Pedidos de Oração ({spread1Prayers.length})
+                      Pedidos de Oração ({sheet1Prayers.length})
                     </h3>
                   </header>
-                  {spread1Prayers.length === 0 ? (
+                  {sheet1Prayers.length === 0 ? (
                     <p className="font-serif italic text-church-muted/70 text-sm">Nenhum pedido de oração inserido.</p>
                   ) : (
                     <ul className="space-y-2 list-disc list-inside">
-                      {spread1Prayers.map((p, i) => (
+                      {sheet1Prayers.map((p, i) => (
                         <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
                           {p.urgent && (
                             <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
@@ -198,31 +256,12 @@ export const PulpitView: React.FC = () => {
                       ))}
                     </ul>
                   )}
-                  {totalSpreads > 1 && prayers.length > spread1Prayers.length && (
-                    <p className="font-serif italic text-xs text-church-gold-dark mt-2">
-                      * Mais {prayers.length - spread1Prayers.length} pedidos na Folha 3 ➔
+                  {overflowItems.length > 0 && (
+                    <p className="font-serif italic text-xs text-church-gold-dark mt-3">
+                      * Mais pedidos de oração na Folha 2 à direita ➔
                     </p>
                   )}
                 </article>
-
-                {/* Se só tem 1 spread e tem pedidos de YouTube, exibe aqui */}
-                {totalSpreads === 1 && youtube.length > 0 && (
-                  <article className="pt-2 border-t border-church-sand/50">
-                    <header className="flex items-center gap-2 mb-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                      <h3 className="font-title text-xs font-bold uppercase tracking-wider text-red-700">
-                        YouTube ao Vivo ({youtube.length})
-                      </h3>
-                    </header>
-                    <ul className="space-y-1.5 list-disc list-inside">
-                      {youtube.map((p, i) => (
-                        <li key={p.id || i} className="font-sans text-church-charcoal text-sm leading-snug">
-                          {p.description}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                )}
               </div>
 
               {/* Rodapé da Folha 1 */}
@@ -238,10 +277,10 @@ export const PulpitView: React.FC = () => {
               <div className="border-b border-church-sand pb-3 mb-4 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex flex-col">
                   <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
-                    Participações & Louvor
+                    Intercessão & Escala
                   </span>
                   <h2 className="font-title text-base sm:text-lg font-extrabold uppercase text-church-charcoal tracking-tight">
-                    Escala do Culto
+                    {sheet2Items.length > 0 ? 'Orações & Transmissão' : 'Escala do Culto'}
                   </h2>
                 </div>
                 <span className="font-serif italic text-xs text-church-muted">
@@ -249,63 +288,63 @@ export const PulpitView: React.FC = () => {
                 </span>
               </div>
 
-              {/* Conteúdo Dinâmico da Folha 2 */}
-              <div className="flex-1 space-y-4 overflow-hidden">
-                {/* Oportunidades */}
-                <article className="pb-3 border-b border-church-sand/50">
-                  <header className="flex items-center gap-2 mb-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-                    <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                      Oportunidades do Culto ({opps.length})
-                    </h3>
-                  </header>
-                  {opps.length === 0 ? (
-                    <p className="font-serif italic text-church-muted/70 text-sm">Nenhuma oportunidade escalada.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {opps.map((op, i) => (
-                        <div key={op.id || i} className="flex items-center gap-2 p-2 rounded-lg bg-church-parchment/60 border border-church-sand">
-                          <span className="w-2 h-2 rounded-full bg-church-gold" />
-                          <span className="font-title text-sm font-semibold text-church-charcoal">{op.name}</span>
-                        </div>
+              {/* Corpo da Folha 2: Transbordamento das Orações + Prints */}
+              <div className="flex-1 space-y-3 overflow-hidden flex flex-col">
+                {sheet2Items.length > 0 ? (
+                  <article className="flex-1 overflow-hidden">
+                    <header className="flex items-center gap-2 mb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+                      <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                        Mais Pedidos de Oração ({sheet2Items.length})
+                      </h3>
+                    </header>
+                    <ul className="space-y-2.5">
+                      {sheet2Items.map((p, i) => (
+                        <li key={p.id || i} className="font-sans text-church-charcoal text-xs sm:text-sm leading-snug">
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-church-gold shrink-0">•</span>
+                            {p.urgent && (
+                              <span className="inline-block px-1.5 py-0.2 shrink-0 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
+                                Urgente
+                              </span>
+                            )}
+                            <span className="font-medium text-church-charcoal">{p.description}</span>
+                          </div>
+                          {/* Print do chat do YouTube inline sem popup gigante */}
+                          {p.image_data && (
+                            <div className="mt-1.5 ml-4 rounded-lg overflow-hidden border border-church-sand bg-white p-1 max-w-[260px] shadow-2xs">
+                              <img 
+                                src={p.image_data} 
+                                alt="Print do chat" 
+                                className="w-full h-auto max-h-24 object-contain rounded"
+                              />
+                            </div>
+                          )}
+                        </li>
                       ))}
-                    </div>
-                  )}
-                </article>
-
-                {/* Conjuntos */}
-                <article>
-                  <header className="flex items-center gap-2 mb-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-                    <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                      Conjuntos da Igreja (Louvor)
-                    </h3>
-                  </header>
-                  <div className="grid grid-cols-1 gap-2">
-                    {choirs.map((ch, i) => (
-                      <div 
-                        key={ch.id || i} 
-                        className={`flex items-center gap-3 p-2 rounded-xl border transition-all ${
-                          ch.checked 
-                            ? 'bg-church-gold/10 border-church-gold/40 text-church-charcoal font-bold' 
-                            : 'bg-white border-church-sand/80 text-church-muted'
-                        }`}
-                      >
-                        {ch.checked ? (
-                          <CheckSquare className="w-5 h-5 text-church-gold-dark shrink-0" />
-                        ) : (
-                          <Square className="w-5 h-5 text-church-muted/50 shrink-0" />
-                        )}
-                        <span className="font-title text-sm tracking-wide">{ch.name}</span>
-                      </div>
-                    ))}
+                    </ul>
+                    {totalSpreads > 1 && overflowItems.length > sheet2Items.length && (
+                      <p className="font-serif italic text-xs text-church-gold-dark mt-2">
+                        * Mais pedidos na Folha 3 (Próxima página) ➔
+                      </p>
+                    )}
+                  </article>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 text-church-muted space-y-1">
+                    <p className="font-serif italic text-sm text-church-charcoal">
+                      "Orai sem cessar. Em tudo dai graças."
+                    </p>
+                    <span className="text-[11px] font-title font-bold text-church-gold uppercase">1 Tessalonicenses 5:17</span>
                   </div>
-                </article>
+                )}
+
+                {/* BLOCO ANCORADO NO CANTO INFERIOR DIREITO */}
+                <ParticipacaoELouvorAnchor />
               </div>
 
               {/* Rodapé da Folha 2 */}
               <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
-                <span className="font-serif italic">Folha 2 (Conjuntos & Oportunidades)</span>
+                <span className="font-serif italic">Folha 2 (Orações & Escala)</span>
                 <span className="font-mono">Página 2 de {totalSpreads * 2}</span>
               </div>
             </section>
@@ -332,56 +371,43 @@ export const PulpitView: React.FC = () => {
               </div>
 
               {/* Conteúdo da Folha 3 */}
-              <div className="flex-1 space-y-4 overflow-hidden">
-                {/* Continuação dos Pedidos Presenciais */}
-                {spread2Prayers.length > 0 && (
-                  <article className="pb-3 border-b border-church-sand/50">
-                    <header className="flex items-center gap-2 mb-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-                      <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                        Mais Pedidos Presenciais ({spread2Prayers.length})
-                      </h3>
-                    </header>
-                    <ul className="space-y-2 list-disc list-inside">
-                      {spread2Prayers.map((p, i) => (
-                        <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
-                          {p.urgent && (
-                            <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
-                              Urgente
-                            </span>
-                          )}
-                          <span className="font-medium">{p.description}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                )}
+              <div className="flex-1 space-y-3 overflow-hidden flex flex-col">
+                <header className="flex items-center gap-2 mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <h3 className="font-title text-xs font-bold uppercase tracking-wider text-red-700">
+                    Orações da Transmissão e Congregação ({sheet3Items.length})
+                  </h3>
+                </header>
 
-                {/* Pedidos do Chat do YouTube */}
-                <article>
-                  <header className="flex items-center gap-2 mb-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                    <h3 className="font-title text-xs font-bold uppercase tracking-wider text-red-700">
-                      Pedidos do Chat do YouTube ({youtube.length})
-                    </h3>
-                  </header>
-                  {youtube.length === 0 ? (
-                    <p className="font-serif italic text-church-muted/70 text-sm">Nenhum pedido recebido pelo YouTube.</p>
-                  ) : (
-                    <ul className="space-y-2 list-disc list-inside">
-                      {youtube.map((p, i) => (
-                        <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
-                          <span className="font-medium">{p.description}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </article>
+                <ul className="space-y-2.5 flex-1 overflow-hidden">
+                  {sheet3Items.map((p, i) => (
+                    <li key={p.id || i} className="font-sans text-church-charcoal text-xs sm:text-sm leading-snug">
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-church-gold shrink-0">•</span>
+                        {p.urgent && (
+                          <span className="inline-block px-1.5 py-0.2 shrink-0 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
+                            Urgente
+                          </span>
+                        )}
+                        <span className="font-medium text-church-charcoal">{p.description}</span>
+                      </div>
+                      {p.image_data && (
+                        <div className="mt-1.5 ml-4 rounded-lg overflow-hidden border border-church-sand bg-white p-1 max-w-[260px] shadow-2xs">
+                          <img 
+                            src={p.image_data} 
+                            alt="Print do chat" 
+                            className="w-full h-auto max-h-24 object-contain rounded"
+                          />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {/* Rodapé da Folha 3 */}
               <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
-                <span className="font-serif italic">Folha 3 (Orações YouTube & Adicionais)</span>
+                <span className="font-serif italic">Folha 3 (Orações & Live)</span>
                 <span className="font-mono">Página 3 de 4</span>
               </div>
             </section>
@@ -392,10 +418,10 @@ export const PulpitView: React.FC = () => {
               <div className="border-b border-church-sand pb-3 mb-4 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex flex-col">
                   <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
-                    Edificação & Avisos
+                    Edificação & Escala
                   </span>
                   <h2 className="font-title text-base sm:text-lg font-extrabold uppercase text-church-charcoal tracking-tight">
-                    Avisos Litúrgicos
+                    Programação & Liturgia
                   </h2>
                 </div>
                 <span className="font-serif italic text-xs text-church-muted">
@@ -404,55 +430,60 @@ export const PulpitView: React.FC = () => {
               </div>
 
               {/* Conteúdo da Folha 4 */}
-              <div className="flex-1 space-y-4 overflow-hidden flex flex-col justify-between">
-                {/* Agenda Semanal */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2 text-church-charcoal">
-                    <Calendar className="w-4 h-4 text-church-gold" />
-                    <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                      Programação Semanal da Igreja
-                    </h3>
+              <div className="flex-1 space-y-3 overflow-hidden flex flex-col justify-between">
+                {sheet4Items.length > 0 ? (
+                  <div className="space-y-2">
+                    <header className="flex items-center gap-2 mb-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+                      <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                        Mais Pedidos ({sheet4Items.length})
+                      </h3>
+                    </header>
+                    <ul className="space-y-1.5 text-xs font-sans">
+                      {sheet4Items.map((p, i) => (
+                        <li key={p.id || i} className="font-medium text-church-charcoal">
+                          • {p.description}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="grid grid-cols-1 gap-2 text-xs font-sans">
-                    <div className="p-2.5 rounded-lg bg-church-parchment/60 border border-church-sand flex justify-between items-center">
-                      <span className="font-semibold text-church-charcoal">Terça-feira (19h30)</span>
-                      <span className="text-church-muted">Culto de Doutrina</span>
+                ) : (
+                  /* Agenda Semanal */
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 mb-1 text-church-charcoal">
+                      <Calendar className="w-3.5 h-3.5 text-church-gold" />
+                      <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                        Programação Semanal
+                      </h3>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-church-parchment/60 border border-church-sand flex justify-between items-center">
-                      <span className="font-semibold text-church-charcoal">Quinta-feira (14h30)</span>
-                      <span className="text-church-muted">Círculo de Oração</span>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-church-parchment/60 border border-church-sand flex justify-between items-center">
-                      <span className="font-semibold text-church-charcoal">Sábado (08h00)</span>
-                      <span className="text-church-muted">Consagração dos Obreiros</span>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-church-parchment/60 border border-church-sand flex justify-between items-center">
-                      <span className="font-semibold text-church-charcoal">Domingo (18h30)</span>
-                      <span className="text-church-muted">Culto da Família</span>
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px] font-sans">
+                      <div className="p-2 rounded-lg bg-church-parchment/60 border border-church-sand">
+                        <span className="font-semibold text-church-charcoal block">Terça (19h30)</span>
+                        <span className="text-church-muted text-[10px]">Culto de Doutrina</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-church-parchment/60 border border-church-sand">
+                        <span className="font-semibold text-church-charcoal block">Quinta (14h30)</span>
+                        <span className="text-church-muted text-[10px]">Círculo de Oração</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-church-parchment/60 border border-church-sand">
+                        <span className="font-semibold text-church-charcoal block">Sábado (08h00)</span>
+                        <span className="text-church-muted text-[10px]">Consagração</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-church-parchment/60 border border-church-sand">
+                        <span className="font-semibold text-church-charcoal block">Domingo (18h30)</span>
+                        <span className="text-church-muted text-[10px]">Culto da Família</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Versículo de Lema */}
-                <div className="p-3.5 rounded-xl bg-church-gold/10 border border-church-gold/30 text-center space-y-1">
-                  <div className="flex items-center justify-center gap-1.5 text-church-gold-dark">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span className="font-title text-[10px] font-bold uppercase tracking-widest">
-                      Palavra de Edificação
-                    </span>
-                  </div>
-                  <p className="font-serif italic text-sm text-church-charcoal leading-relaxed">
-                    "Porque vivemos por fé, e não pelo que vemos."
-                  </p>
-                  <p className="font-title text-[10px] font-bold text-church-gold-dark uppercase tracking-wider">
-                    2 Coríntios 5:7
-                  </p>
-                </div>
+                {/* BLOCO ANCORADO NO CANTO INFERIOR DIREITO (IDÊNTICO AO DA FOLHA 2) */}
+                <ParticipacaoELouvorAnchor />
               </div>
 
               {/* Rodapé da Folha 4 */}
               <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
-                <span className="font-serif italic">Folha 4 (Avisos Litúrgicos)</span>
+                <span className="font-serif italic">Folha 4 (Avisos & Escala)</span>
                 <span className="font-mono">Página 4 de 4</span>
               </div>
             </section>

@@ -20,6 +20,8 @@ export interface PrayerItem {
   id: string;
   description: string;
   urgent?: boolean;
+  image_data?: string; // Print comprimido em base64 (~30-40KB) do chat do YouTube
+  created_at?: number;
 }
 
 export interface OpportunityItem {
