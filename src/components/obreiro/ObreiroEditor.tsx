@@ -16,7 +16,10 @@ import {
   Check,
   ListPlus,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Pencil,
+  X,
+  Plus
 } from 'lucide-react';
 
 export const ObreiroEditor: React.FC = () => {
@@ -37,6 +40,11 @@ export const ObreiroEditor: React.FC = () => {
 
   // Estados de Oportunidades
   const [oppName, setOppName] = useState('');
+
+  // Estados de Conjuntos do Culto (Gestão pelo Controlador)
+  const [newChoirName, setNewChoirName] = useState('');
+  const [editingChoirId, setEditingChoirId] = useState<string | null>(null);
+  const [editingChoirName, setEditingChoirName] = useState('');
 
   // Modal de Confirmação para Exclusão em Massa (Controlador)
   const [confirmModal, setConfirmModal] = useState<{ type: 'visitors' | 'prayers'; count: number } | null>(null);
@@ -211,6 +219,49 @@ export const ObreiroEditor: React.FC = () => {
     const current = (block.content || []) as ChoirItem[];
     const updated = current.map(ch => ch.id === id ? { ...ch, checked: !ch.checked } : ch);
     updateBlock(block.id, updated);
+  };
+
+  // Adiciona novo conjunto (Controlador)
+  const handleAddChoir = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChoirName.trim()) return;
+    const block = getBlock('choirs');
+    if (!block) return;
+
+    const current = (block.content || []) as ChoirItem[];
+    const newItem: ChoirItem = {
+      id: Date.now().toString(),
+      name: newChoirName.trim(),
+      checked: true,
+    };
+
+    updateBlock(block.id, [...current, newItem]);
+    setNewChoirName('');
+    showFeedback('Conjunto adicionado com sucesso!');
+  };
+
+  // Salva renomeação de conjunto (Controlador)
+  const handleSaveChoirName = (id: string) => {
+    if (!editingChoirName.trim()) return;
+    const block = getBlock('choirs');
+    if (!block) return;
+
+    const current = (block.content || []) as ChoirItem[];
+    const updated = current.map(ch => ch.id === id ? { ...ch, name: editingChoirName.trim() } : ch);
+    updateBlock(block.id, updated);
+    setEditingChoirId(null);
+    setEditingChoirName('');
+    showFeedback('Nome do conjunto atualizado!');
+  };
+
+  // Exclui conjunto (Controlador)
+  const handleDeleteChoir = (id: string) => {
+    const block = getBlock('choirs');
+    if (!block) return;
+
+    const current = (block.content || []) as ChoirItem[];
+    updateBlock(block.id, current.filter(ch => ch.id !== id));
+    showFeedback('Conjunto removido.');
   };
 
   // Exclusão em massa com confirmação (Controlador)
@@ -575,44 +626,156 @@ export const ObreiroEditor: React.FC = () => {
           )}
         </section>
 
-        {/* ================= SEÇÃO CONJUNTOS (CHECKLIST) & OPORTUNIDADES ================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Conjuntos */}
-          <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-4 border-b border-church-sand pb-3">
-                <Users className="w-5 h-5 text-church-gold" />
-                <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-                  Conjuntos do Culto
-                </h2>
-              </div>
+        {/* ================= SEÇÃO CONJUNTOS (CONTROLADOR) & OPORTUNIDADES ================= */}
+        <div className={`grid gap-6 ${role === 'controlador' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          {/* Conjuntos - VISÍVEL E EDITÁVEL EXCLUSIVAMENTE PELO CONTROLADOR */}
+          {role === 'controlador' && (
+            <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4 border-b border-church-sand pb-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-church-gold" />
+                    <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
+                      Conjuntos do Culto
+                    </h2>
+                  </div>
+                  <span className="text-[11px] font-title font-bold px-2.5 py-0.5 rounded-full bg-church-gold/15 text-church-gold-dark">
+                    {choirsList.filter(c => c.checked).length} Confirmados
+                  </span>
+                </div>
 
-              <div className="space-y-2">
-                {choirsList.map(ch => (
+                {/* Adicionar Novo Conjunto */}
+                <form onSubmit={handleAddChoir} className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    placeholder="Novo conjunto (Ex: Coral Geral, Grupo de Louvor)..."
+                    value={newChoirName}
+                    onChange={e => setNewChoirName(e.target.value)}
+                    className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
+                  />
                   <button
-                    key={ch.id}
-                    type="button"
-                    onClick={() => handleToggleChoir(ch.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
-                      ch.checked 
-                        ? 'bg-church-gold/10 border-church-gold text-church-charcoal font-bold' 
-                        : 'bg-church-parchment/40 border-church-sand text-church-muted hover:bg-white'
-                    }`}
+                    type="submit"
+                    disabled={!newChoirName.trim()}
+                    className="px-3.5 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    title="Adicionar à lista de conjuntos"
                   >
-                    <span className="font-title text-sm">{ch.name}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                      ch.checked ? 'bg-church-gold text-white' : 'bg-church-sand/60 text-church-muted'
-                    }`}>
-                      {ch.checked ? 'Confirmado' : 'Não participa'}
-                    </span>
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Adicionar</span>
                   </button>
-                ))}
+                </form>
+
+                {/* Lista de Conjuntos Cadastrados com Edição e Exclusão */}
+                <div className="space-y-2">
+                  {choirsList.length === 0 ? (
+                    <p className="font-serif italic text-church-muted text-xs p-3 text-center border border-dashed border-church-sand rounded-xl">
+                      Nenhum conjunto cadastrado. Adicione um conjunto no campo acima.
+                    </p>
+                  ) : (
+                    choirsList.map(ch => (
+                      <div
+                        key={ch.id}
+                        className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all ${
+                          ch.checked 
+                            ? 'bg-church-gold/10 border-church-gold text-church-charcoal' 
+                            : 'bg-church-parchment/40 border-church-sand text-church-muted hover:bg-white'
+                        }`}
+                      >
+                        {editingChoirId === ch.id ? (
+                          // Modo de Edição Inline de Nome
+                          <div className="flex items-center gap-2 flex-1 mr-2">
+                            <input
+                              type="text"
+                              value={editingChoirName}
+                              onChange={e => setEditingChoirName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleSaveChoirName(ch.id);
+                                } else if (e.key === 'Escape') {
+                                  setEditingChoirId(null);
+                                }
+                              }}
+                              autoFocus
+                              className="flex-1 text-xs font-sans p-1.5 rounded-lg border border-church-gold bg-white outline-none text-church-charcoal font-semibold"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveChoirName(ch.id)}
+                              className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+                              title="Salvar alteração"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingChoirId(null)}
+                              className="p-1.5 rounded-lg bg-stone-200 text-stone-700 hover:bg-stone-300 transition-colors cursor-pointer"
+                              title="Cancelar edição"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          // Visualização Normal com Botão de Confirmação e Nome
+                          <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleChoir(ch.id)}
+                              className={`text-xs px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
+                                ch.checked 
+                                  ? 'bg-church-gold text-white shadow-xs' 
+                                  : 'bg-church-sand/70 text-church-muted hover:bg-church-sand'
+                              }`}
+                              title={ch.checked ? 'Clique para desmarcar do culto' : 'Clique para confirmar no culto'}
+                            >
+                              {ch.checked ? 'Confirmado' : 'Não participa'}
+                            </button>
+                            <span 
+                              onClick={() => handleToggleChoir(ch.id)}
+                              className={`font-title text-sm cursor-pointer select-none truncate ${
+                                ch.checked ? 'font-bold text-church-charcoal' : 'text-church-muted'
+                              }`}
+                              title="Clique para alternar participação"
+                            >
+                              {ch.name}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Botões de Ação: Editar e Excluir */}
+                        {editingChoirId !== ch.id && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingChoirId(ch.id);
+                                setEditingChoirName(ch.name);
+                              }}
+                              className="p-1.5 text-church-muted hover:text-church-charcoal hover:bg-church-sand/50 rounded-lg transition-colors cursor-pointer"
+                              title="Renomear conjunto"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteChoir(ch.id)}
+                              className="p-1.5 text-church-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title="Excluir conjunto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-            <p className="text-[11px] text-church-muted mt-3 font-serif italic">
-              * Toque no conjunto para marcar ou desmarcar sua participação no culto.
-            </p>
-          </section>
+              <p className="text-[11px] text-church-muted mt-4 font-serif italic border-t border-church-sand/50 pt-2">
+                * Toque no botão de status para marcar no Louvor Final do púlpito. Use o lápis para renomear ou a lixeira para excluir.
+              </p>
+            </section>
+          )}
 
           {/* Oportunidades */}
           <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">

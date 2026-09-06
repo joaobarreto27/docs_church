@@ -283,10 +283,17 @@ export async function archiveAndResetRoom(roomId: string, newTitle: string): Pro
     SET content = '[]'::jsonb, updated_at = NOW()
     WHERE room_id = ${roomId} AND block_type IN ('visitors', 'prayer', 'youtube', 'opportunities')
   `;
-  // Desmarca checkboxes de conjuntos
+  // Desmarca checkboxes de conjuntos mantendo os nomes cadastrados pela igreja
   await sql`
     UPDATE liturgical_blocks 
-    SET content = '[{"id":"1","name":"Mocidade","checked":false},{"id":"2","name":"Círculo de Oração","checked":false},{"id":"3","name":"Varões","checked":false},{"id":"4","name":"Juniores","checked":false},{"id":"5","name":"Crianças","checked":false}]'::jsonb, updated_at = NOW()
+    SET content = CASE 
+      WHEN content IS NULL OR jsonb_array_length(content) = 0 THEN '[]'::jsonb
+      ELSE (
+        SELECT COALESCE(jsonb_agg(jsonb_set(elem, '{checked}', 'false'::jsonb)), '[]'::jsonb)
+        FROM jsonb_array_elements(content) AS elem
+      )
+    END,
+    updated_at = NOW()
     WHERE room_id = ${roomId} AND block_type = 'choirs'
   `;
 }
