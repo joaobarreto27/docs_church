@@ -6,10 +6,10 @@ import {
   ChoirItem, 
   OpportunityItem 
 } from '../../types/liturgy';
-import { AlertCircle, ZoomIn, ZoomOut, CheckSquare, Square } from 'lucide-react';
+import { AlertCircle, ZoomIn, ZoomOut, CheckSquare, Square, LogOut } from 'lucide-react';
 
 export const PulpitView: React.FC = () => {
-  const { room, blocks, isConnected } = useRoom();
+  const { room, blocks, isConnected, leaveRoom } = useRoom();
 
   // Escala de fonte para pregadores idosos (1 = padrão 100%, 1.15 = grande, 1.3 = muito grande)
   const [fontScale, setFontScale] = useState<number>(1.05);
@@ -228,26 +228,40 @@ export const PulpitView: React.FC = () => {
           </span>
         </div>
 
-        {/* Ajuste de Tamanho da Letra para Terceira Idade */}
-        <div className="flex items-center gap-1.5 bg-white rounded-lg border border-church-sand px-2 py-0.5">
+        {/* Centro / Direita: Controles de zoom e Botão Sair do Púlpito */}
+        <div className="flex items-center gap-3">
+          {/* Ajuste de Tamanho da Letra para Terceira Idade */}
+          <div className="flex items-center gap-1.5 bg-white rounded-lg border border-church-sand px-2 py-0.5">
+            <button
+              type="button"
+              onClick={() => setFontScale(prev => Math.max(0.9, prev - 0.08))}
+              className="p-1 hover:text-church-charcoal active:scale-90"
+              title="Diminuir tamanho da letra"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] font-title font-bold px-1 text-church-charcoal">
+              A {Math.round(fontScale * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => setFontScale(prev => Math.min(1.45, prev + 0.08))}
+              className="p-1 hover:text-church-charcoal active:scale-90"
+              title="Aumentar tamanho da letra"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Botão Sair Discreto do Púlpito para Voltar à Tela Inicial */}
           <button
             type="button"
-            onClick={() => setFontScale(prev => Math.max(0.9, prev - 0.08))}
-            className="p-1 hover:text-church-charcoal active:scale-90"
-            title="Diminuir tamanho da letra"
+            onClick={leaveRoom}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-[11px] font-title font-medium uppercase tracking-wider"
+            title="Sair do Púlpito e voltar à tela inicial"
           >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-[10px] font-title font-bold px-1 text-church-charcoal">
-            A {Math.round(fontScale * 100)}%
-          </span>
-          <button
-            type="button"
-            onClick={() => setFontScale(prev => Math.min(1.45, prev + 0.08))}
-            className="p-1 hover:text-church-charcoal active:scale-90"
-            title="Aumentar tamanho da letra"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
+            <LogOut className="w-3.5 h-3.5 text-church-muted" />
+            <span>Sair</span>
           </button>
         </div>
       </footer>

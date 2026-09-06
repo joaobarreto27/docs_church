@@ -25,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
             {room.title}
           </h1>
           <p className="font-sans text-[10px] text-church-muted">
-            Código: <strong className="text-church-gold-dark font-mono tracking-wider">{room.code.slice(0, 3)}-{room.code.slice(3)}</strong>
+            Código: <strong className="text-church-gold-dark font-mono tracking-wider">{room.code}</strong>
           </p>
         </div>
       </div>
@@ -61,14 +61,16 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
           {role === 'pastor' ? 'Púlpito' : role === 'controlador' ? 'Controlador' : 'Obreiro'}
         </span>
 
-        {/* Botão Sair da Sala (oculto no modo minimal/pastor para não ter toque acidental) */}
+        {/* Botão Sair da Sala */}
         {!minimal && (
           <button
+            type="button"
             onClick={leaveRoom}
-            className="p-1.5 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white transition-colors"
-            title="Sair do Culto"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-xs font-title font-semibold uppercase tracking-wider"
+            title="Sair do Culto e voltar à tela inicial"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5 text-rose-600" />
+            <span className="hidden sm:inline">Sair</span>
           </button>
         )}
       </div>

@@ -31,11 +31,58 @@ const RoomContext = createContext<RoomContextType | undefined>(undefined);
 
 const CACHE_PREFIX = 'docs_church_cache_';
 const SESSION_KEY = 'docs_church_session';
+const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+
+interface StoredSession {
+  code: string;
+  role: UserRole;
+  pin?: string;
+  expiresAt: number;
+}
+
+function getStoredSession(): StoredSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed: StoredSession = JSON.parse(raw);
+    const now = Date.now();
+    // Se a sessão expirou (mais de 3 horas), remove imediatamente
+    if (parsed.expiresAt && now > parsed.expiresAt) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    if (parsed.code && parsed.role) {
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Erro ao ler sessionStorage:', e);
+  }
+  return null;
+}
+
+function getStoredCache(code: string): { room: Room; blocks: LiturgicalBlock[] } | null {
+  try {
+    const cached = localStorage.getItem(`${CACHE_PREFIX}${code}`);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.room && parsed.blocks) {
+        return { room: parsed.room, blocks: parsed.blocks };
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao ler cache local:', e);
+  }
+  return null;
+}
 
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [room, setRoom] = useState<Room | null>(null);
-  const [blocks, setBlocks] = useState<LiturgicalBlock[]>([]);
-  const [role, setRole] = useState<UserRole | null>(null);
+  // Inicialização síncrona imediata para evitar qualquer piscada de tela ao dar refresh
+  const [initialSession] = useState<StoredSession | null>(getStoredSession);
+  const initialCache = initialSession?.code ? getStoredCache(initialSession.code) : null;
+
+  const [room, setRoom] = useState<Room | null>(initialCache?.room || null);
+  const [blocks, setBlocks] = useState<LiturgicalBlock[]>(initialCache?.blocks || []);
+  const [role, setRole] = useState<UserRole | null>(initialSession?.role || null);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [isColdStarting, setIsColdStarting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,18 +105,11 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Carrega do cache se a rede falhar
   const loadFromCache = useCallback((code: string): boolean => {
-    try {
-      const cached = localStorage.getItem(`${CACHE_PREFIX}${code}`);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.room && parsed.blocks) {
-          setRoom(parsed.room);
-          setBlocks(parsed.blocks);
-          return true;
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao ler cache local:', e);
+    const cached = getStoredCache(code);
+    if (cached) {
+      setRoom(cached.room);
+      setBlocks(cached.blocks);
+      return true;
     }
     return false;
   }, []);
@@ -142,9 +182,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       saveToCache(foundRoom, foundBlocks);
 
-      // Salva sessão no sessionStorage para reabertura de aba
+      // Salva sessão no sessionStorage com validade de 3 horas para resistir a refresh
       try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ code: cleanCode, role: selectedRole }));
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ 
+          code: cleanCode, 
+          role: selectedRole,
+          pin: pin || undefined,
+          expiresAt: Date.now() + THREE_HOURS_MS
+        }));
       } catch (e) {}
 
       return { success: true };
@@ -168,6 +213,17 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsConnected(true);
       setError(null);
       saveToCache(newRoom, newBlocks);
+
+      // Salva sessão de 3 horas no sessionStorage
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ 
+          code: newRoom.code, 
+          role: 'controlador',
+          pin,
+          expiresAt: Date.now() + THREE_HOURS_MS
+        }));
+      } catch (e) {}
+
       return { success: true, code: newRoom.code };
     } catch (err: any) {
       console.error('Erro ao criar sala:', err);
@@ -177,14 +233,43 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [saveToCache]);
 
-  // Sai da sala
+  // Revalida em segundo plano caso exista sessão ativa restaurada
+  useEffect(() => {
+    const activeSession = getStoredSession();
+    if (!activeSession) return;
+
+    // Se não tínhamos cache local dos blocos, busca completo
+    if (!room || blocks.length === 0) {
+      joinRoom(activeSession.code, activeSession.role, activeSession.pin);
+    } else {
+      // Já tínhamos cache: revalidação silenciosa em background com o Neon
+      getRoomMeta(activeSession.code).then(async (meta) => {
+        if (meta) {
+          setIsConnected(true);
+          if (meta.version !== room.version) {
+            const updatedBlocks = await getBlocksByRoomId(room.id);
+            setBlocks(updatedBlocks);
+            setRoom(prev => prev ? { ...prev, ...meta } : null);
+            saveToCache({ ...room, ...meta }, updatedBlocks);
+          }
+        }
+      }).catch(() => {
+        // Modo offline silencioso
+        setIsConnected(false);
+      });
+    }
+  }, []);
+
+  // Sai da sala e limpa sessão
   const leaveRoom = useCallback(() => {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
     setRoom(null);
     setBlocks([]);
     setRole(null);
+    setError(null);
     try {
       sessionStorage.removeItem(SESSION_KEY);
     } catch (e) {}
@@ -252,6 +337,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const poll = async () => {
       if (isPollingRef.current) return;
+
+      // Se a sessão de 3 horas na aba expirou, encerra polling e volta ao login para poupar Neon/Vercel
+      const currentSession = getStoredSession();
+      if (!currentSession) {
+        leaveRoom();
+        return;
+      }
+
       isPollingRef.current = true;
 
       try {

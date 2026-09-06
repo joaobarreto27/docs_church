@@ -156,6 +156,18 @@ A interface é dividida em dois modos de propósito estrito:
 - **Contraste Cromático:** Contraste de texto preto sobre branco (`#1C1917` sobre `#FFFFFF`) certificado no padrão WCAG AAA (> 7:1) para legibilidade absoluta sob a luz do altar.
 - **Live Regions Acessíveis:** A tela do púlpito implementa `aria-live="polite"` para suportar eventuais leitores de tela ou sinalizadores assistivos para membros com deficiência visual.
 
+### 7. Ciclo de Vida de Sessão e Preservação do Free Tier (Zero-Flash & Auto-Standby)
+- **Persistência de Sessão de 3 Horas na Aba (`sessionStorage`):**
+  - Sobrevive a recarregamentos de página (F5 / Refresh) mantendo o usuário instantaneamente no papel ativo (Púlpito, Obreiro ou Controlador) por até 3 horas.
+  - **Zero-Flash Hydration:** A inicialização do estado em `RoomContext` lê síncronamente a `sessionStorage` e o cache de blocos do `localStorage`. Ao dar refresh, a tela do culto é renderizada no primeiro frame sem nenhuma piscada ou aparição intermediária da tela de login.
+- **Proteção Automática contra Esgotamento de Free Tier (Neon & Vercel):**
+  - Ao fechar a aba (`tab close`), a sessão é destruída pelo navegador. Quando reaberta, o sistema inicia limpo na tela inicial, evitando conexões zumbis.
+  - Se a aba permanecer aberta por mais de 3 horas sem uso, o loop de verificação expira a sessão automaticamente, cancela o timer de polling e retorna à tela inicial, permitindo que a instância do Neon Database entre em **Scale-to-Zero** imediatamente e preserve 100% da cota gratuita.
+- **Botão Explícito de "Sair do Culto":**
+  - **Visão do Pastor (`PulpitView`):** Botão discreto no rodapé da folha ao lado dos controles de zoom para permitir retorno seguro à tela de seleção sem necessitar fechar o app.
+  - **Visão do Obreiro e Controlador (`Header`):** Botão destacado no topo com ícone e rótulo claro para desautenticar com 1 toque.
+  - Ao sair, a sessão é limpa de imediato e o polling é paralisado.
+
 ---
 
 # MODELO DE DADOS (NEON POSTGRESQL)
@@ -269,13 +281,15 @@ CREATE INDEX idx_blocks_room_order ON liturgical_blocks(room_id, order_index);
 2. **Fase 02: Modelagem de Dados, APIs e Lógica de Salas**
    - Scripts de migração SQL para tabelas `rooms` e `liturgical_blocks`.
    - Rotas Serverless na Vercel (`/api/rooms/create`, `/api/rooms/[code]`, `/api/rooms/[code]/blocks`, `/api/rooms/[code]/alert`).
-   - Lógica de geração de código de 6 dígitos e validação de PIN de 4 dígitos.
+   - Lógica de geração de código flexível (letras e números como `ADU-PNO`) e validação de PIN de 4 dígitos.
+   - Lógica de autenticação de sessão com validade de 3 horas na aba e botão de saída ("Sair do Culto").
    - Lógica de persistência "Continuar Culto" vs "Novo Culto".
 
-3. **Fase 03: Motor de Tempo Real e Resiliência Offline**
+3. **Fase 03: Motor de Tempo Real, Resiliência Offline e Economia de Free Tier**
    - Implementação do sistema de broadcast de eventos (Pusher / Realtime).
    - Implementação do mecanismo de Smart-Polling com `version` incremental.
-   - Implementação da camada de persistência em `localStorage` no frontend.
+   - Camada de hidratação síncrona imediata (Zero-Flash Hydration) via `sessionStorage` + `localStorage`.
+   - Mecanismo de auto-standby: expiração de polling após 3h para preservar scale-to-zero do Neon.
    - Mecanismo de reconexão silenciosa com indicador visual de status.
    - Tratamento da mensagem de cold start: *"Conectando à igreja... Por favor aguarde uns segundos"*.
 
