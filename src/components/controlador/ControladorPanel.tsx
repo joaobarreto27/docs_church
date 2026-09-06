@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import { ObreiroEditor } from '../obreiro/ObreiroEditor';
+import { PulpitView } from '../pastor/PulpitView';
 import { 
   AlertTriangle, 
   Send, 
   XCircle, 
   RotateCcw, 
   Layers, 
-  Check 
+  Check,
+  Eye,
+  X 
 } from 'lucide-react';
 
 export const ControladorPanel: React.FC = () => {
@@ -15,6 +18,7 @@ export const ControladorPanel: React.FC = () => {
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showPulpitPreview, setShowPulpitPreview] = useState(false);
   const [newTitleInput, setNewTitleInput] = useState('Culto de Celebração');
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -70,15 +74,28 @@ export const ControladorPanel: React.FC = () => {
               </h2>
             </div>
 
-            {/* Botão Novo Culto / Limpar Folha */}
-            <button
-              type="button"
-              onClick={() => setShowResetModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-300 text-purple-800 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-50 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Iniciar Novo Culto
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Botão de Prévia do Púlpito */}
+              <button
+                type="button"
+                onClick={() => setShowPulpitPreview(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-200 transition-colors shadow-xs"
+                title="Abrir simulação da tela do Pastor em tempo real"
+              >
+                <Eye className="w-3.5 h-3.5 text-purple-700" />
+                <span>Prévia do Púlpito</span>
+              </button>
+
+              {/* Botão Novo Culto / Limpar Folha */}
+              <button
+                type="button"
+                onClick={() => setShowResetModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-300 text-purple-800 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-50 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Novo Culto</span>
+              </button>
+            </div>
           </div>
 
           {/* DISPARADOR DE AVISOS AO PÚLPITO */}
@@ -227,6 +244,34 @@ export const ControladorPanel: React.FC = () => {
                 Confirmar e Limpar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PRÉVIA EM TEMPO REAL DO PÚLPITO (TABLET PEEK) */}
+      {showPulpitPreview && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col p-2 sm:p-6 animate-fadeIn">
+          {/* Barra superior de controle da prévia */}
+          <header className="flex items-center justify-between pb-3 text-white max-w-6xl w-full mx-auto shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <h3 className="font-title text-sm font-bold uppercase tracking-wider">
+                Transmissão ao Vivo — Réplica do Tablet do Pastor
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPulpitPreview(false)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-title font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Voltar à Edição</span>
+            </button>
+          </header>
+
+          {/* Moldura do Tablet */}
+          <div className="flex-1 max-w-6xl w-full mx-auto bg-church-parchment rounded-2xl overflow-hidden shadow-2xl border-4 border-stone-800 relative">
+            <PulpitView />
           </div>
         </div>
       )}
