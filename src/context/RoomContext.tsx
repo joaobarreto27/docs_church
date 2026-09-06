@@ -8,7 +8,8 @@ import {
   setRoomAlert, 
   setRoomCurrentPage, 
   archiveAndResetRoom,
-  createRoom 
+  createRoom,
+  verifyControllerPin 
 } from '../services/neon';
 
 interface RoomContextType {
@@ -19,7 +20,7 @@ interface RoomContextType {
   isColdStarting: boolean;
   error: string | null;
   joinRoom: (code: string, role: UserRole, pin?: string) => Promise<{ success: boolean; error?: string }>;
-  startNewService: (title: string, pin: string) => Promise<{ success: boolean; code?: string; error?: string }>;
+  startNewService: (title: string, pin: string, preferredCode?: string) => Promise<{ success: boolean; code?: string; error?: string }>;
   leaveRoom: () => void;
   updateBlock: (blockId: string, newContent: any) => Promise<void>;
   sendAlert: (text: string | null) => Promise<void>;
@@ -155,7 +156,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const joinRoom = useCallback(async (code: string, selectedRole: UserRole, pin?: string): Promise<{ success: boolean; error?: string }> => {
     const cleanCode = code.trim().toUpperCase();
     if (cleanCode.length < 3) {
-      return { success: false, error: 'Digite um código válido (Ex: ADU-PNO).' };
+      return { success: false, error: 'Digite um código válido (mínimo 3 caracteres).' };
     }
 
     setIsColdStarting(true);
@@ -166,11 +167,16 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Código de culto não encontrado ou inativo.' };
       }
 
-      // Valida PIN de 4 dígitos para o papel de Controlador
+      // SEGURANÇA: Validação do PIN do Controlador diretamente no servidor Neon
       if (selectedRole === 'controlador') {
-        if (!pin || pin !== foundRoom.controller_pin) {
+        if (!pin || pin.trim().length < 4) {
           setIsColdStarting(false);
-          return { success: false, error: 'PIN do Controlador incorreto (4 dígitos).' };
+          return { success: false, error: 'O papel de Controlador exige um PIN de pelo menos 4 dígitos.' };
+        }
+        const isValidPin = await verifyControllerPin(cleanCode, pin.trim());
+        if (!isValidPin) {
+          setIsColdStarting(false);
+          return { success: false, error: 'PIN do Controlador incorreto.' };
         }
       }
 
@@ -203,10 +209,10 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [saveToCache]);
 
   // Cria uma nova sala
-  const startNewService = useCallback(async (title: string, pin: string): Promise<{ success: boolean; code?: string; error?: string }> => {
+  const startNewService = useCallback(async (title: string, pin: string, preferredCode?: string): Promise<{ success: boolean; code?: string; error?: string }> => {
     setIsColdStarting(true);
     try {
-      const { room: newRoom, blocks: newBlocks } = await createRoom(title, pin);
+      const { room: newRoom, blocks: newBlocks } = await createRoom(title, pin, preferredCode);
       setRoom(newRoom);
       setBlocks(newBlocks);
       setRole('controlador');

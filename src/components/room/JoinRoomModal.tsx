@@ -11,7 +11,8 @@ export const JoinRoomModal: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('pastor');
   const [pin, setPin] = useState('');
   const [newTitle, setNewTitle] = useState('Culto de Celebração');
-  const [newPin, setNewPin] = useState('1234');
+  const [newPin, setNewPin] = useState('');
+  const [customCode, setCustomCode] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -26,7 +27,7 @@ export const JoinRoomModal: React.FC = () => {
     e.preventDefault();
     const clean = code.trim();
     if (clean.length < 3) {
-      setLocalError('Por favor, digite o código do culto (Ex: ADU-PNO).');
+      setLocalError('Por favor, digite o código do culto.');
       return;
     }
     if (selectedRole === 'controlador' && pin.length < 4) {
@@ -52,7 +53,8 @@ export const JoinRoomModal: React.FC = () => {
 
     setIsLoading(true);
     setLocalError(null);
-    const result = await startNewService(newTitle, newPin);
+    const preferred = customCode.trim() ? customCode.trim().toUpperCase() : undefined;
+    const result = await startNewService(newTitle, newPin, preferred);
     if (!result.success && result.error) {
       setLocalError(result.error);
     }
@@ -118,21 +120,12 @@ export const JoinRoomModal: React.FC = () => {
               <input
                 type="text"
                 maxLength={15}
-                placeholder="Ex: ADU-PNO"
+                placeholder="DIGITE O CÓDIGO"
                 value={code}
                 onChange={handleCodeChange}
                 autoFocus
                 className="w-full text-center text-2xl sm:text-3xl font-mono font-bold tracking-widest uppercase text-church-charcoal bg-church-parchment border-2 border-church-sand focus:border-church-gold rounded-xl py-3 outline-none transition-colors"
               />
-              <div className="flex justify-center mt-2">
-                <button
-                  type="button"
-                  onClick={() => { setCode('ADU-PNO'); setLocalError(null); }}
-                  className="text-[11px] font-title font-semibold text-church-gold hover:text-church-gold-dark flex items-center gap-1 px-2.5 py-1 rounded-full bg-church-gold/10 border border-church-gold/20 hover:bg-church-gold/15 transition-colors"
-                >
-                  Usar código da igreja: <strong className="font-mono">ADU-PNO</strong>
-                </button>
-              </div>
             </div>
 
             {/* Escolha do Papel */}
@@ -196,7 +189,7 @@ export const JoinRoomModal: React.FC = () => {
                   type="password"
                   inputMode="numeric"
                   maxLength={4}
-                  placeholder="PIN de 4 dígitos (Ex: 1234)"
+                  placeholder="PIN de 4 dígitos"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                   className="w-full text-center text-lg font-mono font-bold tracking-widest bg-white border border-purple-300 focus:border-purple-500 rounded-lg py-1.5 outline-none"
@@ -207,7 +200,7 @@ export const JoinRoomModal: React.FC = () => {
             {/* Botão Acessar */}
             <button
               type="submit"
-              disabled={isLoading || code.length < 5}
+              disabled={isLoading || code.trim().length < 3}
               className="w-full py-3.5 px-4 rounded-xl font-title font-bold text-sm uppercase tracking-wider text-white bg-church-gold hover:bg-church-gold-dark active:scale-[0.98] transition-all disabled:opacity-50 shadow-soft-gold"
             >
               {isLoading ? 'Conectando...' : 'Acessar Culto'}
@@ -223,14 +216,31 @@ export const JoinRoomModal: React.FC = () => {
                 type="text"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Ex: Culto de Domingo - 06/09"
+                placeholder="Ex: Culto de Celebração - Domingo"
                 className="w-full text-sm font-sans font-medium text-church-charcoal bg-church-parchment border border-church-sand focus:border-church-gold rounded-xl px-3 py-2.5 outline-none"
               />
             </div>
 
             <div>
               <label className="block font-title text-xs font-bold uppercase tracking-wider text-church-charcoal mb-1">
-                PIN do Controlador (4 números)
+                Código Personalizado da Sala (Opcional)
+              </label>
+              <input
+                type="text"
+                maxLength={15}
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value.toUpperCase().slice(0, 15))}
+                placeholder="Ex: ADU-PNO (ou deixe vazio para automático)"
+                className="w-full text-center font-mono font-bold text-sm tracking-wider uppercase text-church-charcoal bg-church-parchment border border-church-sand focus:border-church-gold rounded-xl px-3 py-2.5 outline-none"
+              />
+              <p className="text-[11px] text-church-muted mt-1">
+                Se deixar em branco, geraremos um código seguro de 6 números automaticamente.
+              </p>
+            </div>
+
+            <div>
+              <label className="block font-title text-xs font-bold uppercase tracking-wider text-church-charcoal mb-1">
+                Definir PIN do Controlador (4 números)
               </label>
               <input
                 type="password"
@@ -238,17 +248,17 @@ export const JoinRoomModal: React.FC = () => {
                 maxLength={4}
                 value={newPin}
                 onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="Ex: 1234"
+                placeholder="PIN de 4 dígitos"
                 className="w-full text-center text-xl font-mono font-bold text-church-charcoal bg-church-parchment border border-church-sand focus:border-church-gold rounded-xl py-2 outline-none"
               />
               <p className="text-[11px] text-church-muted mt-1 text-center">
-                Guarde este PIN para poder disparar avisos e controlar a folha.
+                Defina um PIN secreto para liberar avisos e edição da folha.
               </p>
             </div>
 
             <button
               type="submit"
-              disabled={isLoading || !newTitle.trim()}
+              disabled={isLoading || !newTitle.trim() || newPin.length < 4}
               className="w-full mt-2 py-3.5 px-4 rounded-xl font-title font-bold text-sm uppercase tracking-wider text-white bg-church-gold hover:bg-church-gold-dark active:scale-[0.98] transition-all disabled:opacity-50 shadow-soft-gold flex items-center justify-center gap-2"
             >
               <Sparkles className="w-4 h-4" />

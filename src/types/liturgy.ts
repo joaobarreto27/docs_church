@@ -54,7 +54,7 @@ export interface Room {
   code: string;
   title: string;
   service_date: string;
-  controller_pin: string;
+  controller_pin?: string;
   active_alert: string | null;
   current_page: number;
   version: number;

@@ -20,14 +20,33 @@ export function generateRoomCode(): string {
 export async function getRoomByCode(code: string): Promise<Room | null> {
   const normalized = code.trim().toUpperCase();
   const withoutHyphen = normalized.replace(/-/g, '');
+  // SEGURANÇA: Não seleciona controller_pin para nunca vazar a senha ao púlpito/obreiro
   const rows = await sql`
-    SELECT * FROM rooms 
+    SELECT id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at 
+    FROM rooms 
     WHERE (UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
       AND status = 'active'
     LIMIT 1
   `;
   if (!rows || rows.length === 0) return null;
   return rows[0] as Room;
+}
+
+/**
+ * Valida o PIN do controlador com segurança diretamente no banco Neon.
+ * O hash/senha real nunca trafega na resposta, retornando apenas confirmação booleana.
+ */
+export async function verifyControllerPin(code: string, pin: string): Promise<boolean> {
+  const normalized = code.trim().toUpperCase();
+  const withoutHyphen = normalized.replace(/-/g, '');
+  const rows = await sql`
+    SELECT id FROM rooms 
+    WHERE (UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
+      AND controller_pin = ${pin}
+      AND status = 'active'
+    LIMIT 1
+  `;
+  return Boolean(rows && rows.length > 0);
 }
 
 /**
@@ -63,18 +82,25 @@ export async function getBlocksByRoomId(roomId: string): Promise<LiturgicalBlock
  */
 export async function createRoom(
   title: string = 'Culto de Celebração',
-  controllerPin: string = '1234',
+  controllerPin: string,
   preferredCode?: string
 ): Promise<{ room: Room; blocks: LiturgicalBlock[] }> {
-  const code = preferredCode ? preferredCode.replace(/\D/g, '') : generateRoomCode();
+  // Permite código alfanumérico customizado (ex: ADU-PNO) ou gera 6 dígitos aleatórios
+  const code = preferredCode && preferredCode.trim().length >= 3 
+    ? preferredCode.trim().toUpperCase() 
+    : generateRoomCode();
+
+  if (!controllerPin || controllerPin.trim().length < 4) {
+    throw new Error('O PIN do Controlador deve conter pelo menos 4 dígitos.');
+  }
 
   // Insere a sala no Neon
   const roomRows = await sql`
     INSERT INTO rooms (code, title, controller_pin, version, status)
-    VALUES (${code}, ${title}, ${controllerPin}, 1, 'active')
+    VALUES (${code}, ${title}, ${controllerPin.trim()}, 1, 'active')
     ON CONFLICT (code) DO UPDATE 
-    SET title = ${title}, controller_pin = ${controllerPin}, status = 'active', updated_at = NOW()
-    RETURNING *
+    SET title = ${title}, controller_pin = ${controllerPin.trim()}, status = 'active', updated_at = NOW()
+    RETURNING id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at
   `;
   const room = roomRows[0] as Room;
 
