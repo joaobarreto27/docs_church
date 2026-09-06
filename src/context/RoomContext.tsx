@@ -331,12 +331,15 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [room, fetchFullRoom]);
 
-  // Loop de Smart-Polling leve (a cada 2 segundos)
+  // Loop de Smart-Polling com detecção de tela ativa (Page Visibility API)
   useEffect(() => {
     if (!room) return;
 
     const poll = async () => {
       if (isPollingRef.current) return;
+
+      // Se a aba estiver minimizada ou tela desligada, economiza Neon e bateria
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
 
       // Se a sessão de 3 horas na aba expirou, encerra polling e volta ao login para poupar Neon/Vercel
       const currentSession = getStoredSession();
@@ -380,11 +383,39 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    pollTimerRef.current = setInterval(poll, 2000);
-    return () => {
+    const startPolling = () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      pollTimerRef.current = setInterval(poll, 2000);
     };
-  }, [room, saveToCache]);
+
+    const stopPolling = () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        poll(); // Sincronização imediata ao acordar a tela
+        startPolling();
+      } else {
+        stopPolling(); // Suspende polling enquanto tela desligada
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+    startPolling();
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+      stopPolling();
+    };
+  }, [room, saveToCache, leaveRoom]);
 
   return (
     <RoomContext.Provider value={{

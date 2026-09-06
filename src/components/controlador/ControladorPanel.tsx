@@ -137,33 +137,46 @@ export const ControladorPanel: React.FC = () => {
             )}
           </div>
 
-          {/* CONTROLE REMOTO DA PÁGINA ATIVA */}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs font-title font-bold text-church-charcoal uppercase">
-              Controle Remoto de Folha:
-            </span>
+          {/* CONTROLE REMOTO DE FOLHAS DO PÚLPITO */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-purple-200/60 mt-2">
+            <div>
+              <span className="text-xs font-title font-extrabold text-purple-950 uppercase tracking-wide block">
+                Navegação Remota do Púlpito:
+              </span>
+              <span className="text-[11px] text-purple-700 font-sans">
+                O tablet do Pastor está em: <strong className="text-purple-950 font-bold">{room.current_page === 2 ? 'Folhas 3-4 (Orações YouTube & Avisos)' : 'Folhas 1-2 (Recepção & Escala)'}</strong>
+              </span>
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setPage(1)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider border transition-all ${
-                  room.current_page === 1
-                    ? 'bg-church-gold text-white border-church-gold-dark shadow-sm'
-                    : 'bg-white text-church-charcoal border-church-sand hover:bg-church-parchment'
+                onClick={async () => {
+                  await setPage(1);
+                  triggerFeedback('Púlpito alterado para Folhas 1-2!');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
+                  (room.current_page || 1) === 1
+                    ? 'bg-purple-900 text-white border-purple-950 shadow-sm'
+                    : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-50'
                 }`}
               >
-                Folha 1 (Orações)
+                <span>Folhas 1-2</span>
+                {(room.current_page || 1) === 1 && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
               </button>
               <button
                 type="button"
-                onClick={() => setPage(2)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider border transition-all ${
+                onClick={async () => {
+                  await setPage(2);
+                  triggerFeedback('Púlpito alterado para Folhas 3-4!');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
                   room.current_page === 2
-                    ? 'bg-church-gold text-white border-church-gold-dark shadow-sm'
-                    : 'bg-white text-church-charcoal border-church-sand hover:bg-church-parchment'
+                    ? 'bg-purple-900 text-white border-purple-950 shadow-sm'
+                    : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-50'
                 }`}
               >
-                Folha 2 (Conjuntos)
+                <span>Folhas 3-4</span>
+                {room.current_page === 2 && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
               </button>
             </div>
           </div>

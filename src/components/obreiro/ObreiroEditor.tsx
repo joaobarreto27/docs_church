@@ -14,7 +14,8 @@ import {
   Mic2, 
   Users, 
   Trash2, 
-  Check 
+  Check,
+  ListPlus
 } from 'lucide-react';
 
 export const ObreiroEditor: React.FC = () => {
@@ -27,8 +28,13 @@ export const ObreiroEditor: React.FC = () => {
 
   const [prayerDesc, setPrayerDesc] = useState('');
   const [prayerUrgent, setPrayerUrgent] = useState(false);
+  const [prayerBatchMode, setPrayerBatchMode] = useState(false);
+  const [prayerBatchText, setPrayerBatchText] = useState('');
 
   const [youtubeDesc, setYoutubeDesc] = useState('');
+  const [youtubeBatchMode, setYoutubeBatchMode] = useState(false);
+  const [youtubeBatchText, setYoutubeBatchText] = useState('');
+
   const [oppName, setOppName] = useState('');
 
   const [savedSuccess, setSavedSuccess] = useState<string | null>(null);
@@ -95,6 +101,34 @@ export const ObreiroEditor: React.FC = () => {
     showFeedback('Pedido de oração adicionado!');
   };
 
+  // Adiciona Lote de Pedidos Presenciais
+  const handleAddBatchPrayer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prayerBatchText.trim()) return;
+    const block = getBlock('prayer');
+    if (!block) return;
+
+    const lines = prayerBatchText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    if (lines.length === 0) return;
+
+    const current = (block.content || []) as PrayerItem[];
+    const newItems: PrayerItem[] = lines.map((desc, idx) => ({
+      id: `${Date.now()}_${idx}`,
+      description: desc,
+      urgent: prayerUrgent,
+    }));
+
+    updateBlock(block.id, [...current, ...newItems]);
+    setPrayerBatchText('');
+    setPrayerBatchMode(false);
+    setPrayerUrgent(false);
+    showFeedback(`${newItems.length} pedidos de oração adicionados!`);
+  };
+
   // Remove Pedido Presencial
   const handleRemovePrayer = (id: string) => {
     const block = getBlock('prayer');
@@ -121,6 +155,33 @@ export const ObreiroEditor: React.FC = () => {
     updateBlock(block.id, [...current, newItem]);
     setYoutubeDesc('');
     showFeedback('Pedido do YouTube transmitido ao púlpito!');
+  };
+
+  // Adiciona Lote de Pedidos YouTube
+  const handleAddBatchYoutube = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!youtubeBatchText.trim()) return;
+    const block = getBlock('youtube');
+    if (!block) return;
+
+    const lines = youtubeBatchText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    if (lines.length === 0) return;
+
+    const current = (block.content || []) as PrayerItem[];
+    const newItems: PrayerItem[] = lines.map((desc, idx) => ({
+      id: `${Date.now()}_yt_${idx}`,
+      description: desc,
+      urgent: false,
+    }));
+
+    updateBlock(block.id, [...current, ...newItems]);
+    setYoutubeBatchText('');
+    setYoutubeBatchMode(false);
+    showFeedback(`${newItems.length} pedidos do YouTube adicionados!`);
   };
 
   // Remove Pedido YouTube
@@ -248,11 +309,24 @@ export const ObreiroEditor: React.FC = () => {
 
         {/* ================= SEÇÃO PEDIDOS DE ORAÇÃO (PRESENCIAIS) ================= */}
         <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 border-b border-church-sand pb-3">
-            <HeartHandshake className="w-5 h-5 text-church-gold" />
-            <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-              Pedidos de Oração (Presenciais)
-            </h2>
+          <div className="flex items-center justify-between mb-4 border-b border-church-sand pb-3">
+            <div className="flex items-center gap-2">
+              <HeartHandshake className="w-5 h-5 text-church-gold" />
+              <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
+                Pedidos de Oração (Presenciais)
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark">
+                {((getBlock('prayer')?.content || []) as PrayerItem[]).length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPrayerBatchMode(!prayerBatchMode)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-colors"
+            >
+              <ListPlus className="w-3.5 h-3.5" />
+              <span>{prayerBatchMode ? 'Modo Normal' : '+ Colar em Lote'}</span>
+            </button>
           </div>
 
           {/* Lista de Pedidos */}
@@ -271,6 +345,7 @@ export const ObreiroEditor: React.FC = () => {
                   type="button"
                   onClick={() => handleRemovePrayer(p.id)}
                   className="p-1.5 text-church-muted hover:text-red-600 transition-colors"
+                  title="Excluir pedido"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -278,46 +353,88 @@ export const ObreiroEditor: React.FC = () => {
             ))}
           </div>
 
-          {/* Formulário Novo Pedido */}
-          <form onSubmit={handleAddPrayer} className="space-y-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Motivo da oração (Ex: Cirurgia da Irmã Maria)"
-                value={prayerDesc}
-                onChange={e => setPrayerDesc(e.target.value)}
-                className="flex-1 text-xs font-sans p-2.5 rounded-lg border border-church-sand bg-church-parchment/40 focus:border-church-gold outline-none"
+          {/* Formulário Novo Pedido (Individual ou Lote) */}
+          {prayerBatchMode ? (
+            <form onSubmit={handleAddBatchPrayer} className="space-y-2">
+              <textarea
+                rows={3}
+                placeholder="Cole múltiplos pedidos (1 por linha)&#10;Ex:&#10;Irmã Maria - Saúde&#10;Família Silva - Salvação"
+                value={prayerBatchText}
+                onChange={e => setPrayerBatchText(e.target.value)}
+                className="w-full text-xs font-sans p-2.5 rounded-lg border border-church-sand bg-church-parchment/40 focus:border-church-gold outline-none resize-none"
               />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-church-gold text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark transition-colors shrink-0"
-              >
-                + Adicionar
-              </button>
-            </div>
-            <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
-              <input
-                type="checkbox"
-                checked={prayerUrgent}
-                onChange={e => setPrayerUrgent(e.target.checked)}
-                className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
-              />
-              Marcar como Caso Urgente (UTI, cirurgia iminente)
-            </label>
-          </form>
+              <div className="flex items-center justify-between">
+                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
+                  <input
+                    type="checkbox"
+                    checked={prayerUrgent}
+                    onChange={e => setPrayerUrgent(e.target.checked)}
+                    className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
+                  />
+                  Marcar lote como Urgente
+                </label>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-church-gold text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark transition-colors"
+                >
+                  Adicionar Todos em Lote
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleAddPrayer} className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Motivo da oração (Ex: Cirurgia da Irmã Maria)"
+                  value={prayerDesc}
+                  onChange={e => setPrayerDesc(e.target.value)}
+                  className="flex-1 text-xs font-sans p-2.5 rounded-lg border border-church-sand bg-church-parchment/40 focus:border-church-gold outline-none"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-church-gold text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark transition-colors shrink-0"
+                >
+                  + Adicionar
+                </button>
+              </div>
+              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
+                <input
+                  type="checkbox"
+                  checked={prayerUrgent}
+                  onChange={e => setPrayerUrgent(e.target.checked)}
+                  className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
+                />
+                Marcar como Caso Urgente (UTI, cirurgia iminente)
+              </label>
+            </form>
+          )}
         </section>
 
         {/* ================= SEÇÃO PEDIDOS DO YOUTUBE ================= */}
         <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 border-b border-church-sand pb-3">
-            <Youtube className="w-5 h-5 text-red-600" />
-            <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-              Pedidos do Chat do YouTube (Ao Vivo)
-            </h2>
+          <div className="flex items-center justify-between mb-4 border-b border-church-sand pb-3">
+            <div className="flex items-center gap-2">
+              <Youtube className="w-5 h-5 text-red-600" />
+              <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
+                Pedidos do Chat do YouTube (Ao Vivo)
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-red-100 text-red-700">
+                {((getBlock('youtube')?.content || []) as PrayerItem[]).length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setYoutubeBatchMode(!youtubeBatchMode)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-semibold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
+            >
+              <ListPlus className="w-3.5 h-3.5" />
+              <span>{youtubeBatchMode ? 'Modo Normal' : '+ Colar em Lote'}</span>
+            </button>
           </div>
 
           {/* Lista de Pedidos do YouTube */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
             {((getBlock('youtube')?.content || []) as PrayerItem[]).map(p => (
               <div key={p.id} className="flex items-center justify-between p-2.5 rounded-xl bg-red-50/50 border border-red-100 gap-3">
                 <span className="text-sm font-sans font-medium text-church-charcoal">{p.description}</span>
@@ -325,6 +442,7 @@ export const ObreiroEditor: React.FC = () => {
                   type="button"
                   onClick={() => handleRemoveYoutube(p.id)}
                   className="p-1.5 text-church-muted hover:text-red-600 transition-colors"
+                  title="Excluir pedido"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -332,22 +450,42 @@ export const ObreiroEditor: React.FC = () => {
             ))}
           </div>
 
-          {/* Formulário YouTube */}
-          <form onSubmit={handleAddYoutube} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Cole aqui o pedido que chegou na transmissão..."
-              value={youtubeDesc}
-              onChange={e => setYoutubeDesc(e.target.value)}
-              className="flex-1 text-xs font-sans p-2.5 rounded-lg border border-church-sand bg-church-parchment/40 focus:border-red-500 outline-none"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-colors shrink-0"
-            >
-              + Enviar ao Púlpito
-            </button>
-          </form>
+          {/* Formulário YouTube (Individual ou Lote) */}
+          {youtubeBatchMode ? (
+            <form onSubmit={handleAddBatchYoutube} className="space-y-2">
+              <textarea
+                rows={3}
+                placeholder="Cole os pedidos copiados do chat do YouTube (1 por linha)&#10;Ex:&#10;Marcos Paulo - Saúde do filho&#10;Ana Cláudia - Libertação da família"
+                value={youtubeBatchText}
+                onChange={e => setYoutubeBatchText(e.target.value)}
+                className="w-full text-xs font-sans p-2.5 rounded-lg border border-red-200 bg-church-parchment/40 focus:border-red-500 outline-none resize-none"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-colors"
+                >
+                  Transmitir Todos ao Púlpito
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleAddYoutube} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Cole aqui o pedido que chegou na transmissão..."
+                value={youtubeDesc}
+                onChange={e => setYoutubeDesc(e.target.value)}
+                className="flex-1 text-xs font-sans p-2.5 rounded-lg border border-church-sand bg-church-parchment/40 focus:border-red-500 outline-none"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-700 transition-colors shrink-0"
+              >
+                + Enviar ao Púlpito
+              </button>
+            </form>
+          )}
         </section>
 
         {/* ================= SEÇÃO CONJUNTOS (CHECKLIST) & OPORTUNIDADES ================= */}
