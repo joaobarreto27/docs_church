@@ -116,11 +116,13 @@ export async function getRoomMeta(code: string): Promise<{ version: number; acti
  */
 export async function getBlocksByRoomId(roomId: string): Promise<LiturgicalBlock[]> {
   const rows = await sql`
-    SELECT * FROM liturgical_blocks 
+    SELECT DISTINCT ON (block_type) * FROM liturgical_blocks 
     WHERE room_id = ${roomId} 
-    ORDER BY order_index ASC
+    ORDER BY block_type, updated_at DESC
   `;
-  return (rows || []) as LiturgicalBlock[];
+  const blocks = (rows || []) as LiturgicalBlock[];
+  blocks.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+  return blocks;
 }
 
 /**
@@ -149,6 +151,17 @@ export async function createRoom(
     RETURNING id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at
   `;
   const room = roomRows[0] as Room;
+
+  // Verifica se a sala já tem blocos criados para evitar duplicidade
+  const existingBlocks = await sql`
+    SELECT * FROM liturgical_blocks 
+    WHERE room_id = ${room.id}
+    ORDER BY order_index ASC
+  `;
+
+  if (existingBlocks && existingBlocks.length > 0) {
+    return { room, blocks: existingBlocks as LiturgicalBlock[] };
+  }
 
   // Cria os blocos padrão da congregação (baseado no Google Docs da A.D. Utinga)
   const defaultBlocks: Array<{
@@ -219,9 +232,12 @@ export async function createRoom(
     const blockRows = await sql`
       INSERT INTO liturgical_blocks (room_id, block_type, title, content, order_index, sheet_assignment)
       VALUES (${room.id}, ${b.type}, ${b.title}, ${JSON.stringify(b.content)}, ${b.order}, ${b.sheet})
+      ON CONFLICT (room_id, block_type) DO NOTHING
       RETURNING *
     `;
-    createdBlocks.push(blockRows[0] as LiturgicalBlock);
+    if (blockRows && blockRows.length > 0) {
+      createdBlocks.push(blockRows[0] as LiturgicalBlock);
+    }
   }
 
   return { room, blocks: createdBlocks };

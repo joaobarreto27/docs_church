@@ -20,8 +20,27 @@ import {
 export const PulpitView: React.FC = () => {
   const { room, blocks, isConnected, setPage, leaveRoom } = useRoom();
 
-  // Escala de fonte para pregadores idosos (1 = padrão 100%, 1.15 = grande, 1.3 = muito grande)
-  const [fontScale, setFontScale] = useState<number>(1.05);
+  // Escala de fonte para pregadores idosos (padrão aumentado em 2 níveis: 1.22 ~ 122%)
+  const [fontScale, setFontScale] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('pulpit_font_scale');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val >= 0.9 && val <= 1.6) return val;
+      }
+    } catch (e) {}
+    return 1.22;
+  });
+
+  const handleFontChange = (delta: number) => {
+    setFontScale(prev => {
+      const next = Math.max(0.9, Math.min(1.6, Number((prev + delta).toFixed(2))));
+      try {
+        localStorage.setItem('pulpit_font_scale', next.toString());
+      } catch (e) {}
+      return next;
+    });
+  };
 
   if (!room) return null;
 
@@ -39,8 +58,8 @@ export const PulpitView: React.FC = () => {
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
   // Particionamento inteligente dos pedidos de oração e live
-  // Folha 1: 5 ou 6 pedidos presenciais conforme a quantidade de visitantes
-  const maxSheet1Prayers = visitors.length <= 4 ? 6 : 5;
+  // Folha 1: balanceia visitantes e pedidos para nada ser cortado
+  const maxSheet1Prayers = visitors.length <= 3 ? 6 : (visitors.length <= 6 ? 4 : 3);
   const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
   const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const overflowItems: PrayerItem[] = [...overflowPresencial, ...youtube];
@@ -223,9 +242,9 @@ export const PulpitView: React.FC = () => {
               </div>
 
               {/* Conteúdo Dinâmico da Folha 1 */}
-              <div className="flex-1 space-y-4 overflow-hidden flex flex-col">
+              <div className="flex-1 space-y-4 overflow-y-auto pr-1 flex flex-col scrollbar-thin">
                 {/* Bloco de Visitantes */}
-                <article className="pb-3 border-b border-church-sand/50">
+                <article className="pb-3 border-b border-church-sand/50 shrink-0">
                   <header className="flex items-center gap-2 mb-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
                     <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
@@ -247,8 +266,8 @@ export const PulpitView: React.FC = () => {
                   )}
                 </article>
 
-                {/* Bloco de Pedidos de Oração Presenciais (Primeiros 5) */}
-                <article className="flex-1 overflow-hidden">
+                {/* Bloco de Pedidos de Oração Presenciais */}
+                <article className="flex-1">
                   <header className="flex items-center gap-2 mb-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
                     <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
@@ -556,8 +575,8 @@ export const PulpitView: React.FC = () => {
           <div className="flex items-center gap-1.5 bg-white rounded-lg border border-church-sand px-2 py-0.5">
             <button
               type="button"
-              onClick={() => setFontScale(prev => Math.max(0.9, prev - 0.08))}
-              className="p-1 hover:text-church-charcoal active:scale-90"
+              onClick={() => handleFontChange(-0.08)}
+              className="p-1 hover:text-church-charcoal active:scale-90 cursor-pointer"
               title="Diminuir tamanho da letra"
             >
               <ZoomOut className="w-3.5 h-3.5" />
@@ -567,8 +586,8 @@ export const PulpitView: React.FC = () => {
             </span>
             <button
               type="button"
-              onClick={() => setFontScale(prev => Math.min(1.45, prev + 0.08))}
-              className="p-1 hover:text-church-charcoal active:scale-90"
+              onClick={() => handleFontChange(0.08)}
+              className="p-1 hover:text-church-charcoal active:scale-90 cursor-pointer"
               title="Aumentar tamanho da letra"
             >
               <ZoomIn className="w-3.5 h-3.5" />
