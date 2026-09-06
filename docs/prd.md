@@ -15,6 +15,7 @@ O sistema opera com um modelo de **duas visões sincronizadas em tempo real** a 
   - Seção 3: *Pedidos de Oração YouTube* (Alimentado ao vivo pela equipe de transmissão).
   - Seção 4: *Oportunidades* (Irmãos e grupos que cantarão/testemunharão).
   - Seção 5: *Conjuntos* (Checklist interativo: Mocidade, Círculo de Oração, Varões, Juniores, Crianças).
+- **Design System de Referência Oficial:** App da congregação [A.D. Utinga - Campanha do Amor](https://assembleiadedeuspno.lovable.app/) e arquivo local `docs/contexto.md`.
 - **Diretório Raiz do Projeto:** `/Users/joaovitorbarreto/Projects/docs_church`
 - **Ambiente de Hospedagem Alvo:** Vercel (Edge / Serverless).
 - **Banco de Dados Alvo:** Neon (Serverless PostgreSQL).
@@ -44,6 +45,46 @@ O sistema opera com um modelo de **duas visões sincronizadas em tempo real** a 
    - Se o Wi-Fi da igreja cair por 2 minutos, 1 hora ou durante todo o culto, **a tela NUNCA deve ficar em branco nem exibir pop-ups bloqueantes de erro**.
    - A reconexão deve ser silenciosa em segundo plano com backoff exponencial.
    - Indicador de status deve ser minimalista (um ponto de 6px no rodapé: verde = conectado, âmbar = reconectando silenciosamente).
+
+5. **PRINCÍPIO "PÚLPITO ZEN" (ANTI-POLUIÇÃO VISUAL NA LEITURA):**
+   - A visão do Pastor DEVE herdar a paleta e nobreza da A.D. Utinga, mas com **zero ruído ou poluição visual**.
+   - **Proibido** o uso de gradientes pesados, sombras volumosas, animações distrativas ou múltiplos elementos decorativos na tela do púlpito.
+   - O foco deve ser 100% na **legibilidade extrema**: tipografia nítida, alto contraste, entrelinhas generoso (1.6) e espaçamento limpo entre os tópicos da ministração.
+   - Todas as cores do design system DEVEM possuir declaração em valores Hexadecimais/RGB (garantindo compatibilidade com o Android 4.4.4, que não suporta a função CSS `oklch()`).
+
+---
+
+# DESIGN SYSTEM & IDENTIDADE VISUAL (A.D. UTINGA)
+
+O design visual do aplicativo une a identidade solene da Assembleia de Deus – Parque Novo Oratório à máxima clareza funcional:
+
+### 1. Tipografia Oficial
+- **`Cormorant Garamond` (Serif):** Utilizada em versículos bíblicos, citações litúrgicas e subtítulos de momentos espirituais. Confere reverência e tradição.
+- **`Montserrat` (Sans-Serif Bold/Extrabold):** Utilizada em cabeçalhos, títulos de blocos litúrgicos em caixa-alta (`uppercase tracking-tight`) e destaques institucionais.
+- **`Inter` (Sans-Serif Clean):** Utilizada no corpo do texto da liturgia, listas de visitantes, pedidos de oração e formulários de edição. Garante legibilidade técnica e clareza imediata.
+
+### 2. Paleta de Cores Oficial (com Fallbacks para Android KitKat)
+- **Ouro da Igreja (Primary / Accent):**
+  - Hex: `#C59B4B` (Dourado Solene) / Glow suave: `#D4AF37`.
+  - Utilizado em divisórias finas (1px), badges de status, títulos de seções e botões de destaque na cabine.
+- **Folha de Leitura Clara (Parchment & Paper - Padrão do Púlpito):**
+  - Fundo da Tela: `#FAF8F5` (Papel pergaminho quente e suave para os olhos).
+  - Fundo das Folhas (Páginas 1 e 2): `#FFFFFF` (Branco puro para alto contraste).
+  - Borda das Folhas: `#EAE5DF` (Areia/dourado ultra-sutil de 1px).
+  - Texto Principal: `#1C1917` (Carvão quase negro de máximo contraste para leitura de longe).
+  - Texto Secundário / Instruções: `#6B655F` (Neutro legível).
+- **Modo Escuro Opcional (Solene / Baixa Luminosidade):**
+  - Fundo: `#111319` (Grafite escuro neutro).
+  - Folhas: `#1C202B` (Ardósia escuro).
+  - Texto: `#F8FAFC` (Branco gelo de alto contraste).
+  - Destaques: `#E2C785` (Dourado luminoso suave).
+- **Faixa de Alerta Superior (Púlpito):**
+  - Fundo: `#FEF3C7` (Âmbar caloroso suave, não agressivo).
+  - Texto do Alerta: `#78350F` (Marrom escuro de alta nitidez).
+  - Borda inferior: `#F59E0B` (1.5px âmbar vivo).
+
+### 3. Logotipo da Congregação
+- Imagem institucional: `logo-adutinga.jpg` (A.D. Utinga - Parque Novo Oratório), posicionada discretamente no cabeçalho superior da Folha 1.
 
 ---
 
