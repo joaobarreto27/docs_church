@@ -15,11 +15,12 @@ import {
   Trash2, 
   Check,
   ListPlus,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 
 export const ObreiroEditor: React.FC = () => {
-  const { room, blocks, updateBlock } = useRoom();
+  const { room, blocks, updateBlock, role } = useRoom();
 
   // Estados de Visitantes
   const [visitorName, setVisitorName] = useState('');
@@ -36,6 +37,9 @@ export const ObreiroEditor: React.FC = () => {
 
   // Estados de Oportunidades
   const [oppName, setOppName] = useState('');
+
+  // Modal de Confirmação para Exclusão em Massa (Controlador)
+  const [confirmModal, setConfirmModal] = useState<{ type: 'visitors' | 'prayers'; count: number } | null>(null);
 
   const [savedSuccess, setSavedSuccess] = useState<string | null>(null);
 
@@ -209,6 +213,25 @@ export const ObreiroEditor: React.FC = () => {
     updateBlock(block.id, updated);
   };
 
+  // Exclusão em massa com confirmação (Controlador)
+  const handleExecuteClearAll = () => {
+    if (!confirmModal) return;
+    if (confirmModal.type === 'visitors') {
+      const block = getBlock('visitors');
+      if (block) {
+        updateBlock(block.id, []);
+        showFeedback('Todos os visitantes foram apagados.');
+      }
+    } else if (confirmModal.type === 'prayers') {
+      const block = getBlock('prayer');
+      if (block) {
+        updateBlock(block.id, []);
+        showFeedback('Todos os pedidos de oração foram apagados.');
+      }
+    }
+    setConfirmModal(null);
+  };
+
   const visitorsList = (getBlock('visitors')?.content || []) as VisitorItem[];
   const prayersList = (getBlock('prayer')?.content || []) as PrayerItem[];
   const oppsList = (getBlock('opportunities')?.content || []) as OpportunityItem[];
@@ -231,7 +254,7 @@ export const ObreiroEditor: React.FC = () => {
         
         {/* ================= SEÇÃO VISITANTES ================= */}
         <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4 border-b border-church-sand pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
             <div className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-church-gold" />
               <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
@@ -241,53 +264,46 @@ export const ObreiroEditor: React.FC = () => {
                 {visitorsList.length}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setVisitorBatchMode(!visitorBatchMode)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-all cursor-pointer"
-            >
-              {visitorBatchMode ? <FileText className="w-3.5 h-3.5" /> : <ListPlus className="w-3.5 h-3.5" />}
-              <span>{visitorBatchMode ? 'Modo Normal' : '+ Colar em Lote'}</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Botão exclusivo da Direção/Controlador para limpar tudo */}
+              {role === 'controlador' && visitorsList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal({ type: 'visitors', count: visitorsList.length })}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer"
+                  title="Apagar todos os visitantes cadastrados"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  <span>Apagar Todos</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setVisitorBatchMode(!visitorBatchMode)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-all cursor-pointer"
+              >
+                {visitorBatchMode ? <FileText className="w-3.5 h-3.5" /> : <ListPlus className="w-3.5 h-3.5" />}
+                <span>{visitorBatchMode ? 'Digitar Um por Um' : '+ Digitar Vários Juntos'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Lista de Visitantes Atuais */}
-          {visitorsList.length > 0 && (
-            <div className="space-y-2 mb-5">
-              {visitorsList.map(v => (
-                <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand hover:bg-church-parchment transition-colors">
-                  <div className="text-sm font-sans">
-                    <span className="font-semibold text-church-charcoal">{v.name}</span>
-                    {v.church && <span className="text-church-muted text-xs"> ({v.church})</span>}
-                    {v.invited_by && <span className="text-church-muted text-xs block sm:inline sm:ml-2">Convidado por: {v.invited_by}</span>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveVisitor(v.id)}
-                    className="p-1.5 text-church-muted hover:text-red-600 transition-colors"
-                    title="Excluir visitante"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Formulário Visitantes: Lote (Estilo Google Docs) vs Normal */}
+          {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (MUITO MAIS FÁCIL PARA ESCREVER) */}
           {visitorBatchMode ? (
             <form onSubmit={handleAddBatchVisitor} className="space-y-4">
               <div className="bg-white rounded-xl border-2 border-dashed border-church-sand p-3 shadow-inner focus-within:border-church-gold transition-all">
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-church-sand/60 text-xs text-church-muted font-sans">
                   <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-church-gold" />
-                    Folha de Digitação Contínua (Estilo Google Docs)
+                    Folha para Digitar Vários Nomes (1 por linha)
                   </span>
-                  <span className="text-[11px] font-mono">1 visitante por linha</span>
+                  <span className="text-[11px] font-mono text-church-gold-dark font-medium">Aperte Enter para pular linha</span>
                 </div>
                 <textarea
                   rows={9}
-                  placeholder="Digite ou cole aqui os visitantes livremente (1 por linha), exatamente como fazia no Google Docs...&#10;&#10;Ex:&#10;Irmão Carlos Eduardo e Família (Igreja Batista Central)&#10;Irmã Valéria Souza (A.D. São Mateus)&#10;Jovem Matheus Henrique (Convidado pelo Gabriel)&#10;Pastor Marcos e Pastora Aline"
+                  placeholder="Digite ou cole aqui os visitantes (1 por linha), como se fosse em uma folha em branco...&#10;&#10;Exemplo:&#10;Irmão Carlos Eduardo e Família (Igreja Batista)&#10;Irmã Valéria Souza (A.D. São Mateus)&#10;Jovem Matheus Henrique (Convidado pelo Gabriel)&#10;Pastor Marcos e Pastora Aline"
                   value={visitorBatchText}
                   onChange={e => setVisitorBatchText(e.target.value)}
                   className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
@@ -299,7 +315,7 @@ export const ObreiroEditor: React.FC = () => {
                   disabled={!visitorBatchText.trim()}
                   className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                 >
-                  + Adicionar Todos os Visitantes
+                  + Adicionar Todos à Lista
                 </button>
                 {visitorBatchText.trim() && (
                   <button
@@ -365,11 +381,44 @@ export const ObreiroEditor: React.FC = () => {
               </div>
             </form>
           )}
+
+          {/* 2. LISTA DE VISITANTES JÁ CADASTRADOS (LOGO ABAIXO DA ÁREA DE DIGITAÇÃO) */}
+          {visitorsList.length > 0 && (
+            <div className="pt-5 border-t border-church-sand/70 mt-6 space-y-2">
+              <div className="flex items-center justify-between text-xs text-church-muted mb-2 font-sans">
+                <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
+                  Visitantes Já Cadastrados ({visitorsList.length})
+                </span>
+                <span className="text-[11px] font-serif italic text-church-muted hidden sm:inline">
+                  Atualizado em tempo real no púlpito
+                </span>
+              </div>
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {visitorsList.map(v => (
+                  <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand hover:bg-church-parchment transition-colors">
+                    <div className="text-sm font-sans">
+                      <span className="font-semibold text-church-charcoal">{v.name}</span>
+                      {v.church && <span className="text-church-muted text-xs"> ({v.church})</span>}
+                      {v.invited_by && <span className="text-church-muted text-xs block sm:inline sm:ml-2">Convidado por: {v.invited_by}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVisitor(v.id)}
+                      className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
+                      title="Excluir este visitante"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ================= SEÇÃO PEDIDOS DE ORAÇÃO (PRESENCIAIS) ================= */}
         <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4 border-b border-church-sand pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
             <div className="flex items-center gap-2">
               <HeartHandshake className="w-5 h-5 text-church-gold" />
               <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
@@ -379,56 +428,46 @@ export const ObreiroEditor: React.FC = () => {
                 {prayersList.length}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setPrayerBatchMode(!prayerBatchMode)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-all cursor-pointer"
-            >
-              {prayerBatchMode ? <FileText className="w-3.5 h-3.5" /> : <ListPlus className="w-3.5 h-3.5" />}
-              <span>{prayerBatchMode ? 'Modo Normal' : '+ Colar em Lote'}</span>
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Botão exclusivo da Direção/Controlador para limpar tudo */}
+              {role === 'controlador' && prayersList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal({ type: 'prayers', count: prayersList.length })}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer"
+                  title="Apagar todos os pedidos de oração cadastrados"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  <span>Apagar Todos</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setPrayerBatchMode(!prayerBatchMode)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-all cursor-pointer"
+              >
+                {prayerBatchMode ? <FileText className="w-3.5 h-3.5" /> : <ListPlus className="w-3.5 h-3.5" />}
+                <span>{prayerBatchMode ? 'Digitar Um por Um' : '+ Digitar Vários Juntos'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Lista de Pedidos */}
-          {prayersList.length > 0 && (
-            <div className="space-y-2 mb-5 max-h-72 overflow-y-auto pr-1">
-              {prayersList.map(p => (
-                <div key={p.id} className="flex items-start justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand gap-3 hover:bg-church-parchment transition-colors">
-                  <div className="text-sm font-sans flex-1">
-                    {p.urgent && (
-                      <span className="inline-block px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider mr-2">
-                        Urgente
-                      </span>
-                    )}
-                    <span className="text-church-charcoal font-medium">{p.description}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePrayer(p.id)}
-                    className="p-1.5 text-church-muted hover:text-red-600 transition-colors"
-                    title="Excluir pedido"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Formulário de Pedidos: Lote (Estilo Google Docs) vs Normal */}
+          {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (MUITO MAIS FÁCIL PARA ESCREVER) */}
           {prayerBatchMode ? (
             <form onSubmit={handleAddBatchPrayer} className="space-y-4">
               <div className="bg-white rounded-xl border-2 border-dashed border-church-sand p-3 shadow-inner focus-within:border-church-gold transition-all">
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-church-sand/60 text-xs text-church-muted font-sans">
                   <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-church-gold" />
-                    Folha de Pedidos Contínua (Estilo Google Docs)
+                    Folha para Digitar Vários Pedidos (1 por linha)
                   </span>
-                  <span className="text-[11px] font-mono">1 pedido por linha</span>
+                  <span className="text-[11px] font-mono text-church-gold-dark font-medium">Aperte Enter para pular linha</span>
                 </div>
                 <textarea
                   rows={9}
-                  placeholder="Digite ou cole os pedidos de oração livremente (1 por linha, exatamente como fazia no Google Docs)...&#10;&#10;Ex:&#10;Irmão João Batista - UTI do Hospital Santa Marcelina&#10;Irmã Sebastiana - Cirurgia do fêmur&#10;Família da Irmã Iva - Consolo e fortalecimento&#10;Irmão Marcos Vinicius - Libertação dos vícios"
+                  placeholder="Digite ou cole aqui os pedidos de oração livremente (1 por linha)...&#10;&#10;Exemplo:&#10;Irmão João Batista - UTI do Hospital Santa Marcelina&#10;Irmã Sebastiana - Cirurgia do fêmur&#10;Família da Irmã Iva - Consolo e fortalecimento&#10;Irmão Marcos Vinicius - Libertação dos vícios"
                   value={prayerBatchText}
                   onChange={e => setPrayerBatchText(e.target.value)}
                   className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
@@ -442,7 +481,7 @@ export const ObreiroEditor: React.FC = () => {
                     onChange={e => setPrayerUrgent(e.target.checked)}
                     className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
                   />
-                  Marcar todos deste lote como Caso Urgente
+                  Marcar todos deste grupo como Caso Urgente
                 </label>
                 <div className="flex items-center gap-2">
                   <button
@@ -450,7 +489,7 @@ export const ObreiroEditor: React.FC = () => {
                     disabled={!prayerBatchText.trim()}
                     className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                   >
-                    + Adicionar Todos em Lote
+                    + Adicionar Todos os Pedidos
                   </button>
                   {prayerBatchText.trim() && (
                     <button
@@ -458,7 +497,7 @@ export const ObreiroEditor: React.FC = () => {
                       onClick={() => setPrayerBatchText('')}
                       className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                     >
-                      Limpar
+                      Limpar Folha
                     </button>
                   )}
                 </div>
@@ -497,6 +536,42 @@ export const ObreiroEditor: React.FC = () => {
                 </label>
               </div>
             </form>
+          )}
+
+          {/* 2. LISTA DE PEDIDOS JÁ CADASTRADOS (LOGO ABAIXO DA ÁREA DE DIGITAÇÃO) */}
+          {prayersList.length > 0 && (
+            <div className="pt-5 border-t border-church-sand/70 mt-6 space-y-2">
+              <div className="flex items-center justify-between text-xs text-church-muted mb-2 font-sans">
+                <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
+                  Pedidos Já Cadastrados ({prayersList.length})
+                </span>
+                <span className="text-[11px] font-serif italic text-church-muted hidden sm:inline">
+                  Atualizado em tempo real no púlpito
+                </span>
+              </div>
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {prayersList.map(p => (
+                  <div key={p.id} className="flex items-start justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand gap-3 hover:bg-church-parchment transition-colors">
+                    <div className="text-sm font-sans flex-1">
+                      {p.urgent && (
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider mr-2">
+                          Urgente
+                        </span>
+                      )}
+                      <span className="text-church-charcoal font-medium">{p.description}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePrayer(p.id)}
+                      className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
+                      title="Excluir este pedido"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </section>
 
@@ -593,6 +668,49 @@ export const ObreiroEditor: React.FC = () => {
             </form>
           </section>
         </div>
+
+        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO EM MASSA (DIREÇÃO / CONTROLADOR) */}
+        {confirmModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-2xl border border-church-sand p-6 max-w-sm w-full space-y-4 shadow-xl">
+              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 mx-auto flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="font-title text-base font-bold text-church-charcoal uppercase">
+                  {confirmModal.type === 'visitors' 
+                    ? 'Apagar Todos os Visitantes?' 
+                    : 'Apagar Todos os Pedidos?'}
+                </h3>
+                <p className="font-sans text-xs text-church-muted leading-relaxed">
+                  Tem certeza que deseja apagar todos os{' '}
+                  <strong className="text-church-charcoal font-bold">
+                    {confirmModal.count} {confirmModal.type === 'visitors' ? 'visitantes' : 'pedidos de oração'}
+                  </strong>{' '}
+                  cadastrados?
+                  <br />
+                  <span className="text-red-600 font-medium">Esta ação apagará imediatamente a lista do púlpito do pastor.</span>
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="flex-1 py-2.5 text-xs font-title font-bold uppercase rounded-xl border border-church-sand text-church-charcoal hover:bg-church-parchment transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteClearAll}
+                  className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-xs font-title font-bold uppercase tracking-wider hover:bg-red-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  Sim, Apagar Tudo
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
     </div>
