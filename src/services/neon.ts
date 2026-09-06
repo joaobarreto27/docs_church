@@ -1,8 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 import { Room, LiturgicalBlock, BlockType } from '../types/liturgy';
 
-// Obtém URL do banco configurada em ambiente
-const databaseUrl = import.meta.env.VITE_DATABASE_URL || 'postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
+// Obtém URL do banco configurada em ambiente com fallback seguro
+const databaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DATABASE_URL) 
+  || (typeof process !== 'undefined' && process.env?.VITE_DATABASE_URL)
+  || 'postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
 // Inicializa o client HTTP serverless do Neon
 export const sql = neon(databaseUrl);
