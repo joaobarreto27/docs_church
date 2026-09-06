@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { Room, LiturgicalBlock, BlockType } from '../types/liturgy';
 
 // Sanitiza e valida a URL do banco contra erros comuns de digitação/colagem em painéis de env
@@ -26,6 +26,31 @@ const rawEnvUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_D
 // Obtém URL do banco configurada em ambiente com fallback seguro
 const databaseUrl = cleanDatabaseUrl(rawEnvUrl) 
   || 'postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
+
+// Configura o endpoint do Neon para usar o proxy '/api/sql' na mesma origem.
+// Isso é essencial no Android 4.4.4 KitKat, cujo repositório nativo de certificados raiz (2013)
+// não confia no ISRG Root X1 (Let's Encrypt), bloqueando qualquer HTTPS direto ao domínio neon.tech.
+if (typeof window !== 'undefined' && window.location && window.location.origin) {
+  neonConfig.fetchEndpoint = () => {
+    return `${window.location.origin}/api/sql`;
+  };
+
+  const originalFetch = window.fetch.bind(window);
+  neonConfig.fetchFunction = async (url: string, options: any) => {
+    try {
+      const res = await originalFetch(url, options);
+      if (res.status !== 404) {
+        return res;
+      }
+    } catch (e) {
+      console.warn('Proxy /api/sql falhou, tentando fallback direto ao Neon...', e);
+    }
+    // Fallback direto caso /api/sql não exista
+    const match = databaseUrl.match(/@([^/:]+)/);
+    const host = match ? match[1] : 'ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech';
+    return originalFetch(`https://${host}/sql`, options);
+  };
+}
 
 // Inicializa o client HTTP serverless do Neon
 export const sql = neon(databaseUrl);

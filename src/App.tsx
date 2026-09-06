@@ -9,14 +9,17 @@ import { ControladorPanel } from './components/controlador/ControladorPanel';
 export const AppContent: React.FC = () => {
   const { room, role, isColdStarting } = useRoom();
 
-  // Exibe tela oficial de carregamento ao conectar ou acordar o servidor Neon
-  if (isColdStarting) {
-    return <LoadingScreen />;
-  }
-
-  // Se não estiver em nenhuma sala, exibe a tela inicial de acesso
+  // Se não estiver em nenhuma sala, exibe a tela inicial de acesso.
+  // CRÍTICO: JoinRoomModal deve permanecer montado durante tentativas de login
+  // para que os campos digitados não sejam apagados e qualquer mensagem de erro
+  // permaneça visível na tela sem "piscar" e voltar para a tela inicial.
   if (!room || !role) {
     return <JoinRoomModal />;
+  }
+
+  // Exibe tela oficial de carregamento se já está autenticado na sala e acordando o Neon
+  if (isColdStarting) {
+    return <LoadingScreen />;
   }
 
   // Roteamento condicional por papel de usuário
