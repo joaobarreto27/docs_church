@@ -15,17 +15,18 @@ export const JoinRoomModal: React.FC = () => {
   const [localError, setLocalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Formata o código conforme a pessoa digita (ex: 742-890)
+  // Formata o código conforme a pessoa digita (aceita letras, números e hífens em maiúsculas)
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 6);
+    const raw = e.target.value.toUpperCase().slice(0, 15);
     setCode(raw);
     setLocalError(null);
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length < 5) {
-      setLocalError('Por favor, digite o código de 6 números.');
+    const clean = code.trim();
+    if (clean.length < 3) {
+      setLocalError('Por favor, digite o código do culto (Ex: ADU-PNO).');
       return;
     }
     if (selectedRole === 'controlador' && pin.length < 4) {
@@ -35,7 +36,7 @@ export const JoinRoomModal: React.FC = () => {
 
     setIsLoading(true);
     setLocalError(null);
-    const result = await joinRoom(code, selectedRole, pin);
+    const result = await joinRoom(clean, selectedRole, pin);
     if (!result.success && result.error) {
       setLocalError(result.error);
     }
@@ -57,8 +58,6 @@ export const JoinRoomModal: React.FC = () => {
     }
     setIsLoading(false);
   };
-
-  const formattedCode = code.length > 3 ? `${code.slice(0, 3)}-${code.slice(3)}` : code;
 
   return (
     <div className="min-h-screen bg-church-parchment flex flex-col items-center justify-center p-4">
@@ -118,15 +117,22 @@ export const JoinRoomModal: React.FC = () => {
               </label>
               <input
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={7}
-                placeholder="Ex: 742-890"
-                value={formattedCode}
+                maxLength={15}
+                placeholder="Ex: ADU-PNO"
+                value={code}
                 onChange={handleCodeChange}
                 autoFocus
-                className="w-full text-center text-3xl font-mono font-bold tracking-widest text-church-charcoal bg-church-parchment border-2 border-church-sand focus:border-church-gold rounded-xl py-3 outline-none transition-colors"
+                className="w-full text-center text-2xl sm:text-3xl font-mono font-bold tracking-widest uppercase text-church-charcoal bg-church-parchment border-2 border-church-sand focus:border-church-gold rounded-xl py-3 outline-none transition-colors"
               />
+              <div className="flex justify-center mt-2">
+                <button
+                  type="button"
+                  onClick={() => { setCode('ADU-PNO'); setLocalError(null); }}
+                  className="text-[11px] font-title font-semibold text-church-gold hover:text-church-gold-dark flex items-center gap-1 px-2.5 py-1 rounded-full bg-church-gold/10 border border-church-gold/20 hover:bg-church-gold/15 transition-colors"
+                >
+                  Usar código da igreja: <strong className="font-mono">ADU-PNO</strong>
+                </button>
+              </div>
             </div>
 
             {/* Escolha do Papel */}

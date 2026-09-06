@@ -113,9 +113,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Entra na sala
   const joinRoom = useCallback(async (code: string, selectedRole: UserRole, pin?: string): Promise<{ success: boolean; error?: string }> => {
-    const cleanCode = code.replace(/\D/g, '');
-    if (cleanCode.length < 5) {
-      return { success: false, error: 'Digite um código válido com 6 números.' };
+    const cleanCode = code.trim().toUpperCase();
+    if (cleanCode.length < 3) {
+      return { success: false, error: 'Digite um código válido (Ex: ADU-PNO).' };
     }
 
     setIsColdStarting(true);

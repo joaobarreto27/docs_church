@@ -13,13 +13,15 @@ export function generateRoomCode(): string {
 }
 
 /**
- * Busca sala ativa pelo código de 6 dígitos
+ * Busca sala ativa pelo código (aceita texto como ADU-PNO ou números)
  */
 export async function getRoomByCode(code: string): Promise<Room | null> {
-  const cleanCode = code.replace(/\D/g, '');
+  const normalized = code.trim().toUpperCase();
+  const withoutHyphen = normalized.replace(/-/g, '');
   const rows = await sql`
     SELECT * FROM rooms 
-    WHERE code = ${cleanCode} AND status = 'active'
+    WHERE (UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
+      AND status = 'active'
     LIMIT 1
   `;
   if (!rows || rows.length === 0) return null;
@@ -30,10 +32,12 @@ export async function getRoomByCode(code: string): Promise<Room | null> {
  * Busca apenas a versão e o aviso ativo da sala (Smart-Polling ultra leve)
  */
 export async function getRoomMeta(code: string): Promise<{ version: number; active_alert: string | null; current_page: number } | null> {
-  const cleanCode = code.replace(/\D/g, '');
+  const normalized = code.trim().toUpperCase();
+  const withoutHyphen = normalized.replace(/-/g, '');
   const rows = await sql`
     SELECT version, active_alert, current_page FROM rooms 
-    WHERE code = ${cleanCode} AND status = 'active'
+    WHERE (UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
+      AND status = 'active'
     LIMIT 1
   `;
   if (!rows || rows.length === 0) return null;
