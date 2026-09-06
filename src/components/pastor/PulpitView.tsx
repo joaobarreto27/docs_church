@@ -38,17 +38,34 @@ export const PulpitView: React.FC = () => {
   const opps = (oppBlock?.content || []) as OpportunityItem[];
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
-  // Particionamento dos itens para zero scroll e fluxo natural da esquerda para a direita
-  const sheet1Prayers = prayers.slice(0, 5);
-  const overflowPresencial = prayers.slice(5);
+  // Particionamento inteligente dos pedidos de oração e live
+  // Folha 1: 5 ou 6 pedidos presenciais conforme a quantidade de visitantes
+  const maxSheet1Prayers = visitors.length <= 4 ? 6 : 5;
+  const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
+  const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const overflowItems: PrayerItem[] = [...overflowPresencial, ...youtube];
 
-  // Se os pedidos excederem a capacidade da Folha 2 (onde estão ancorados Participação e Louvor), cria o Spread 2
-  const needsSecondSpread = 
-    overflowItems.length > 4 || 
-    prayers.length > 7 || 
-    youtube.length > 3 || 
-    room.current_page === 2;
+  // Capacidade generosa da Folha 2:
+  // Itens de texto têm peso 1; itens com imagem (print do YouTube) têm peso 3.
+  // A Folha 2 comporta confortavelmente até 8 pontos de peso acima do bloco de Participação e Louvor.
+  const sheet2Items: PrayerItem[] = [];
+  const spread2Queue: PrayerItem[] = [];
+  let folha2Weight = 0;
+  const MAX_FOLHA_2_WEIGHT = 8;
+
+  for (const item of overflowItems) {
+    const itemWeight = item.image_data ? 3 : 1;
+    if (folha2Weight + itemWeight <= MAX_FOLHA_2_WEIGHT) {
+      sheet2Items.push(item);
+      folha2Weight += itemWeight;
+    } else {
+      spread2Queue.push(item);
+    }
+  }
+
+  // Apenas cria o Spread 2 (Página 3/4) se os pedidos realmente excederem a capacidade da Folha 2
+  // ou se o controlador navegou manualmente para a página 2
+  const needsSecondSpread = spread2Queue.length > 0 || room.current_page === 2;
 
   const totalSpreads = needsSecondSpread ? 2 : 1;
   const currentSpread = Math.min(room.current_page || 1, totalSpreads);
@@ -79,12 +96,10 @@ export const PulpitView: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSpread, totalSpreads, setPage]);
 
-  // Itens na Folha 2 (Spread 1): os primeiros do overflow
-  const sheet2Items = totalSpreads > 1 ? overflowItems.slice(0, 4) : overflowItems;
-  // Itens na Folha 3 (Spread 2): continuação
-  const sheet3Items = totalSpreads > 1 ? overflowItems.slice(4, 10) : [];
-  // Itens na Folha 4 (Spread 2): se houver mais de 10
-  const sheet4Items = totalSpreads > 1 ? overflowItems.slice(10) : [];
+  // Itens na Folha 3 (Spread 2): continuação do que não coube na Folha 2
+  const sheet3Items = totalSpreads > 1 ? spread2Queue.slice(0, 8) : [];
+  // Itens na Folha 4 (Spread 2): se houver mais de 8 no spread 2
+  const sheet4Items = totalSpreads > 1 ? spread2Queue.slice(8) : [];
 
   // Componente Reutilizável de Participação e Louvor Final (Sempre Ancorado no Canto Inferior Direito)
   const ParticipacaoELouvorAnchor = () => (
@@ -323,7 +338,7 @@ export const PulpitView: React.FC = () => {
                         </li>
                       ))}
                     </ul>
-                    {totalSpreads > 1 && overflowItems.length > sheet2Items.length && (
+                    {totalSpreads > 1 && spread2Queue.length > 0 && (
                       <p className="font-serif italic text-xs text-church-gold-dark mt-2">
                         * Mais pedidos na Folha 3 (Próxima página) ➔
                       </p>
