@@ -1,0 +1,35 @@
+{
+  "url": "http://localhost:3000",
+  "port": 3000,
+  "autoStartServer": true,
+  "scenes": [
+    {
+      "name": "Entrada - Seleção de Papéis Mobile",
+      "viewport": "mobile",
+      "url": "http://localhost:3000",
+      "waitMs": 1000,
+      "output": "./mockups/01_login_mobile.png"
+    },
+    {
+      "name": "Obreiro - Modal de Confirmação do Púlpito",
+      "viewport": "mobile",
+      "script": "sessionStorage.setItem('docs_church_session', JSON.stringify({ code: 'ADU-PNO', role: 'obreiro', expiresAt: Date.now() + 10000000 })); location.reload();",
+      "waitMs": 2000,
+      "output": "./mockups/02_obreiro_mobile.png"
+    },
+    {
+      "name": "Visão do Púlpito - Pasta Aberta Duas Folhas (Tablet)",
+      "viewport": "tablet",
+      "script": "sessionStorage.setItem('docs_church_session', JSON.stringify({ code: 'ADU-PNO', role: 'pastor', expiresAt: Date.now() + 10000000 })); location.reload();",
+      "waitMs": 2000,
+      "output": "./mockups/03_pulpito_tablet.png"
+    },
+    {
+      "name": "Visão do Púlpito - Widescreen Desktop",
+      "viewport": "desktop",
+      "url": "http://localhost:3000",
+      "waitMs": 1500,
+      "output": "./mockups/04_pulpito_desktop.png"
+    }
+  ]
+}
