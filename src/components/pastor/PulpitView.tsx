@@ -120,25 +120,26 @@ export const PulpitView: React.FC = () => {
   // Itens na Folha 4 (Spread 2): se houver mais de 8 no spread 2
   const sheet4Items = totalSpreads > 1 ? spread2Queue.slice(8) : [];
 
-  // Componente Reutilizável de Participação e Louvor Final (Sempre Ancorado no Canto Inferior Direito)
+  // Componente Reutilizável de Oportunidades e Louvor Final (Sempre Ancorado no Canto Inferior Direito)
   const ParticipacaoELouvorAnchor = () => (
-    <div className="mt-auto pt-3 border-t-2 border-church-sand/60 bg-church-parchment/50 rounded-xl p-3 space-y-2.5 shrink-0 shadow-xs">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Participação (Oportunidades) */}
+    <div className="mt-auto pt-4 border-t-2 border-church-sand/80 bg-church-parchment/70 rounded-2xl p-4 sm:p-5 space-y-3.5 shrink-0 shadow-sm border border-church-sand">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        {/* Oportunidades */}
         <div>
-          <div className="flex items-center gap-1.5 mb-1.5 text-church-gold-dark">
-            <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-            <h4 className="font-title text-[11px] font-bold uppercase tracking-wider">
-              Participação ({opps.length})
+          <div className="flex items-center gap-2 mb-2 text-church-gold-dark">
+            <span className="w-2 h-2 rounded-full bg-church-gold shrink-0" />
+            <h4 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider">
+              Oportunidades ({opps.length})
             </h4>
           </div>
           {opps.length === 0 ? (
-            <p className="font-serif italic text-church-muted text-xs">Nenhuma escalada.</p>
+            <p className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhuma oportunidade escalada.</p>
           ) : (
-            <ul className="space-y-1 text-xs font-sans text-church-charcoal">
+            <ul className="space-y-1.5 text-xs sm:text-sm font-sans text-church-charcoal">
               {opps.map((op, i) => (
-                <li key={op.id || i} className="font-semibold truncate">
-                  • {op.name}
+                <li key={op.id || i} className="font-semibold flex items-center gap-1.5 leading-snug">
+                  <span className="text-church-gold font-bold">•</span>
+                  <span>{op.name}</span>
                 </li>
               ))}
             </ul>
@@ -147,24 +148,24 @@ export const PulpitView: React.FC = () => {
 
         {/* Louvor Final (Conjuntos) */}
         <div>
-          <div className="flex items-center gap-1.5 mb-1.5 text-church-gold-dark">
-            <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-            <h4 className="font-title text-[11px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-2 mb-2 text-church-gold-dark">
+            <span className="w-2 h-2 rounded-full bg-church-gold shrink-0" />
+            <h4 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider">
               Louvor Final
             </h4>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {choirs.filter(ch => ch.checked).map((ch, i) => (
               <span 
                 key={ch.id || i}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-church-gold/15 text-church-charcoal font-bold text-[10px]"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 text-church-charcoal font-bold text-xs sm:text-sm border border-church-gold/30"
               >
-                <CheckSquare className="w-3 h-3 text-church-gold-dark" />
-                {ch.name}
+                <CheckSquare className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+                <span>{ch.name}</span>
               </span>
             ))}
             {choirs.filter(ch => ch.checked).length === 0 && (
-              <span className="font-serif italic text-church-muted text-xs">Nenhum escalado</span>
+              <span className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhum conjunto escalado</span>
             )}
           </div>
         </div>

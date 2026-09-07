@@ -848,7 +848,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               <div className="flex items-center gap-2 mb-4 border-b border-church-sand pb-3">
                 <Mic2 className="w-5 h-5 text-church-gold" />
                 <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-                  Participação / Oportunidades
+                  Oportunidades
                 </h2>
               </div>
 
