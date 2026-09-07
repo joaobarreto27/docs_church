@@ -1,13 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, RefreshCw } from 'lucide-react';
 
 interface HeaderProps {
   minimal?: boolean; // Se true, esconde botões para a visão do pastor
 }
 
 export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
-  const { room, role, isConnected, leaveRoom } = useRoom();
+  const { room, role, isConnected, leaveRoom, refreshData } = useRoom();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
+  };
 
   if (!room) return null;
 
@@ -49,6 +60,20 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
             </>
           )}
         </div>
+
+        {/* Botão Sincronizar Manual para o Obreiro (Tablet Anotador) */}
+        {role === 'obreiro' && !minimal && (
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-xs font-title font-semibold uppercase tracking-wider cursor-pointer"
+            title="Sincronizar anotações com o servidor agora"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-church-gold-dark ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Sincronizar</span>
+          </button>
+        )}
 
         {/* Papel Ativo */}
         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-title font-bold uppercase tracking-wider ${

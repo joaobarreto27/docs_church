@@ -28,6 +28,7 @@ interface RoomContextType {
   sendAlert: (text: string | null) => Promise<void>;
   setPage: (page: number) => Promise<void>;
   resetCurrentService: (newTitle: string) => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -373,9 +374,26 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [room, fetchFullRoom]);
 
+  // Força sincronização manual dos dados da sala
+  const refreshData = useCallback(async () => {
+    if (!room) return;
+    await fetchFullRoom(room.code);
+  }, [room, fetchFullRoom]);
+
   // Loop de Smart-Polling com detecção de tela ativa (Page Visibility API)
+  // Adaptado por papel: Púlpito (3.5s), Cabine (4.5s), Tablet Obreiro (30s)
   useEffect(() => {
     if (!room) return;
+
+    // Frequência adaptada por perfil:
+    // - Pastor (Púlpito): leitor em tempo real (3.5s)
+    // - Controlador (Cabine): direção e avisos (4.5s)
+    // - Obreiro (Tablet anotador): escritor, 30s (reduz 88% do tráfego no tablet antigo de 2014)
+    const getRolePollingInterval = (): number => {
+      if (role === 'pastor') return 3500;
+      if (role === 'controlador') return 4500;
+      return 30000;
+    };
 
     const poll = async () => {
       if (isPollingRef.current) return;
@@ -396,7 +414,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const meta = await getRoomMeta(room.code);
         if (meta) {
           setIsConnected(prev => {
-            if (!prev) startPolling(3500);
+            if (!prev) startPolling();
             return true;
           });
 
@@ -424,18 +442,20 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Falha silenciosa de rede: continua exibindo a tela sem erros bloqueantes
         setIsConnected(false);
         // Aplica backoff temporário em caso de erro para não sobrecarregar e evitar rate-limit
+        const backoffInterval = role === 'obreiro' ? 45000 : 7000;
         if (pollTimerRef.current) {
           clearInterval(pollTimerRef.current);
-          pollTimerRef.current = setInterval(poll, 7000);
+          pollTimerRef.current = setInterval(poll, backoffInterval);
         }
       } finally {
         isPollingRef.current = false;
       }
     };
 
-    const startPolling = (intervalMs = 3500) => {
+    const startPolling = (intervalMs?: number) => {
+      const interval = intervalMs ?? getRolePollingInterval();
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      pollTimerRef.current = setInterval(poll, intervalMs);
+      pollTimerRef.current = setInterval(poll, interval);
     };
 
     const stopPolling = () => {
@@ -465,7 +485,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       stopPolling();
     };
-  }, [room, saveToCache, leaveRoom]);
+  }, [room, role, saveToCache, leaveRoom]);
 
   return (
     <RoomContext.Provider value={{
@@ -483,6 +503,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sendAlert,
       setPage,
       resetCurrentService,
+      refreshData,
     }}>
       {children}
     </RoomContext.Provider>
