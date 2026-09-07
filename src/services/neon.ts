@@ -284,6 +284,17 @@ export async function setRoomCurrentPage(roomId: string, page: number): Promise<
 }
 
 /**
+ * Atualiza o nome/título do culto
+ */
+export async function updateRoomTitle(roomId: string, newTitle: string): Promise<void> {
+  await sql`
+    UPDATE rooms 
+    SET title = ${newTitle.trim()}, version = version + 1, updated_at = NOW()
+    WHERE id = ${roomId}
+  `;
+}
+
+/**
  * Arquiva o culto atual e reinicia as folhas para um novo culto
  */
 export async function archiveAndResetRoom(roomId: string, newTitle: string): Promise<void> {

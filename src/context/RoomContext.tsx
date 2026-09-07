@@ -10,7 +10,8 @@ import {
   archiveAndResetRoom,
   createRoom,
   verifyControllerPin,
-  overwriteExistingRoom 
+  overwriteExistingRoom,
+  updateRoomTitle 
 } from '../services/neon';
 
 interface RoomContextType {
@@ -29,6 +30,7 @@ interface RoomContextType {
   setPage: (page: number) => Promise<void>;
   resetCurrentService: (newTitle: string) => Promise<void>;
   refreshData: () => Promise<void>;
+  updateTitle: (newTitle: string) => Promise<void>;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -380,6 +382,20 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await fetchFullRoom(room.code);
   }, [room, fetchFullRoom]);
 
+  // Atualiza o nome/título do culto
+  const updateTitle = useCallback(async (newTitle: string) => {
+    if (!room) return;
+    const clean = newTitle.trim();
+    if (!clean) return;
+    setRoom(prev => prev ? { ...prev, title: clean } : null);
+    try {
+      await updateRoomTitle(room.id, clean);
+      setIsConnected(true);
+    } catch (err) {
+      console.warn('Erro ao atualizar título do culto:', err);
+    }
+  }, [room]);
+
   // Loop de Smart-Polling com detecção de tela ativa (Page Visibility API)
   // Adaptado por papel: Púlpito (3.5s), Cabine (4.5s), Tablet Obreiro (30s)
   useEffect(() => {
@@ -504,6 +520,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPage,
       resetCurrentService,
       refreshData,
+      updateTitle,
     }}>
       {children}
     </RoomContext.Provider>
