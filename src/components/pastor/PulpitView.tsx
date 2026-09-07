@@ -13,7 +13,8 @@ import {
   CheckSquare, 
   LogOut,
   ChevronDown,
-  ChevronUp 
+  ChevronUp,
+  Youtube
 } from 'lucide-react';
 import { LoadingScreen } from '../common/LoadingScreen';
 
@@ -281,9 +282,15 @@ export const PulpitView: React.FC = () => {
                   ))}
                 </ul>
               )}
-              {sheet2Items.length > 0 && (
-                <p className="font-serif italic text-xs text-church-gold-dark mt-3">
-                  * Mais pedidos de oração na Folha 2 à direita ➔
+              {(overflowPresencial.length > 0 || youtube.length > 0) && (
+                <p className="font-serif italic text-xs text-church-gold-dark mt-3 flex items-center gap-1.5 flex-wrap">
+                  <span>* Continuação na Folha 2 à direita ➔</span>
+                  {youtube.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-sans font-bold text-[10px] uppercase border border-red-200">
+                      <Youtube className="w-3 h-3 text-red-600" />
+                      {youtube.length} YouTube
+                    </span>
+                  )}
                 </p>
               )}
             </article>
@@ -347,31 +354,38 @@ export const PulpitView: React.FC = () => {
             className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            {sheet2Items.length > 0 ? (
-              <article className="flex-1">
-                <header className="flex items-center gap-2 mb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-                  <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                    Mais Pedidos de Oração ({sheet2Items.length})
-                  </h3>
+            {/* 1. SEÇÃO DESTACADA: PEDIDOS DA TRANSMISSÃO AO VIVO (YOUTUBE) */}
+            {youtube.length > 0 && (
+              <article className="bg-red-50/75 border-2 border-red-200 rounded-xl p-3 sm:p-3.5 space-y-2 shrink-0 shadow-2xs">
+                <header className="flex items-center justify-between border-b border-red-200/70 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+                    <h3 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider text-red-900 flex items-center gap-1.5">
+                      <Youtube className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>Transmissão YouTube ({youtube.length})</span>
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-title font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
+                    Ao Vivo
+                  </span>
                 </header>
-                {/* Lista de Orações da Folha 2 com o EXATO mesmo tamanho e estilo da Folha 1 */}
+
                 <ul className="space-y-2 list-disc list-inside">
-                  {sheet2Items.map((p, i) => (
+                  {youtube.map((p, i) => (
                     <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
                       {p.urgent && (
-                        <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
+                        <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-200 text-red-900 text-[10px] font-bold uppercase tracking-wider">
                           Urgente
                         </span>
                       )}
-                      <span className="font-medium">{p.description}</span>
+                      <span className="font-medium text-red-950">{p.description}</span>
                       {/* Print do chat do YouTube inline sem popup gigante */}
                       {p.image_data && (
-                        <div className="mt-1.5 ml-4 rounded-lg overflow-hidden border border-church-sand bg-white p-1 max-w-[260px] shadow-2xs">
+                        <div className="mt-2 ml-4 rounded-lg overflow-hidden border border-red-200 bg-white p-1 max-w-[280px] shadow-2xs">
                           <img 
                             src={p.image_data} 
-                            alt="Print do chat" 
-                            className="w-full h-auto max-h-24 object-contain rounded"
+                            alt="Print do chat YouTube" 
+                            className="w-full h-auto max-h-28 object-contain rounded"
                           />
                         </div>
                       )}
@@ -379,7 +393,34 @@ export const PulpitView: React.FC = () => {
                   ))}
                 </ul>
               </article>
-            ) : (
+            )}
+
+            {/* 2. CONTINUAÇÃO DOS PEDIDOS PRESENCIAIS */}
+            {overflowPresencial.length > 0 && (
+              <article className="flex-1">
+                <header className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+                  <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                    Pedidos Presenciais — Continuação ({overflowPresencial.length})
+                  </h3>
+                </header>
+                <ul className="space-y-2 list-disc list-inside">
+                  {overflowPresencial.map((p, i) => (
+                    <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
+                      {p.urgent && (
+                        <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
+                          Urgente
+                        </span>
+                      )}
+                      <span className="font-medium">{p.description}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            )}
+
+            {/* Caso não haja nenhum pedido de oração nesta folha */}
+            {youtube.length === 0 && overflowPresencial.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-4 text-church-muted space-y-1">
                 <p className="font-serif italic text-sm text-church-charcoal">
                   "Orai sem cessar. Em tudo dai graças."
