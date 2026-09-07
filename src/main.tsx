@@ -9,6 +9,13 @@ import { RoomProvider } from './context/RoomContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import './index.css';
 
+// Previne tela branca após novos deploys na Vercel recarregando automaticamente quando um chunk antigo expirar
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', () => {
+    window.location.reload();
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

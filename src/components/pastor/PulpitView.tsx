@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp 
 } from 'lucide-react';
+import { LoadingScreen } from '../common/LoadingScreen';
 
 export const PulpitView: React.FC = () => {
   const { room, blocks, isConnected, leaveRoom } = useRoom();
@@ -50,7 +51,7 @@ export const PulpitView: React.FC = () => {
   const [isSheet2Scrolled, setIsSheet2Scrolled] = useState(false);
   const sheet2ScrollRef = useRef<HTMLDivElement>(null);
 
-  if (!room) return null;
+  if (!room) return <LoadingScreen />;
 
   // Extração de dados estruturados
   const visitorsBlock = blocks.find(b => b.block_type === 'visitors');

@@ -7,6 +7,7 @@ import {
   OpportunityItem 
 } from '../../types/liturgy';
 import { Header } from '../common/Header';
+import { LoadingScreen } from '../common/LoadingScreen';
 import { 
   UserPlus, 
   HeartHandshake, 
@@ -98,7 +99,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
   const [savedSuccess, setSavedSuccess] = useState<string | null>(null);
 
-  if (!room) return null;
+  if (!room) return <LoadingScreen />;
 
   const showFeedback = (msg: string) => {
     setSavedSuccess(msg);

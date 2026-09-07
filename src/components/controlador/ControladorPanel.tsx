@@ -4,6 +4,7 @@ import { PrayerItem } from '../../types/liturgy';
 import { ObreiroEditor } from '../obreiro/ObreiroEditor';
 import { PulpitView } from '../pastor/PulpitView';
 import { Header } from '../common/Header';
+import { LoadingScreen } from '../common/LoadingScreen';
 import { 
   AlertTriangle, 
   Send, 
@@ -40,7 +41,7 @@ export const ControladorPanel: React.FC = () => {
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!room) return null;
+  if (!room) return <LoadingScreen />;
 
   const triggerFeedback = (msg: string) => {
     setFeedback(msg);

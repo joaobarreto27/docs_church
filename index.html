@@ -13,7 +13,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-church-parchment text-church-charcoal antialiased select-none">
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        @keyframes church-initial-spin { to { transform: rotate(360deg); } }
+      </style>
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #FAF8F5; color: #2C2825; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; gap: 14px;">
+        <div style="width: 36px; height: 36px; border: 3px solid #E6DEC9; border-top-color: #C29B38; border-radius: 50%; animation: church-initial-spin 0.8s linear infinite;"></div>
+        <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8C7355;">A.D. Utinga • Carregando...</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
