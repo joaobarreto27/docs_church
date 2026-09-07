@@ -66,9 +66,17 @@ export const PulpitView: React.FC = () => {
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
   // OPÇÃO 1: PASTA ABERTA EM 2 FOLHAS (SEM VIRADA DE PÁGINA)
-  // Folha 1: Visitantes do Culto + Primeiros Pedidos de Oração Presenciais
-  // Folha 2: Continuação dos Pedidos Presenciais + Transmissão YouTube + Departamentos + Oportunidades
-  const maxSheet1Prayers = visitors.length <= 3 ? 6 : (visitors.length <= 6 ? 4 : 3);
+  // Balanceamento dinâmico para preenchimento harmônico da Folha 1 (eliminando espaço em branco vazio):
+  // 8 visitantes ocupam linhas curtas, permitindo 6 a 7 pedidos na Folha 1 antes de transbordar para a Folha 2.
+  const maxSheet1Prayers = visitors.length <= 3 
+    ? 8 
+    : visitors.length <= 6 
+      ? 7 
+      : visitors.length <= 10 
+        ? 6 
+        : visitors.length <= 14 
+          ? 4 
+          : 3;
   const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
   const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const sheet2Items: PrayerItem[] = [...overflowPresencial, ...youtube];
