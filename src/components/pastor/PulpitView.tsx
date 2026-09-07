@@ -110,28 +110,47 @@ export const PulpitView: React.FC = () => {
     };
   }, [visitors, prayers, youtube, fontScale, opps, choirs]);
 
-  const handleScrollSheet1Down = () => {
-    if (sheet1ScrollRef.current) {
-      sheet1ScrollRef.current.scrollBy({ top: 220, behavior: 'smooth' });
+  // Funções de rolagem seguras com fallback para navegadores antigos (Android 4.4 / KitKat)
+  const safeScrollBy = (el: HTMLElement | null, deltaY: number) => {
+    if (!el) return;
+    try {
+      if (typeof el.scrollBy === 'function') {
+        el.scrollBy({ top: deltaY, behavior: 'smooth' });
+      } else {
+        el.scrollTop += deltaY;
+      }
+    } catch {
+      el.scrollTop += deltaY;
     }
+  };
+
+  const safeScrollToTop = (el: HTMLElement | null) => {
+    if (!el) return;
+    try {
+      if (typeof el.scrollTo === 'function') {
+        el.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        el.scrollTop = 0;
+      }
+    } catch {
+      el.scrollTop = 0;
+    }
+  };
+
+  const handleScrollSheet1Down = () => {
+    safeScrollBy(sheet1ScrollRef.current, 220);
   };
 
   const handleScrollSheet1Up = () => {
-    if (sheet1ScrollRef.current) {
-      sheet1ScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    safeScrollToTop(sheet1ScrollRef.current);
   };
 
   const handleScrollSheet2Down = () => {
-    if (sheet2ScrollRef.current) {
-      sheet2ScrollRef.current.scrollBy({ top: 220, behavior: 'smooth' });
-    }
+    safeScrollBy(sheet2ScrollRef.current, 220);
   };
 
   const handleScrollSheet2Up = () => {
-    if (sheet2ScrollRef.current) {
-      sheet2ScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    safeScrollToTop(sheet2ScrollRef.current);
   };
 
   // Componente de Oportunidades e Departamentos (Sempre Visível no Rodapé da Folha 2)
