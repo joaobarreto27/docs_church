@@ -148,7 +148,7 @@ export const PulpitView: React.FC = () => {
           {opps.length === 0 ? (
             <p className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhuma oportunidade adicionada.</p>
           ) : (
-            <ul className="space-y-1 text-xs sm:text-sm font-sans text-church-charcoal">
+            <ul className="space-y-1 text-xs sm:text-sm font-sans text-church-charcoal max-h-48 overflow-y-auto pr-1 scrollbar-thin">
               {opps.map((op, i) => (
                 <li key={op.id || i} className="font-semibold flex items-center gap-1.5 leading-snug">
                   <span className="text-church-gold font-bold">•</span>
