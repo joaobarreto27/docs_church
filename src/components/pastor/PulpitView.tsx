@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import { 
   VisitorItem, 
@@ -11,7 +11,9 @@ import {
   ZoomIn, 
   ZoomOut, 
   CheckSquare, 
-  LogOut 
+  LogOut,
+  ChevronDown,
+  ChevronUp 
 } from 'lucide-react';
 
 export const PulpitView: React.FC = () => {
@@ -39,6 +41,15 @@ export const PulpitView: React.FC = () => {
     });
   };
 
+  // Estados de detecção de overflow e rolagem fácil para idosos
+  const [hasMoreSheet1, setHasMoreSheet1] = useState(false);
+  const [isSheet1Scrolled, setIsSheet1Scrolled] = useState(false);
+  const sheet1ScrollRef = useRef<HTMLDivElement>(null);
+
+  const [hasMoreSheet2, setHasMoreSheet2] = useState(false);
+  const [isSheet2Scrolled, setIsSheet2Scrolled] = useState(false);
+  const sheet2ScrollRef = useRef<HTMLDivElement>(null);
+
   if (!room) return null;
 
   // Extração de dados estruturados
@@ -56,28 +67,79 @@ export const PulpitView: React.FC = () => {
 
   // OPÇÃO 1: PASTA ABERTA EM 2 FOLHAS (SEM VIRADA DE PÁGINA)
   // Folha 1: Visitantes do Culto + Primeiros Pedidos de Oração Presenciais
-  // Folha 2: Continuação dos Pedidos Presenciais + Transmissão YouTube + Oportunidades + Louvor Final
+  // Folha 2: Continuação dos Pedidos Presenciais + Transmissão YouTube + Departamentos + Oportunidades
   const maxSheet1Prayers = visitors.length <= 3 ? 6 : (visitors.length <= 6 ? 4 : 3);
   const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
   const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const sheet2Items: PrayerItem[] = [...overflowPresencial, ...youtube];
 
-  // Componente de Oportunidades e Louvor Final (Folha 2)
-  const ParticipacaoELouvorAnchor = () => (
-    <div className="mt-auto pt-4 border-t-2 border-church-sand/80 bg-church-parchment/70 rounded-2xl p-4 sm:p-5 space-y-3.5 shrink-0 shadow-sm border border-church-sand">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+  // Monitora se há conteúdo oculto que requer rolagem em cada folha
+  const checkScrollState = () => {
+    if (sheet1ScrollRef.current) {
+      const el = sheet1ScrollRef.current;
+      const hasOverflow = el.scrollHeight > el.clientHeight + 15;
+      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      setHasMoreSheet1(hasOverflow && !isAtBottom);
+      setIsSheet1Scrolled(el.scrollTop > 30);
+    }
+    if (sheet2ScrollRef.current) {
+      const el = sheet2ScrollRef.current;
+      const hasOverflow = el.scrollHeight > el.clientHeight + 15;
+      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      setHasMoreSheet2(hasOverflow && !isAtBottom);
+      setIsSheet2Scrolled(el.scrollTop > 30);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(checkScrollState, 200);
+    window.addEventListener('resize', checkScrollState);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkScrollState);
+    };
+  }, [visitors, prayers, youtube, fontScale, opps, choirs]);
+
+  const handleScrollSheet1Down = () => {
+    if (sheet1ScrollRef.current) {
+      sheet1ScrollRef.current.scrollBy({ top: 220, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollSheet1Up = () => {
+    if (sheet1ScrollRef.current) {
+      sheet1ScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollSheet2Down = () => {
+    if (sheet2ScrollRef.current) {
+      sheet2ScrollRef.current.scrollBy({ top: 220, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollSheet2Up = () => {
+    if (sheet2ScrollRef.current) {
+      sheet2ScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Componente de Oportunidades e Departamentos (Sempre Visível no Rodapé da Folha 2)
+  const DepartamentosEOportunidadesAnchor = () => (
+    <div className="pt-3 border-t-2 border-church-sand/80 bg-church-parchment/80 rounded-xl p-3 sm:p-4 space-y-2 shrink-0 shadow-xs border border-church-sand">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Oportunidades */}
         <div>
-          <div className="flex items-center gap-2 mb-2 text-church-gold-dark">
+          <div className="flex items-center gap-1.5 mb-1 text-church-gold-dark">
             <span className="w-2 h-2 rounded-full bg-church-gold shrink-0" />
-            <h4 className="font-title text-sm font-bold uppercase tracking-wider">
+            <h4 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider">
               Oportunidades ({opps.length})
             </h4>
           </div>
           {opps.length === 0 ? (
-            <p className="font-serif italic text-church-muted text-sm">Nenhuma oportunidade adicionada.</p>
+            <p className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhuma oportunidade adicionada.</p>
           ) : (
-            <ul className="space-y-1.5 text-sm sm:text-base font-sans text-church-charcoal">
+            <ul className="space-y-1 text-xs sm:text-sm font-sans text-church-charcoal">
               {opps.map((op, i) => (
                 <li key={op.id || i} className="font-semibold flex items-center gap-1.5 leading-snug">
                   <span className="text-church-gold font-bold">•</span>
@@ -88,26 +150,26 @@ export const PulpitView: React.FC = () => {
           )}
         </div>
 
-        {/* Louvor Final (Conjuntos) */}
+        {/* Departamentos */}
         <div>
-          <div className="flex items-center gap-2 mb-2 text-church-gold-dark">
+          <div className="flex items-center gap-1.5 mb-1 text-church-gold-dark">
             <span className="w-2 h-2 rounded-full bg-church-gold shrink-0" />
-            <h4 className="font-title text-sm font-bold uppercase tracking-wider">
-              Louvor Final
+            <h4 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider">
+              Departamentos
             </h4>
           </div>
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {choirs.filter(ch => ch.checked).map((ch, i) => (
               <span 
                 key={ch.id || i}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-church-gold/15 text-church-charcoal font-bold text-xs sm:text-sm border border-church-gold/30"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 text-church-charcoal font-bold text-xs sm:text-sm border border-church-gold/30"
               >
-                <CheckSquare className="w-4 h-4 text-church-gold-dark shrink-0" />
+                <CheckSquare className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
                 <span>{ch.name}</span>
               </span>
             ))}
             {choirs.filter(ch => ch.checked).length === 0 && (
-              <span className="font-serif italic text-church-muted text-sm">Nenhum conjunto escalado</span>
+              <span className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhum departamento escalado</span>
             )}
           </div>
         </div>
@@ -140,7 +202,7 @@ export const PulpitView: React.FC = () => {
         {/* ================= FOLHA 1 (ESQUERDA) ================= */}
         <section className="paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
           {/* Cabeçalho da Folha 1 */}
-          <div className="border-b border-church-sand pb-3 mb-4 flex items-center justify-between gap-4 shrink-0">
+          <div className="border-b border-church-sand pb-3 mb-3 flex items-center justify-between gap-4 shrink-0">
             <div className="flex flex-col">
               <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
                 Liturgia & Recepção
@@ -158,7 +220,9 @@ export const PulpitView: React.FC = () => {
 
           {/* Conteúdo Dinâmico da Folha 1 com Rolagem Vertical Suave */}
           <div 
-            className="flex-1 space-y-4 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
+            ref={sheet1ScrollRef}
+            onScroll={checkScrollState}
+            className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* Bloco de Visitantes */}
@@ -216,6 +280,33 @@ export const PulpitView: React.FC = () => {
             </article>
           </div>
 
+          {/* BOTÃO VISÍVEL DE ROLAGEM / AVISO PARA IDOSOS (FOLHA 1) */}
+          {hasMoreSheet1 ? (
+            <button
+              type="button"
+              onClick={handleScrollSheet1Down}
+              className="w-full py-1.5 px-3 my-1.5 rounded-xl bg-amber-100/90 hover:bg-amber-200 border-2 border-amber-400 text-amber-950 flex items-center justify-between text-xs sm:text-sm font-title font-extrabold shadow-sm active:scale-98 transition-all shrink-0 cursor-pointer animate-pulse"
+              title="Toque aqui para descer e ver mais itens"
+            >
+              <span className="flex items-center gap-1.5">
+                <ChevronDown className="w-4 h-4 text-amber-800 animate-bounce" />
+                <span>Há mais itens abaixo</span>
+              </span>
+              <span className="bg-amber-300/90 text-amber-950 px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider">
+                Toque para descer ⬇
+              </span>
+            </button>
+          ) : isSheet1Scrolled ? (
+            <button
+              type="button"
+              onClick={handleScrollSheet1Up}
+              className="w-full py-1 px-3 my-1 rounded-xl bg-white hover:bg-church-parchment border border-church-sand text-church-charcoal flex items-center justify-center gap-1.5 text-xs font-title font-bold shadow-2xs active:scale-98 transition-all shrink-0 cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5 text-church-gold-dark" />
+              <span>Voltar ao topo</span>
+            </button>
+          ) : null}
+
           {/* Rodapé da Folha 1 */}
           <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
             <span className="font-serif italic">Folha 1 (Recepção & Orações)</span>
@@ -226,7 +317,7 @@ export const PulpitView: React.FC = () => {
         {/* ================= FOLHA 2 (DIREITA) ================= */}
         <section className="paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
           {/* Cabeçalho da Folha 2 */}
-          <div className="border-b border-church-sand pb-3 mb-4 flex items-center justify-between gap-4 shrink-0">
+          <div className="border-b border-church-sand pb-3 mb-3 flex items-center justify-between gap-4 shrink-0">
             <div className="flex flex-col">
               <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
                 Intercessão & Escala
@@ -240,9 +331,11 @@ export const PulpitView: React.FC = () => {
             </span>
           </div>
 
-          {/* Conteúdo Dinâmico da Folha 2 com Rolagem Vertical Suave */}
+          {/* Conteúdo Dinâmico de Orações da Folha 2 (Apenas esta área rola!) */}
           <div 
-            className="flex-1 space-y-4 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
+            ref={sheet2ScrollRef}
+            onScroll={checkScrollState}
+            className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {sheet2Items.length > 0 ? (
@@ -285,14 +378,42 @@ export const PulpitView: React.FC = () => {
                 <span className="text-[11px] font-title font-bold text-church-gold uppercase">1 Tessalonicenses 5:17</span>
               </div>
             )}
-
-            {/* BLOCO DE OPORTUNIDADES E LOUVOR FINAL */}
-            <ParticipacaoELouvorAnchor />
           </div>
+
+          {/* BOTÃO VISÍVEL DE ROLAGEM / AVISO PARA IDOSOS (FOLHA 2) */}
+          {hasMoreSheet2 ? (
+            <button
+              type="button"
+              onClick={handleScrollSheet2Down}
+              className="w-full py-1.5 px-3 my-1.5 rounded-xl bg-amber-100/90 hover:bg-amber-200 border-2 border-amber-400 text-amber-950 flex items-center justify-between text-xs sm:text-sm font-title font-extrabold shadow-sm active:scale-98 transition-all shrink-0 cursor-pointer animate-pulse"
+              title="Toque aqui para descer e ver mais pedidos"
+            >
+              <span className="flex items-center gap-1.5">
+                <ChevronDown className="w-4 h-4 text-amber-800 animate-bounce" />
+                <span>Há mais pedidos abaixo</span>
+              </span>
+              <span className="bg-amber-300/90 text-amber-950 px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider">
+                Toque para descer ⬇
+              </span>
+            </button>
+          ) : isSheet2Scrolled ? (
+            <button
+              type="button"
+              onClick={handleScrollSheet2Up}
+              className="w-full py-1 px-3 my-1 rounded-xl bg-white hover:bg-church-parchment border border-church-sand text-church-charcoal flex items-center justify-center gap-1.5 text-xs font-title font-bold shadow-2xs active:scale-98 transition-all shrink-0 cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5 text-church-gold-dark" />
+              <span>Voltar ao topo</span>
+            </button>
+          ) : null}
+
+          {/* BLOCO FIXO ANCORADO NO RODAPÉ DA FOLHA 2: OPORTUNIDADES E DEPARTAMENTOS */}
+          {/* SEMPRE VISÍVEL! NUNCA FICA ESCONDIDO LÁ EMBAIXO! */}
+          <DepartamentosEOportunidadesAnchor />
 
           {/* Rodapé da Folha 2 */}
           <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
-            <span className="font-serif italic">Folha 2 (Orações & Escala)</span>
+            <span className="font-serif italic">Folha 2 (Orações & Departamentos)</span>
             <span className="font-mono">Página 2</span>
           </div>
         </section>
@@ -360,4 +481,5 @@ export const PulpitView: React.FC = () => {
     </div>
   );
 };
+
 
