@@ -8,6 +8,7 @@ import {
 } from '../../types/liturgy';
 import { Header } from '../common/Header';
 import { LoadingScreen } from '../common/LoadingScreen';
+import { PulpitView } from '../pastor/PulpitView';
 import { 
   UserPlus, 
   HeartHandshake, 
@@ -20,7 +21,8 @@ import {
   AlertTriangle,
   Pencil,
   X,
-  Plus
+  Plus,
+  Tablet
 } from 'lucide-react';
 
 interface ObreiroEditorProps {
@@ -32,6 +34,10 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
   const draftVisitorKey = room ? `docs_church_draft_visitors_${room.code}` : '';
   const draftPrayerKey = room ? `docs_church_draft_prayers_${room.code}` : '';
+
+  // Estados de Prévia do Púlpito (Protegida contra toques acidentais para idosos)
+  const [showPulpitConfirm, setShowPulpitConfirm] = useState(false);
+  const [showPulpitPreview, setShowPulpitPreview] = useState(false);
 
   // Estados de Visitantes
   const [visitorName, setVisitorName] = useState('');
@@ -338,7 +344,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
   return (
     <div className={`${showHeader ? 'min-h-screen' : ''} bg-church-parchment flex flex-col`}>
-      {showHeader && <Header />}
+      {showHeader && <Header onOpenPulpitPreview={() => setShowPulpitConfirm(true)} />}
 
       {/* Notificação Flutuante de Feedback */}
       {savedSuccess && (
@@ -711,12 +717,12 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     placeholder="Novo departamento (Ex: Mocidade, Círculo de Oração, Varões)..."
                     value={newChoirName}
                     onChange={e => setNewChoirName(e.target.value)}
-                    className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
+                    className="flex-1 min-w-0 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
                   />
                   <button
                     type="submit"
                     disabled={!newChoirName.trim()}
-                    className="px-3.5 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="px-3 sm:px-3.5 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
                     title="Adicionar à lista de departamentos"
                   >
                     <Plus className="w-4 h-4" />
@@ -858,12 +864,12 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     placeholder="Nome do cantor ou grupo"
                     value={oppName}
                     onChange={e => setOppName(e.target.value)}
-                    className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
+                    className="flex-1 min-w-0 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
                   />
                   <button
                     type="submit"
                     disabled={!oppName.trim()}
-                    className="px-4 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
+                    className="px-3 sm:px-4 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 cursor-pointer whitespace-nowrap"
                   >
                     + Adicionar
                   </button>
@@ -933,6 +939,94 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   Sim, Apagar Tudo
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE CONFIRMAÇÃO PARA O IDOSO NÃO ENTRAR POR ENGANO */}
+        {showPulpitConfirm && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-church-sand space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-church-gold/15 flex items-center justify-center text-church-gold-dark shrink-0">
+                  <Tablet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-title text-base font-bold text-church-charcoal">
+                    Visualizar Tela do Pastor?
+                  </h3>
+                  <p className="font-sans text-xs text-church-muted mt-0.5">
+                    Alternar para a visualização do púlpito
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                <p className="font-medium">
+                  Esta tela mostrará o púlpito exatamente como o Pastor vê.
+                </p>
+                <p className="mt-1 text-[11px] text-amber-800">
+                  • Suas anotações continuam salvas intactas.<br />
+                  • Para voltar, haverá um botão bem visível no topo da tela.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-church-sand/50">
+                <button
+                  type="button"
+                  onClick={() => setShowPulpitConfirm(false)}
+                  className="px-4 py-2 rounded-xl text-church-charcoal hover:bg-church-parchment font-title text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Cancelar / Ficar Aqui
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPulpitConfirm(false);
+                    setShowPulpitPreview(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-church-gold hover:bg-church-gold-dark text-white font-title text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+                >
+                  <Tablet className="w-3.5 h-3.5" />
+                  <span>Sim, Ver Púlpito</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE PRÉVIA EM TEMPO REAL DO PÚLPITO (ESPELHO COM RETORNO BLINDADO) */}
+        {showPulpitPreview && (
+          <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xs flex flex-col p-1.5 sm:p-4 animate-fadeIn">
+            {/* Barra superior de saída ultra-visível para idosos */}
+            <header className="flex items-center justify-between py-2 px-3 bg-stone-900 border-b border-stone-700 text-white rounded-t-xl max-w-[98vw] w-full mx-auto shrink-0 shadow-md">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-title text-xs sm:text-sm font-extrabold uppercase tracking-wider text-church-gold">
+                    Modo Tela do Pastor
+                  </span>
+                  <span className="text-[10px] text-stone-300 hidden xs:inline sm:inline">
+                    Suas anotações de obreiro continuam salvas
+                  </span>
+                </div>
+              </div>
+
+              {/* BOTÃO GRANDE E INCONFUNDÍVEL DE RETORNO */}
+              <button
+                type="button"
+                onClick={() => setShowPulpitPreview(false)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-church-gold hover:bg-church-gold-dark text-church-charcoal text-xs sm:text-sm font-title font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all cursor-pointer border-2 border-white/80"
+                title="Fechar e voltar imediatamente para suas anotações de obreiro"
+              >
+                <X className="w-4 h-4 text-church-charcoal shrink-0 stroke-[3]" />
+                <span>Voltar ao Obreiro</span>
+              </button>
+            </header>
+
+            {/* Moldura de exibição do Púlpito */}
+            <div className="flex-1 max-w-[98vw] w-full mx-auto bg-church-parchment rounded-b-xl overflow-hidden shadow-2xl border-x-2 border-b-2 border-stone-800 relative flex flex-col min-h-0">
+              <PulpitView />
             </div>
           </div>
         )}

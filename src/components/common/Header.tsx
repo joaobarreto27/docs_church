@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
-import { LogOut, RefreshCw } from 'lucide-react';
+import { LogOut, RefreshCw, Tablet } from 'lucide-react';
 
 interface HeaderProps {
   minimal?: boolean; // Se true, esconde botões para a visão do pastor
+  onOpenPulpitPreview?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
+export const Header: React.FC<HeaderProps> = ({ minimal = false, onOpenPulpitPreview }) => {
   const { room, role, isConnected, isFastSync, hasFreshUpdates, leaveRoom, refreshData } = useRoom();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -88,6 +89,19 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
           >
             <RefreshCw className={`w-3.5 h-3.5 text-church-gold-dark ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Sincronizar</span>
+          </button>
+        )}
+
+        {/* Botão Ver Púlpito do Pastor (Para alternar facilmente quando houver um tablet compartilhado) */}
+        {role === 'obreiro' && !minimal && onOpenPulpitPreview && (
+          <button
+            type="button"
+            onClick={onOpenPulpitPreview}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 hover:bg-church-gold/25 text-church-charcoal border border-church-gold/40 transition-colors text-xs font-title font-bold uppercase tracking-wider cursor-pointer shadow-2xs"
+            title="Abrir pré-visualização da tela do Pastor"
+          >
+            <Tablet className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+            <span className="text-[11px]">Púlpito</span>
           </button>
         )}
 
