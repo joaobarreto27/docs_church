@@ -13,7 +13,7 @@ import {
   RotateCcw, 
   Layers, 
   Check,
-  Eye,
+  Tablet,
   X,
   Youtube,
   Image as ImageIcon,
@@ -401,7 +401,7 @@ export const ControladorPanel: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-200 transition-colors shadow-xs cursor-pointer"
                 title="Abrir simulação da tela do Pastor em tempo real"
               >
-                <Eye className="w-3.5 h-3.5 text-purple-700" />
+                <Tablet className="w-3.5 h-3.5 text-purple-700" />
                 <span>Prévia do Púlpito</span>
               </button>
 
@@ -439,15 +439,15 @@ export const ControladorPanel: React.FC = () => {
             <form onSubmit={handleSendAlert} className="flex gap-2">
               <input
                 type="text"
-                placeholder="Ex: Tempo restante: 5 min | Liberar o carro placa ABC-123"
+                placeholder="Ex: 5 min restantes | Liberar carro ABC-123"
                 value={alertInput}
                 onChange={e => setAlertInput(e.target.value)}
-                className="flex-1 text-xs font-sans p-2.5 rounded-lg border border-purple-300 bg-white focus:border-purple-600 outline-none text-church-charcoal"
+                className="flex-1 min-w-0 text-xs font-sans p-2.5 rounded-lg border border-purple-300 bg-white focus:border-purple-600 outline-none text-church-charcoal"
               />
               <button
                 type="submit"
                 disabled={!alertInput.trim()}
-                className="px-4 py-2 bg-purple-700 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-purple-800 disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
+                className="px-3 sm:px-4 py-2 bg-purple-700 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-purple-800 disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
                 <Send className="w-3.5 h-3.5" />
                 Transmitir
@@ -456,7 +456,7 @@ export const ControladorPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleClearAlert}
-                  className="px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 sm:px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shrink-0 flex items-center gap-1 cursor-pointer whitespace-nowrap"
                 >
                   <XCircle className="w-3.5 h-3.5" />
                   Limpar
