@@ -554,9 +554,9 @@ export const ControladorPanel: React.FC = () => {
 
       {/* MODAL DE PRÉVIA EM TEMPO REAL DO PÚLPITO (TABLET PEEK) */}
       {showPulpitPreview && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col p-2 sm:p-6 animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xs flex flex-col p-2 sm:p-4 animate-fadeIn">
           {/* Barra superior de controle da prévia */}
-          <header className="flex items-center justify-between pb-3 text-white max-w-6xl w-full mx-auto shrink-0">
+          <header className="flex items-center justify-between pb-2 text-white max-w-[97vw] w-full mx-auto shrink-0">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <h3 className="font-title text-sm font-bold uppercase tracking-wider">
@@ -574,7 +574,7 @@ export const ControladorPanel: React.FC = () => {
           </header>
 
           {/* Moldura do Tablet */}
-          <div className="flex-1 max-w-6xl w-full mx-auto bg-church-parchment rounded-2xl overflow-hidden shadow-2xl border-4 border-stone-800 relative">
+          <div className="flex-1 max-w-[97vw] w-full mx-auto bg-church-parchment rounded-2xl overflow-hidden shadow-2xl border-4 border-stone-800 relative flex flex-col min-h-0">
             <PulpitView />
           </div>
         </div>

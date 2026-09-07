@@ -75,7 +75,7 @@ export const PulpitView: React.FC = () => {
             </h4>
           </div>
           {opps.length === 0 ? (
-            <p className="font-serif italic text-church-muted text-sm">Nenhuma oportunidade escalada.</p>
+            <p className="font-serif italic text-church-muted text-sm">Nenhuma oportunidade adicionada.</p>
           ) : (
             <ul className="space-y-1.5 text-sm sm:text-base font-sans text-church-charcoal">
               {opps.map((op, i) => (
@@ -116,7 +116,7 @@ export const PulpitView: React.FC = () => {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-church-parchment select-none overflow-hidden relative">
+    <div className="h-full w-full flex flex-col bg-church-parchment select-none overflow-hidden relative min-h-0">
       {/* ⚠️ FAIXA DE ALERTA NO TOPO - EMPURRA SUAVEMENTE AS FOLHAS */}
       {room.active_alert && (
         <aside 
@@ -134,7 +134,7 @@ export const PulpitView: React.FC = () => {
       {/* OPÇÃO 1: DUAS FOLHAS LADO A LADO EM MODO PAISAGEM COM ROLAGEM VERTICAL SUAVE */}
       {/* ========================================================================= */}
       <main 
-        className="flex-1 p-2 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 overflow-hidden h-full max-h-full"
+        className="flex-1 p-2 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 overflow-hidden h-full max-h-full min-h-0"
         style={{ fontSize: `${fontScale}rem` }}
       >
         {/* ================= FOLHA 1 (ESQUERDA) ================= */}
