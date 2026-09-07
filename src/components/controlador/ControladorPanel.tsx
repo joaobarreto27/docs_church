@@ -16,17 +16,23 @@ import {
   Youtube,
   Image as ImageIcon,
   Trash2,
-  Plus
+  Plus,
+  Pencil
 } from 'lucide-react';
 
 export const ControladorPanel: React.FC = () => {
-  const { room, blocks, updateBlock, sendAlert, setPage, resetCurrentService } = useRoom();
+  const { room, blocks, updateBlock, sendAlert, resetCurrentService, updateTitle } = useRoom();
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
   const [showPulpitPreview, setShowPulpitPreview] = useState(false);
   const [newTitleInput, setNewTitleInput] = useState('Culto de Celebração');
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Estados de edição inline do título do culto
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
 
   // Estados do YouTube
   const [youtubeText, setYoutubeText] = useState('');
@@ -62,6 +68,28 @@ export const ControladorPanel: React.FC = () => {
     await resetCurrentService(newTitleInput.trim());
     setShowResetModal(false);
     triggerFeedback('Culto arquivado e nova folha iniciada!');
+  };
+
+  // Salva alteração do nome do culto diretamente pelo controlador
+  const handleSaveTitle = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = titleDraft.trim();
+    if (!clean) return;
+    if (clean === room.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+    setIsSavingTitle(true);
+    try {
+      await updateTitle(clean);
+      setIsEditingTitle(false);
+      triggerFeedback('Nome do culto atualizado!');
+    } catch (err) {
+      console.error(err);
+      triggerFeedback('Erro ao atualizar nome do culto.');
+    } finally {
+      setIsSavingTitle(false);
+    }
   };
 
   // Comprime imagem no Canvas (~30-45KB, max 600px de largura)
@@ -182,12 +210,70 @@ export const ControladorPanel: React.FC = () => {
       <section className="bg-white border-b-2 border-purple-200 px-4 py-4 shadow-sm">
         <div className="max-w-4xl mx-auto space-y-4">
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-purple-900">
-              <Layers className="w-5 h-5 text-purple-700" />
-              <h2 className="font-title text-sm font-extrabold uppercase tracking-wide">
-                Direção do Culto — Comando da Cabine
-              </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-purple-900">
+              <Layers className="w-5 h-5 text-purple-700 shrink-0" />
+              <div>
+                <h2 className="font-title text-sm font-extrabold uppercase tracking-wide">
+                  Direção do Culto — Comando da Cabine
+                </h2>
+                
+                {/* Edição Rápida do Nome do Culto */}
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-purple-700">Culto:</span>
+                  {isEditingTitle ? (
+                    <form onSubmit={handleSaveTitle} className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={titleDraft}
+                        onChange={e => setTitleDraft(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Escape') setIsEditingTitle(false);
+                        }}
+                        className="text-xs font-title font-bold uppercase px-2 py-0.5 rounded border border-purple-400 bg-purple-50 text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
+                        autoFocus
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSavingTitle || !titleDraft.trim()}
+                        className="p-1 rounded bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
+                        title="Salvar novo nome do culto"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTitleDraft(room.title);
+                          setIsEditingTitle(false);
+                        }}
+                        className="p-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors cursor-pointer"
+                        title="Cancelar edição"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-title text-xs font-bold text-purple-950 uppercase">
+                        {room.title}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTitleDraft(room.title);
+                          setIsEditingTitle(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-900 p-0.5 rounded hover:bg-purple-100 transition-colors inline-flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+                        title="Editar nome do culto"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        <span className="underline">Editar</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -195,7 +281,7 @@ export const ControladorPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowPulpitPreview(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-200 transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-200 transition-colors shadow-xs cursor-pointer"
                 title="Abrir simulação da tela do Pastor em tempo real"
               >
                 <Eye className="w-3.5 h-3.5 text-purple-700" />
@@ -206,7 +292,7 @@ export const ControladorPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowResetModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-300 text-purple-800 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-50 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-300 text-purple-800 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-50 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Novo Culto</span>
@@ -244,7 +330,7 @@ export const ControladorPanel: React.FC = () => {
               <button
                 type="submit"
                 disabled={!alertInput.trim()}
-                className="px-4 py-2 bg-purple-700 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-purple-800 disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5"
+                className="px-4 py-2 bg-purple-700 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-purple-800 disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 Transmitir
@@ -253,7 +339,7 @@ export const ControladorPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleClearAlert}
-                  className="px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shrink-0 flex items-center gap-1"
+                  className="px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
                 >
                   <XCircle className="w-3.5 h-3.5" />
                   Limpar
@@ -270,47 +356,22 @@ export const ControladorPanel: React.FC = () => {
             )}
           </div>
 
-          {/* CONTROLE REMOTO DE FOLHAS DO PÚLPITO */}
+          {/* STATUS DO PÚLPITO E MODO PASTA ABERTA (OPÇÃO 1) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-purple-200/60 mt-2">
             <div>
               <span className="text-xs font-title font-extrabold text-purple-950 uppercase tracking-wide block">
-                Navegação Remota do Púlpito:
+                Visualização do Púlpito (Tablet do Pastor):
               </span>
               <span className="text-[11px] text-purple-700 font-sans">
-                O tablet do Pastor está em: <strong className="text-purple-950 font-bold">{room.current_page === 2 ? 'Folhas 3-4 (Orações YouTube & Avisos)' : 'Folhas 1-2 (Recepção & Escala)'}</strong>
+                Modo <strong className="text-purple-950 font-bold">Pasta Aberta (Folhas 1 e 2 Lado a Lado)</strong> com rolagem vertical suave (sem virada de página).
               </span>
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  await setPage(1);
-                  triggerFeedback('Púlpito alterado para Folhas 1-2!');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
-                  (room.current_page || 1) === 1
-                    ? 'bg-purple-900 text-white border-purple-950 shadow-sm'
-                    : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-50'
-                }`}
-              >
-                <span>Folhas 1-2</span>
-                {(room.current_page || 1) === 1 && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await setPage(2);
-                  triggerFeedback('Púlpito alterado para Folhas 3-4!');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
-                  room.current_page === 2
-                    ? 'bg-purple-900 text-white border-purple-950 shadow-sm'
-                    : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-50'
-                }`}
-              >
-                <span>Folhas 3-4</span>
-                {room.current_page === 2 && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
-              </button>
+            
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-900 text-[11px] font-title font-bold shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Sincronização Ativa
+              </span>
             </div>
           </div>
 
