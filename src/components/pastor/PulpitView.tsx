@@ -14,7 +14,8 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  Youtube
+  Youtube,
+  X
 } from 'lucide-react';
 import { LoadingScreen } from '../common/LoadingScreen';
 
@@ -52,6 +53,9 @@ export const PulpitView: React.FC = () => {
   const [hasMoreSheet2, setHasMoreSheet2] = useState(false);
   const [isSheet2Scrolled, setIsSheet2Scrolled] = useState(false);
   const sheet2ScrollRef = useRef<HTMLDivElement>(null);
+
+  // Confirmação para evitar que idosos saiam do púlpito por engano
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   if (!room) return <LoadingScreen />;
 
@@ -710,8 +714,8 @@ export const PulpitView: React.FC = () => {
           {/* Botão Sair Discreto do Púlpito para Voltar à Tela Inicial */}
           <button
             type="button"
-            onClick={leaveRoom}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-[11px] font-title font-medium uppercase tracking-wider"
+            onClick={() => setShowLeaveConfirm(true)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-[11px] font-title font-medium uppercase tracking-wider cursor-pointer"
             title="Sair do Púlpito e voltar à tela inicial"
           >
             <LogOut className="w-3.5 h-3.5 text-church-muted" />
@@ -719,6 +723,58 @@ export const PulpitView: React.FC = () => {
           </button>
         </div>
       </footer>
+
+      {/* MODAL DE CONFIRMAÇÃO DE SAÍDA DO PÚLPITO (PROTEÇÃO PARA O IDOSO) */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-church-sand space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-church-parchment border border-church-sand flex items-center justify-center text-church-charcoal shrink-0">
+                <LogOut className="w-5 h-5 text-church-charcoal" />
+              </div>
+              <div>
+                <h3 className="font-title text-base font-bold text-church-charcoal uppercase">
+                  Deseja Sair do Púlpito?
+                </h3>
+                <p className="font-sans text-xs text-church-muted mt-0.5">
+                  Voltar para a tela inicial do culto
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-church-parchment/70 border border-church-sand rounded-xl text-xs text-church-charcoal leading-relaxed">
+              <p className="font-medium">
+                Você sairá da visualização do Púlpito e retornará à tela de entrada.
+              </p>
+              <p className="mt-1 text-[11px] text-church-muted">
+                As anotações e pedidos continuam salvos com segurança no sistema.
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-church-sand/50">
+              <button
+                type="button"
+                onClick={() => setShowLeaveConfirm(false)}
+                className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-title text-xs font-black uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5 border border-red-700"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+                <span>Cancelar / Ficar no Púlpito</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveConfirm(false);
+                  leaveRoom();
+                }}
+                className="px-4 py-2.5 rounded-xl border border-church-sand text-church-charcoal hover:bg-church-parchment font-title text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-4 h-4 text-church-muted" />
+                <span>Sim, Sair</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
