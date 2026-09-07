@@ -194,8 +194,8 @@ export const JoinRoomModal: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="w-5 h-5 mb-1 text-church-gold" />
-                  <span className="font-title text-xs font-bold uppercase">Pastor</span>
-                  <span className="text-[10px] text-church-muted font-sans mt-0.5">Púlpito</span>
+                  <span className="font-title text-xs font-bold uppercase">Púlpito</span>
+                  <span className="text-[10px] text-church-muted font-sans mt-0.5">Altar</span>
                 </button>
 
                 <button

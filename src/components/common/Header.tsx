@@ -3,7 +3,7 @@ import { useRoom } from '../../context/RoomContext';
 import { LogOut, RefreshCw, Tablet } from 'lucide-react';
 
 interface HeaderProps {
-  minimal?: boolean; // Se true, esconde botões para a visão do pastor
+  minimal?: boolean; // Se true, esconde botões para a visão do púlpito
   onOpenPulpitPreview?: () => void;
 }
 
@@ -92,13 +92,13 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false, onOpenPulpitPre
           </button>
         )}
 
-        {/* Botão Ver Púlpito do Pastor (Para alternar facilmente quando houver um tablet compartilhado) */}
+        {/* Botão Ver Púlpito (Para alternar facilmente quando houver um tablet compartilhado) */}
         {role === 'obreiro' && !minimal && onOpenPulpitPreview && (
           <button
             type="button"
             onClick={onOpenPulpitPreview}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 hover:bg-church-gold/25 text-church-charcoal border border-church-gold/40 transition-colors text-xs font-title font-bold uppercase tracking-wider cursor-pointer shadow-2xs"
-            title="Abrir pré-visualização da tela do Pastor"
+            title="Abrir pré-visualização da tela do Púlpito"
           >
             <Tablet className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
             <span className="text-[11px]">Púlpito</span>

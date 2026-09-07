@@ -399,7 +399,7 @@ export const ControladorPanel: React.FC = () => {
                 type="button"
                 onClick={() => setShowPulpitPreview(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-200 transition-colors shadow-xs cursor-pointer"
-                title="Abrir simulação da tela do Pastor em tempo real"
+                title="Abrir simulação da tela do Púlpito em tempo real"
               >
                 <Tablet className="w-3.5 h-3.5 text-purple-700" />
                 <span>Prévia do Púlpito</span>
@@ -426,7 +426,7 @@ export const ControladorPanel: React.FC = () => {
               </span>
               {room.active_alert ? (
                 <span className="text-[11px] font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
-                  Aviso exibido na tela do Pastor
+                  Aviso exibido na tela do Púlpito
                 </span>
               ) : (
                 <span className="text-[11px] text-purple-700 font-medium">
@@ -657,15 +657,15 @@ export const ControladorPanel: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <h3 className="font-title text-sm font-bold uppercase tracking-wider">
-                Transmissão ao Vivo — Réplica do Tablet do Pastor
+                Transmissão ao Vivo — Réplica do Púlpito
               </h3>
             </div>
             <button
               type="button"
               onClick={() => setShowPulpitPreview(false)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-title font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-title font-bold uppercase tracking-wider transition-colors cursor-pointer border border-white/40 shadow-xs"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 stroke-[2.5]" />
               <span>Voltar à Edição</span>
             </button>
           </header>

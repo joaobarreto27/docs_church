@@ -408,7 +408,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 </div>
                 <textarea
                   rows={9}
-                  placeholder="Digite ou cole aqui os visitantes (1 por linha), como se fosse em uma folha em branco...&#10;&#10;Exemplo:&#10;Irmão Carlos Eduardo e Família (Igreja Batista)&#10;Irmã Valéria Souza (A.D. São Mateus)&#10;Jovem Matheus Henrique (Convidado pelo Gabriel)&#10;Pastor Marcos e Pastora Aline"
+                  placeholder="Digite ou cole aqui os visitantes (1 por linha), como se fosse em uma folha em branco...&#10;&#10;Exemplo:&#10;Irmão Carlos Eduardo e Família (Igreja Batista)&#10;Irmã Valéria Souza (A.D. São Mateus)&#10;Jovem Matheus Henrique (Convidado pelo Gabriel)&#10;Pr. Marcos e Pra. Aline"
                   value={visitorBatchText}
                   onChange={e => handleVisitorBatchTextChange(e.target.value)}
                   className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
@@ -920,7 +920,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   </strong>{' '}
                   cadastrados?
                   <br />
-                  <span className="text-red-600 font-medium">Esta ação apagará imediatamente a lista do púlpito do pastor.</span>
+                  <span className="text-red-600 font-medium">Esta ação apagará imediatamente a lista do púlpito.</span>
                 </p>
               </div>
               <div className="flex gap-2 pt-2">
@@ -953,7 +953,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 </div>
                 <div>
                   <h3 className="font-title text-base font-bold text-church-charcoal">
-                    Visualizar Tela do Pastor?
+                    Visualizar Tela do Púlpito?
                   </h3>
                   <p className="font-sans text-xs text-church-muted mt-0.5">
                     Alternar para a visualização do púlpito
@@ -963,21 +963,22 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
                 <p className="font-medium">
-                  Esta tela mostrará o púlpito exatamente como o Pastor vê.
+                  Esta tela mostrará a visualização oficial do Púlpito.
                 </p>
                 <p className="mt-1 text-[11px] text-amber-800">
                   • Suas anotações continuam salvas intactas.<br />
-                  • Para voltar, haverá um botão bem visível no topo da tela.
+                  • Para voltar, haverá um botão vermelho bem visível no topo da tela.
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-church-sand/50">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-church-sand/50">
                 <button
                   type="button"
                   onClick={() => setShowPulpitConfirm(false)}
-                  className="px-4 py-2 rounded-xl text-church-charcoal hover:bg-church-parchment font-title text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-title text-xs font-black uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5 border border-red-700"
                 >
-                  Cancelar / Ficar Aqui
+                  <X className="w-4 h-4 stroke-[2.5]" />
+                  <span>Cancelar / Ficar Aqui</span>
                 </button>
                 <button
                   type="button"
@@ -985,9 +986,9 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     setShowPulpitConfirm(false);
                     setShowPulpitPreview(true);
                   }}
-                  className="px-4 py-2 rounded-xl bg-church-gold hover:bg-church-gold-dark text-white font-title text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-church-gold hover:bg-church-gold-dark text-church-charcoal border border-church-gold-dark/40 font-title text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Tablet className="w-3.5 h-3.5" />
+                  <Tablet className="w-4 h-4" />
                   <span>Sim, Ver Púlpito</span>
                 </button>
               </div>
@@ -1004,7 +1005,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <div className="flex flex-col">
                   <span className="font-title text-xs sm:text-sm font-extrabold uppercase tracking-wider text-church-gold">
-                    Modo Tela do Pastor
+                    Modo Tela do Púlpito
                   </span>
                   <span className="text-[10px] text-stone-300 hidden xs:inline sm:inline">
                     Suas anotações de obreiro continuam salvas
@@ -1012,14 +1013,14 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 </div>
               </div>
 
-              {/* BOTÃO GRANDE E INCONFUNDÍVEL DE RETORNO */}
+              {/* BOTÃO GRANDE E INCONFUNDÍVEL DE RETORNO EM VERMELHO */}
               <button
                 type="button"
                 onClick={() => setShowPulpitPreview(false)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-church-gold hover:bg-church-gold-dark text-church-charcoal text-xs sm:text-sm font-title font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all cursor-pointer border-2 border-white/80"
+                className="inline-flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs sm:text-sm font-title font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all cursor-pointer border-2 border-white ring-2 ring-red-500/50"
                 title="Fechar e voltar imediatamente para suas anotações de obreiro"
               >
-                <X className="w-4 h-4 text-church-charcoal shrink-0 stroke-[3]" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0 stroke-[3]" />
                 <span>Voltar ao Obreiro</span>
               </button>
             </header>
