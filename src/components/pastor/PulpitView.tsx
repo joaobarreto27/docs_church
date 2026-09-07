@@ -254,7 +254,7 @@ export const PulpitView: React.FC = () => {
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
                     <h3 className="font-title text-xs font-bold uppercase tracking-wider text-red-900 flex items-center gap-1.5">
                       <Youtube className="w-4 h-4 text-red-600 shrink-0" />
-                      <span>Transmissão YouTube ({youtube.length})</span>
+                      <span>Pedido de Oração Youtube ({youtube.length})</span>
                     </h3>
                   </div>
                   <span className="text-[10px] font-title font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
@@ -522,7 +522,7 @@ export const PulpitView: React.FC = () => {
                       <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
                       <h3 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider text-red-900 flex items-center gap-1.5">
                         <Youtube className="w-4 h-4 text-red-600 shrink-0" />
-                        <span>Transmissão YouTube ({youtube.length})</span>
+                        <span>Pedido de Oração Youtube ({youtube.length})</span>
                       </h3>
                     </div>
                     <span className="text-[10px] font-title font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
