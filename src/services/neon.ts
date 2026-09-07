@@ -55,9 +55,27 @@ if (typeof window !== 'undefined' && window.location && window.location.origin) 
 // Inicializa o client HTTP serverless do Neon
 export const sql = neon(databaseUrl);
 
-// Gera código de sala amigável de 6 dígitos numéricos
+/**
+ * Gera código de sala amigável no formato XXX-XXX (6 caracteres alfanuméricos com hífen automático)
+ */
 export function generateRoomCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let p1 = '';
+  let p2 = '';
+  for (let i = 0; i < 3; i++) {
+    p1 += chars.charAt(Math.floor(Math.random() * chars.length));
+    p2 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${p1}-${p2}`;
+}
+
+/**
+ * Máscara padrão para código de sala: aceita apenas letras e números, convertendo automaticamente para XXX-XXX
+ */
+export function formatRoomCodeMask(value: string): string {
+  const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+  if (cleaned.length <= 3) return cleaned;
+  return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
 }
 
 /**
@@ -280,6 +298,36 @@ export async function updateRoomTitle(roomId: string, newTitle: string): Promise
     SET title = ${newTitle.trim()}, version = version + 1, updated_at = NOW()
     WHERE id = ${roomId}
   `;
+}
+
+/**
+ * Atualiza o código/chave da sala no formato padrão XXX-XXX
+ */
+export async function updateRoomCode(roomId: string, newCode: string): Promise<{ success: boolean; error?: string }> {
+  const clean = formatRoomCodeMask(newCode);
+  const withoutHyphen = clean.replace(/-/g, '');
+  if (withoutHyphen.length < 6) {
+    return { success: false, error: 'O código deve conter 6 caracteres no formato XXX-XXX.' };
+  }
+  
+  // Verifica se já existe outra sala ativa com este código
+  const existing = await sql`
+    SELECT id FROM rooms 
+    WHERE (UPPER(code) = ${clean} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
+      AND id != ${roomId}
+      AND status = 'active'
+    LIMIT 1
+  `;
+  if (existing && existing.length > 0) {
+    return { success: false, error: `O código ${clean} já está em uso por outro culto ativo.` };
+  }
+
+  await sql`
+    UPDATE rooms 
+    SET code = ${clean}, version = version + 1, updated_at = NOW()
+    WHERE id = ${roomId}
+  `;
+  return { success: true };
 }
 
 /**

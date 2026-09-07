@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import { UserRole, Room } from '../../types/liturgy';
 import { BookOpen, Edit3, ShieldAlert, Sparkles, KeyRound, AlertTriangle, FolderOpen, RefreshCw } from 'lucide-react';
-import { getRoomByCode } from '../../services/neon';
+import { getRoomByCode, formatRoomCodeMask } from '../../services/neon';
 
 export const JoinRoomModal: React.FC = () => {
   const { joinRoom, startNewService, overwriteExistingService, error: contextError } = useRoom();
@@ -18,10 +18,10 @@ export const JoinRoomModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [conflictRoom, setConflictRoom] = useState<Room | null>(null);
 
-  // Formata o código conforme a pessoa digita (aceita letras, números e hífens em maiúsculas)
+  // Formata o código automaticamente com máscara XXX-XXX sem precisar digitar o hífen
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.toUpperCase().slice(0, 15);
-    setCode(raw);
+    const formatted = formatRoomCodeMask(e.target.value);
+    setCode(formatted);
     setLocalError(null);
   };
 
@@ -169,8 +169,8 @@ export const JoinRoomModal: React.FC = () => {
               </label>
               <input
                 type="text"
-                maxLength={15}
-                placeholder="DIGITE O CÓDIGO"
+                maxLength={7}
+                placeholder="EX: ADU-PNO"
                 value={code}
                 onChange={handleCodeChange}
                 autoFocus
@@ -277,14 +277,14 @@ export const JoinRoomModal: React.FC = () => {
               </label>
               <input
                 type="text"
-                maxLength={15}
+                maxLength={7}
                 value={customCode}
-                onChange={(e) => setCustomCode(e.target.value.toUpperCase().slice(0, 15))}
+                onChange={(e) => setCustomCode(formatRoomCodeMask(e.target.value))}
                 placeholder="Ex: ADU-PNO (ou deixe vazio para automático)"
                 className="w-full text-center font-mono font-bold text-sm tracking-wider uppercase text-church-charcoal bg-church-parchment border border-church-sand focus:border-church-gold rounded-xl px-3 py-2.5 outline-none"
               />
               <p className="text-[11px] text-church-muted mt-1">
-                Se deixar em branco, geraremos um código seguro de 6 números automaticamente.
+                Se deixar em branco, geraremos um código no formato XXX-XXX automaticamente.
               </p>
             </div>
 

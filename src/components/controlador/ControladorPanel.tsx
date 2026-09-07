@@ -5,6 +5,7 @@ import { ObreiroEditor } from '../obreiro/ObreiroEditor';
 import { PulpitView } from '../pastor/PulpitView';
 import { Header } from '../common/Header';
 import { LoadingScreen } from '../common/LoadingScreen';
+import { formatRoomCodeMask } from '../../services/neon';
 import { 
   AlertTriangle, 
   Send, 
@@ -22,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const ControladorPanel: React.FC = () => {
-  const { room, blocks, updateBlock, sendAlert, resetCurrentService, updateTitle } = useRoom();
+  const { room, blocks, updateBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
@@ -34,6 +35,11 @@ export const ControladorPanel: React.FC = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+  // Estados de edição inline do código da sala (XXX-XXX)
+  const [isEditingCode, setIsEditingCode] = useState(false);
+  const [codeDraft, setCodeDraft] = useState('');
+  const [isSavingCode, setIsSavingCode] = useState(false);
 
   // Estados do YouTube
   const [youtubeText, setYoutubeText] = useState('');
@@ -90,6 +96,36 @@ export const ControladorPanel: React.FC = () => {
       triggerFeedback('Erro ao atualizar nome do culto.');
     } finally {
       setIsSavingTitle(false);
+    }
+  };
+
+  // Salva alteração do código/chave da sala diretamente pelo controlador
+  const handleSaveCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = formatRoomCodeMask(codeDraft);
+    const withoutHyphen = clean.replace(/-/g, '');
+    if (withoutHyphen.length < 6) {
+      triggerFeedback('O código deve conter 6 caracteres no formato XXX-XXX.');
+      return;
+    }
+    if (clean === room.code) {
+      setIsEditingCode(false);
+      return;
+    }
+    setIsSavingCode(true);
+    try {
+      const res = await updateCode(clean);
+      if (res.success) {
+        setIsEditingCode(false);
+        triggerFeedback(`Chave do culto atualizada para ${clean}!`);
+      } else {
+        triggerFeedback(res.error || 'Erro ao atualizar código.');
+      }
+    } catch (err) {
+      console.error(err);
+      triggerFeedback('Erro ao atualizar código do culto.');
+    } finally {
+      setIsSavingCode(false);
     }
   };
 
@@ -219,60 +255,124 @@ export const ControladorPanel: React.FC = () => {
                   Direção do Culto — Comando da Cabine
                 </h2>
                 
-                {/* Edição Rápida do Nome do Culto */}
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="text-[11px] font-medium text-purple-700">Culto:</span>
-                  {isEditingTitle ? (
-                    <form onSubmit={handleSaveTitle} className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={titleDraft}
-                        onChange={e => setTitleDraft(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Escape') setIsEditingTitle(false);
-                        }}
-                        className="text-xs font-title font-bold uppercase px-2 py-0.5 rounded border border-purple-400 bg-purple-50 text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSavingTitle || !titleDraft.trim()}
-                        className="p-1 rounded bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
-                        title="Salvar novo nome do culto"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTitleDraft(room.title);
-                          setIsEditingTitle(false);
-                        }}
-                        className="p-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors cursor-pointer"
-                        title="Cancelar edição"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-title text-xs font-bold text-purple-950 uppercase">
-                        {room.title}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTitleDraft(room.title);
-                          setIsEditingTitle(true);
-                        }}
-                        className="text-purple-600 hover:text-purple-900 p-0.5 rounded hover:bg-purple-100 transition-colors inline-flex items-center gap-1 text-[11px] font-medium cursor-pointer"
-                        title="Editar nome do culto"
-                      >
-                        <Pencil className="w-3 h-3" />
-                        <span className="underline">Editar</span>
-                      </button>
-                    </div>
-                  )}
+                {/* Edição Rápida do Nome do Culto e Chave da Sala */}
+                <div className="mt-1 flex items-center gap-3 flex-wrap">
+                  {/* Nome do Culto */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-purple-700">Culto:</span>
+                    {isEditingTitle ? (
+                      <form onSubmit={handleSaveTitle} className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={titleDraft}
+                          onChange={e => setTitleDraft(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Escape') setIsEditingTitle(false);
+                          }}
+                          className="text-xs font-title font-bold uppercase px-2 py-0.5 rounded border border-purple-400 bg-purple-50 text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSavingTitle || !titleDraft.trim()}
+                          className="p-1 rounded bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
+                          title="Salvar novo nome do culto"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTitleDraft(room.title);
+                            setIsEditingTitle(false);
+                          }}
+                          className="p-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors cursor-pointer"
+                          title="Cancelar edição"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-title text-xs font-bold text-purple-950 uppercase">
+                          {room.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTitleDraft(room.title);
+                            setIsEditingTitle(true);
+                          }}
+                          className="text-purple-600 hover:text-purple-900 p-0.5 rounded hover:bg-purple-100 transition-colors inline-flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+                          title="Editar nome do culto"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span className="underline">Editar</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Divisor sutil */}
+                  <span className="text-purple-300 hidden sm:inline">•</span>
+
+                  {/* Chave da Sala (XXX-XXX com máscara) */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-purple-700">Chave:</span>
+                    {isEditingCode ? (
+                      <form onSubmit={handleSaveCode} className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={codeDraft}
+                          onChange={e => setCodeDraft(formatRoomCodeMask(e.target.value))}
+                          onKeyDown={e => {
+                            if (e.key === 'Escape') setIsEditingCode(false);
+                          }}
+                          placeholder="XXX-XXX"
+                          maxLength={7}
+                          className="text-xs font-mono font-bold uppercase px-2 py-0.5 rounded border border-purple-400 bg-purple-50 text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs w-24 tracking-wider text-center"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSavingCode || codeDraft.replace(/-/g, '').length < 6}
+                          className="p-1 rounded bg-purple-700 text-white hover:bg-purple-800 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
+                          title="Salvar nova chave da sala"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCodeDraft(room.code);
+                            setIsEditingCode(false);
+                          }}
+                          className="p-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors cursor-pointer"
+                          title="Cancelar edição"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-purple-950 bg-purple-100 border border-purple-200/80 px-1.5 py-0.5 rounded tracking-wider shadow-2xs">
+                          {room.code}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCodeDraft(room.code);
+                            setIsEditingCode(true);
+                          }}
+                          className="text-purple-600 hover:text-purple-900 p-0.5 rounded hover:bg-purple-100 transition-colors inline-flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+                          title="Alterar chave da sala"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          <span className="underline">Alterar</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -11,7 +11,9 @@ import {
   createRoom,
   verifyControllerPin,
   overwriteExistingRoom,
-  updateRoomTitle 
+  updateRoomTitle,
+  updateRoomCode,
+  formatRoomCodeMask 
 } from '../services/neon';
 
 interface RoomContextType {
@@ -31,6 +33,7 @@ interface RoomContextType {
   resetCurrentService: (newTitle: string) => Promise<void>;
   refreshData: () => Promise<void>;
   updateTitle: (newTitle: string) => Promise<void>;
+  updateCode: (newCode: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -396,6 +399,33 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [room]);
 
+  // Atualiza o código/chave da sala no formato padrão XXX-XXX
+  const updateCode = useCallback(async (newCode: string): Promise<{ success: boolean; error?: string }> => {
+    if (!room) return { success: false, error: 'Nenhuma sala ativa.' };
+    const formatted = formatRoomCodeMask(newCode);
+    const withoutHyphen = formatted.replace(/-/g, '');
+    if (withoutHyphen.length < 6) {
+      return { success: false, error: 'O código deve conter 6 caracteres no formato XXX-XXX.' };
+    }
+    try {
+      const res = await updateRoomCode(room.id, formatted);
+      if (res.success) {
+        setRoom(prev => prev ? { ...prev, code: formatted } : null);
+        try {
+          const active = getStoredSession();
+          if (active) {
+            active.code = formatted;
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify(active));
+          }
+        } catch (e) {}
+      }
+      return res;
+    } catch (err: any) {
+      console.warn('Erro ao atualizar código da sala:', err);
+      return { success: false, error: 'Falha ao atualizar o código no banco.' };
+    }
+  }, [room]);
+
   // Loop de Smart-Polling com detecção de tela ativa (Page Visibility API)
   // Adaptado por papel: Púlpito (3.5s), Cabine (4.5s), Tablet Obreiro (30s)
   useEffect(() => {
@@ -521,6 +551,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetCurrentService,
       refreshData,
       updateTitle,
+      updateCode,
     }}>
       {children}
     </RoomContext.Provider>
