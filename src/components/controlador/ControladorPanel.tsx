@@ -601,19 +601,19 @@ export const ControladorPanel: React.FC = () => {
             </div>
 
             {/* Texto ou Legenda do Pedido */}
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 placeholder="Legenda ou pedido em texto (Ex: Família do Irmão Marcos - Live)..."
                 value={youtubeText}
                 onChange={e => setYoutubeText(e.target.value)}
                 onPaste={handlePasteEvent}
-                className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-red-500 focus:bg-white outline-none"
+                className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-red-500 focus:bg-white outline-none w-full"
               />
               <button
                 type="submit"
                 disabled={isCompressing || (!youtubeText.trim() && !youtubeImageBase64)}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-red-700 disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-red-600 text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-red-700 disabled:opacity-50 transition-colors shrink-0 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Transmitir ao Púlpito</span>

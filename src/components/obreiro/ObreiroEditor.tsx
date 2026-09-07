@@ -365,7 +365,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
                 Visitantes do Culto
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark whitespace-nowrap shrink-0">
                 {visitorsList.length}
               </span>
             </div>
@@ -535,7 +535,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
                 Pedidos de Oração (Presenciais)
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark whitespace-nowrap shrink-0">
                 {prayersList.length}
               </span>
             </div>
@@ -698,14 +698,14 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           {role === 'controlador' && (
             <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 border-b border-church-sand pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-church-gold" />
                     <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
                       Departamentos do Culto
                     </h2>
                   </div>
-                  <span className="text-[11px] font-title font-bold px-2.5 py-0.5 rounded-full bg-church-gold/15 text-church-gold-dark">
+                  <span className="text-[11px] font-title font-bold px-2.5 py-0.5 rounded-full bg-church-gold/15 text-church-gold-dark whitespace-nowrap shrink-0">
                     {choirsList.filter(c => c.checked).length} Confirmados
                   </span>
                 </div>

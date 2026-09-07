@@ -14,7 +14,9 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  Youtube
+  Youtube,
+  FileText,
+  BookOpen
 } from 'lucide-react';
 import { LoadingScreen } from '../common/LoadingScreen';
 
@@ -43,6 +45,9 @@ export const PulpitView: React.FC = () => {
     });
   };
 
+  // Modo de visualização mobile: alterna entre Folha 1 e Folha 2 em tela cheia no smartphone
+  const [mobileTab, setMobileTab] = useState<'sheet1' | 'sheet2'>('sheet1');
+
   // Estados de detecção de overflow e rolagem fácil para idosos
   const [hasMoreSheet1, setHasMoreSheet1] = useState(false);
   const [isSheet1Scrolled, setIsSheet1Scrolled] = useState(false);
@@ -67,18 +72,19 @@ export const PulpitView: React.FC = () => {
   const opps = (oppBlock?.content || []) as OpportunityItem[];
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
-  // OPÇÃO 1: PASTA ABERTA EM 2 FOLHAS (SEM VIRADA DE PÁGINA)
-  // Balanceamento dinâmico para preenchimento harmônico da Folha 1 (eliminando espaço em branco vazio):
-  // 8 visitantes ocupam linhas curtas, permitindo 6 a 7 pedidos na Folha 1 antes de transbordar para a Folha 2.
-  const maxSheet1Prayers = visitors.length <= 3 
-    ? 8 
-    : visitors.length <= 6 
+  // BALANCEAMENTO DINÂMICO INTELIGENTE ENTRE AS DUAS FOLHAS:
+  // Se houver poucos visitantes (0 a 3), a Folha 1 puxa de 6 a 8 orações para preencher harmoniosamente sem buracos brancos.
+  // Se houver volume médio (4 a 6), a Folha 1 puxa 3 a 4 orações.
+  // Se houver muitos visitantes (7 ou mais), a Folha 1 é 100% dedicada a eles, garantindo que até 15 visitantes caibam SEM SCROLL no Mac 13", Tab A9 e Tab E!
+  const maxSheet1Prayers = visitors.length === 0
+    ? 10
+    : visitors.length <= 3 
       ? 7 
-      : visitors.length <= 10 
-        ? 6 
-        : visitors.length <= 14 
-          ? 4 
-          : 3;
+      : visitors.length <= 5 
+        ? 4 
+        : visitors.length <= 7 
+          ? 2 
+          : 0;
   const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
   const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const sheet2Items: PrayerItem[] = [...overflowPresencial, ...youtube];
@@ -108,7 +114,7 @@ export const PulpitView: React.FC = () => {
       clearTimeout(timer);
       window.removeEventListener('resize', checkScrollState);
     };
-  }, [visitors, prayers, youtube, fontScale, opps, choirs]);
+  }, [visitors, prayers, youtube, fontScale, opps, choirs, mobileTab]);
 
   // Funções de rolagem seguras com fallback para navegadores antigos (Android 4.4 / KitKat)
   const safeScrollBy = (el: HTMLElement | null, deltaY: number) => {
@@ -153,59 +159,6 @@ export const PulpitView: React.FC = () => {
     safeScrollToTop(sheet2ScrollRef.current);
   };
 
-  // Componente de Oportunidades e Departamentos (Sempre Visível no Rodapé da Folha 2)
-  const DepartamentosEOportunidadesAnchor = () => (
-    <div className="pt-3 border-t-2 border-church-sand/80 bg-church-parchment/80 rounded-xl p-3 sm:p-4 space-y-2 shrink-0 shadow-xs border border-church-sand">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {/* Oportunidades */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1 text-church-gold-dark">
-            <span className="w-2 h-2 rounded-full bg-church-gold shrink-0" />
-            <h4 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider">
-              Oportunidades ({opps.length})
-            </h4>
-          </div>
-          {opps.length === 0 ? (
-            <p className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhuma oportunidade adicionada.</p>
-          ) : (
-            <ul className="space-y-1 text-xs sm:text-sm font-sans text-church-charcoal max-h-48 overflow-y-auto pr-1 scrollbar-thin">
-              {opps.map((op, i) => (
-                <li key={op.id || i} className="font-semibold flex items-center gap-1.5 leading-snug">
-                  <span className="text-church-gold font-bold">•</span>
-                  <span>{op.name}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Departamentos */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1 text-church-gold-dark">
-            <span className="w-2 h-2 rounded-full bg-church-gold shrink-0" />
-            <h4 className="font-title text-xs sm:text-sm font-bold uppercase tracking-wider">
-              Departamentos
-            </h4>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {choirs.filter(ch => ch.checked).map((ch, i) => (
-              <span 
-                key={ch.id || i}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 text-church-charcoal font-bold text-xs sm:text-sm border border-church-gold/30"
-              >
-                <CheckSquare className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
-                <span>{ch.name}</span>
-              </span>
-            ))}
-            {choirs.filter(ch => ch.checked).length === 0 && (
-              <span className="font-serif italic text-church-muted text-xs sm:text-sm">Nenhum departamento escalado</span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="h-full w-full flex flex-col bg-church-parchment select-none overflow-hidden relative min-h-0">
       {/* ⚠️ FAIXA DE ALERTA NO TOPO - EMPURRA SUAVEMENTE AS FOLHAS */}
@@ -221,17 +174,56 @@ export const PulpitView: React.FC = () => {
         </aside>
       )}
 
+      {/* SELETOR DE ABAS EXCLUSIVO PARA SMARTPHONES (TELA VERTICAL < 768px) */}
+      <nav aria-label="Navegação de folhas" className="flex md:hidden items-center justify-center p-2 bg-church-parchment border-b border-church-sand shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={() => setMobileTab('sheet1')}
+          className={`flex-1 py-2 px-3 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+            mobileTab === 'sheet1'
+              ? 'bg-church-gold text-white shadow-xs'
+              : 'bg-white/80 text-church-charcoal border border-church-sand/80 hover:bg-white'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Folha 1: Recepção</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${mobileTab === 'sheet1' ? 'bg-white/20 text-white' : 'bg-church-gold/15 text-church-gold-dark'}`}>
+            {visitors.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileTab('sheet2')}
+          className={`flex-1 py-2 px-3 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+            mobileTab === 'sheet2'
+              ? 'bg-church-gold text-white shadow-xs'
+              : 'bg-white/80 text-church-charcoal border border-church-sand/80 hover:bg-white'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Folha 2: Orações</span>
+          {(youtube.length > 0 || sheet2Items.length > 0) && (
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${mobileTab === 'sheet2' ? 'bg-white/20 text-white' : 'bg-church-gold/15 text-church-gold-dark'}`}>
+              {sheet2Items.length}
+            </span>
+          )}
+        </button>
+      </nav>
+
       {/* ========================================================================= */}
       {/* OPÇÃO 1: DUAS FOLHAS LADO A LADO EM MODO PAISAGEM COM ROLAGEM VERTICAL SUAVE */}
       {/* ========================================================================= */}
       <main 
-        className="flex-1 p-2 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 overflow-hidden h-full max-h-full min-h-0"
+        className="flex-1 p-2 sm:p-4 md:grid md:grid-cols-2 gap-3 sm:gap-4 overflow-hidden h-full max-h-full min-h-0 flex flex-col"
         style={{ fontSize: `${fontScale}rem` }}
       >
         {/* ================= FOLHA 1 (ESQUERDA) ================= */}
-        <section className="paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
+        <section className={`paper-sheet rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet ${
+          mobileTab === 'sheet1' ? 'flex' : 'hidden md:flex'
+        }`}>
           {/* Cabeçalho da Folha 1 */}
-          <div className="border-b border-church-sand pb-3 mb-3 flex items-center justify-between gap-4 shrink-0">
+          <div className="border-b border-church-sand pb-2.5 mb-2.5 flex items-center justify-between gap-4 shrink-0">
             <div className="flex flex-col">
               <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
                 Liturgia & Recepção
@@ -251,11 +243,11 @@ export const PulpitView: React.FC = () => {
           <div 
             ref={sheet1ScrollRef}
             onScroll={checkScrollState}
-            className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
+            className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* Bloco de Visitantes */}
-            <article className="pb-3 border-b border-church-sand/50 shrink-0">
+            <article className={`shrink-0 ${sheet1Prayers.length > 0 ? 'pb-2.5 border-b border-church-sand/50' : 'flex-1'}`}>
               <header className="flex items-center gap-2 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
                 <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
@@ -265,7 +257,7 @@ export const PulpitView: React.FC = () => {
               {visitors.length === 0 ? (
                 <p className="font-serif italic text-church-muted/70 text-sm">Nenhum visitante registrado ainda.</p>
               ) : (
-                <ul className="space-y-1.5 list-disc list-inside">
+                <ul className="space-y-1 sm:space-y-1.5 list-disc list-inside">
                   {visitors.map((v, i) => (
                     <li key={v.id || i} className="font-sans text-church-charcoal leading-snug">
                       <strong className="font-semibold">{v.name}</strong>
@@ -277,20 +269,18 @@ export const PulpitView: React.FC = () => {
               )}
             </article>
 
-            {/* Bloco de Pedidos de Oração Presenciais */}
-            <article className="flex-1">
-              <header className="flex items-center gap-2 mb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
-                <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                  Pedidos de Oração ({sheet1Prayers.length})
-                </h3>
-              </header>
-              {sheet1Prayers.length === 0 ? (
-                <p className="font-serif italic text-church-muted/70 text-sm">Nenhum pedido de oração inserido.</p>
-              ) : (
-                <ul className="space-y-2 list-disc list-inside">
+            {/* Bloco de Pedidos de Oração Presenciais (Aparece na Folha 1 quando há poucos visitantes para preencher a folha) */}
+            {sheet1Prayers.length > 0 && (
+              <article className="flex-1">
+                <header className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+                  <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                    Pedidos de Oração ({sheet1Prayers.length})
+                  </h3>
+                </header>
+                <ul className="space-y-1.5 list-disc list-inside">
                   {sheet1Prayers.map((p, i) => (
-                    <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
+                    <li key={p.id || i} className="font-sans text-church-charcoal leading-snug">
                       {p.urgent && (
                         <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
                           Urgente
@@ -300,19 +290,25 @@ export const PulpitView: React.FC = () => {
                     </li>
                   ))}
                 </ul>
-              )}
-              {(overflowPresencial.length > 0 || youtube.length > 0) && (
-                <p className="font-serif italic text-xs text-church-gold-dark mt-3 flex items-center gap-1.5 flex-wrap">
-                  <span>* Continuação na Folha 2 à direita ➔</span>
-                  {youtube.length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-sans font-bold text-[10px] uppercase border border-red-200">
-                      <Youtube className="w-3 h-3 text-red-600" />
-                      {youtube.length} YouTube
-                    </span>
-                  )}
-                </p>
-              )}
-            </article>
+                {(overflowPresencial.length > 0 || youtube.length > 0) && (
+                  <p className="font-serif italic text-xs text-church-gold-dark mt-2.5 flex items-center gap-1.5 flex-wrap">
+                    <span>* Continuação na Folha 2 à direita ➔</span>
+                    {youtube.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-sans font-bold text-[10px] uppercase border border-red-200">
+                        <Youtube className="w-3 h-3 text-red-600" />
+                        {youtube.length} YouTube
+                      </span>
+                    )}
+                  </p>
+                )}
+              </article>
+            )}
+
+            {sheet1Prayers.length === 0 && (prayers.length > 0 || youtube.length > 0) && (
+              <p className="font-serif italic text-xs text-church-gold-dark mt-2 flex items-center gap-1.5 shrink-0">
+                <span>* Pedidos de oração e intercessão na Folha 2 ➔</span>
+              </p>
+            )}
           </div>
 
           {/* BOTÃO VISÍVEL DE ROLAGEM / AVISO PARA IDOSOS (FOLHA 1) */}
@@ -344,15 +340,17 @@ export const PulpitView: React.FC = () => {
 
           {/* Rodapé da Folha 1 */}
           <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
-            <span className="font-serif italic">Folha 1 (Recepção & Orações)</span>
+            <span className="font-serif italic">Folha 1 (Recepção & Visitantes)</span>
             <span className="font-mono">Página 1</span>
           </div>
         </section>
 
         {/* ================= FOLHA 2 (DIREITA) ================= */}
-        <section className="paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
+        <section className={`paper-sheet rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet ${
+          mobileTab === 'sheet2' ? 'flex' : 'hidden md:flex'
+        }`}>
           {/* Cabeçalho da Folha 2 */}
-          <div className="border-b border-church-sand pb-3 mb-3 flex items-center justify-between gap-4 shrink-0">
+          <div className="border-b border-church-sand pb-2.5 mb-2.5 flex items-center justify-between gap-4 shrink-0">
             <div className="flex flex-col">
               <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
                 Intercessão & Escala
@@ -366,11 +364,11 @@ export const PulpitView: React.FC = () => {
             </span>
           </div>
 
-          {/* Conteúdo Dinâmico de Orações da Folha 2 (Apenas esta área rola!) */}
+          {/* Conteúdo Dinâmico de Orações, Oportunidades e Departamentos da Folha 2 */}
           <div 
             ref={sheet2ScrollRef}
             onScroll={checkScrollState}
-            className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
+            className="flex-1 min-h-0 space-y-3.5 overflow-y-auto pr-2 flex flex-col scrollbar-thin"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {/* 1. SEÇÃO DESTACADA: PEDIDOS DA TRANSMISSÃO AO VIVO (YOUTUBE) */}
@@ -398,7 +396,6 @@ export const PulpitView: React.FC = () => {
                         </span>
                       )}
                       <span className="font-medium text-red-950">{p.description}</span>
-                      {/* Print do chat do YouTube inline sem popup gigante */}
                       {p.image_data && (
                         <div className="mt-2 ml-4 rounded-lg overflow-hidden border border-red-200 bg-white p-1 max-w-[280px] shadow-2xs">
                           <img 
@@ -414,18 +411,18 @@ export const PulpitView: React.FC = () => {
               </article>
             )}
 
-            {/* 2. CONTINUAÇÃO DOS PEDIDOS PRESENCIAIS */}
+            {/* 2. PEDIDOS DE ORAÇÃO PRESENCIAIS */}
             {overflowPresencial.length > 0 && (
-              <article className="flex-1">
+              <article className="shrink-0">
                 <header className="flex items-center gap-2 mb-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
                   <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                    Pedidos Presenciais — Continuação ({overflowPresencial.length})
+                    {sheet1Prayers.length === 0 ? `Pedidos de Oração Presenciais (${overflowPresencial.length})` : `Pedidos Presenciais — Continuação (${overflowPresencial.length})`}
                   </h3>
                 </header>
-                <ul className="space-y-2 list-disc list-inside">
+                <ul className="space-y-1.5 list-disc list-inside">
                   {overflowPresencial.map((p, i) => (
-                    <li key={p.id || i} className="font-sans text-church-charcoal leading-relaxed">
+                    <li key={p.id || i} className="font-sans text-church-charcoal leading-snug">
                       {p.urgent && (
                         <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider">
                           Urgente
@@ -440,13 +437,58 @@ export const PulpitView: React.FC = () => {
 
             {/* Caso não haja nenhum pedido de oração nesta folha */}
             {youtube.length === 0 && overflowPresencial.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 text-church-muted space-y-1">
+              <div className="py-4 flex flex-col items-center justify-center text-center text-church-muted space-y-1">
                 <p className="font-serif italic text-sm text-church-charcoal">
                   "Orai sem cessar. Em tudo dai graças."
                 </p>
                 <span className="text-[11px] font-title font-bold text-church-gold uppercase">1 Tessalonicenses 5:17</span>
               </div>
             )}
+
+            {/* 3. OPORTUNIDADES DO CULTO (INTEGRADAS AO FLUXO NORMAL DO DOCUMENTO) */}
+            <article className="pt-3 border-t border-church-sand/60 shrink-0">
+              <header className="flex items-center gap-2 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+                <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                  Oportunidades ({opps.length})
+                </h3>
+              </header>
+              {opps.length === 0 ? (
+                <p className="font-serif italic text-church-muted text-xs">Nenhuma oportunidade adicionada.</p>
+              ) : (
+                <ul className="space-y-1 list-disc list-inside">
+                  {opps.map((op, i) => (
+                    <li key={op.id || i} className="font-semibold text-xs sm:text-sm font-sans text-church-charcoal leading-snug">
+                      <span>{op.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+
+            {/* 4. DEPARTAMENTOS DO CULTO (INTEGRADOS AO FLUXO NORMAL DO DOCUMENTO) */}
+            <article className="pt-3 border-t border-church-sand/60 shrink-0">
+              <header className="flex items-center gap-2 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
+                <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
+                  Departamentos
+                </h3>
+              </header>
+              <div className="flex flex-wrap gap-1.5">
+                {choirs.filter(ch => ch.checked).map((ch, i) => (
+                  <span 
+                    key={ch.id || i}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 text-church-charcoal font-bold text-xs border border-church-gold/30 shadow-2xs"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+                    <span>{ch.name}</span>
+                  </span>
+                ))}
+                {choirs.filter(ch => ch.checked).length === 0 && (
+                  <span className="font-serif italic text-church-muted text-xs">Nenhum departamento escalado</span>
+                )}
+              </div>
+            </article>
           </div>
 
           {/* BOTÃO VISÍVEL DE ROLAGEM / AVISO PARA IDOSOS (FOLHA 2) */}
@@ -475,10 +517,6 @@ export const PulpitView: React.FC = () => {
               <span>Voltar ao topo</span>
             </button>
           ) : null}
-
-          {/* BLOCO FIXO ANCORADO NO RODAPÉ DA FOLHA 2: OPORTUNIDADES E DEPARTAMENTOS */}
-          {/* SEMPRE VISÍVEL! NUNCA FICA ESCONDIDO LÁ EMBAIXO! */}
-          <DepartamentosEOportunidadesAnchor />
 
           {/* Rodapé da Folha 2 */}
           <div className="pt-2 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
@@ -518,8 +556,8 @@ export const PulpitView: React.FC = () => {
         </div>
 
         {/* Centro: Indicador de Pasta Aberta (Sem Virada de Página) */}
-        <div className="flex items-center gap-2">
-          <span className="font-title text-[11px] font-bold uppercase tracking-wider text-church-charcoal/80 bg-white/70 px-3 py-1 rounded-full border border-church-sand shadow-2xs">
+        <div className="hidden sm:flex items-center gap-2">
+          <span className="font-title text-[11px] font-bold uppercase tracking-wider text-church-charcoal/80 bg-white/70 px-3 py-1 rounded-full border border-church-sand shadow-2xs whitespace-nowrap">
             Pasta Aberta • Folhas 1 e 2
           </span>
         </div>
