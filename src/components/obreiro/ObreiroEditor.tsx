@@ -29,18 +29,61 @@ interface ObreiroEditorProps {
 export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
   const { room, blocks, updateBlock, role } = useRoom();
 
+  const draftVisitorKey = room ? `docs_church_draft_visitors_${room.code}` : '';
+  const draftPrayerKey = room ? `docs_church_draft_prayers_${room.code}` : '';
+
   // Estados de Visitantes
   const [visitorName, setVisitorName] = useState('');
   const [visitorChurch, setVisitorChurch] = useState('');
   const [visitorInvitedBy, setVisitorInvitedBy] = useState('');
   const [visitorBatchMode, setVisitorBatchMode] = useState(true);
-  const [visitorBatchText, setVisitorBatchText] = useState('');
+  const [visitorBatchText, setVisitorBatchText] = useState(() => {
+    try {
+      return (room ? localStorage.getItem(`docs_church_draft_visitors_${room.code}`) : null) || '';
+    } catch {
+      return '';
+    }
+  });
 
   // Estados de Oração Presencial
   const [prayerDesc, setPrayerDesc] = useState('');
   const [prayerUrgent, setPrayerUrgent] = useState(false);
   const [prayerBatchMode, setPrayerBatchMode] = useState(true);
-  const [prayerBatchText, setPrayerBatchText] = useState('');
+  const [prayerBatchText, setPrayerBatchText] = useState(() => {
+    try {
+      return (room ? localStorage.getItem(`docs_church_draft_prayers_${room.code}`) : null) || '';
+    } catch {
+      return '';
+    }
+  });
+
+  // Salva rascunho de visitantes no localStorage do tablet sem fazer requisições à Vercel
+  const handleVisitorBatchTextChange = (text: string) => {
+    setVisitorBatchText(text);
+    if (draftVisitorKey) {
+      try {
+        if (text.trim()) {
+          localStorage.setItem(draftVisitorKey, text);
+        } else {
+          localStorage.removeItem(draftVisitorKey);
+        }
+      } catch (e) {}
+    }
+  };
+
+  // Salva rascunho de oração no localStorage do tablet sem fazer requisições à Vercel
+  const handlePrayerBatchTextChange = (text: string) => {
+    setPrayerBatchText(text);
+    if (draftPrayerKey) {
+      try {
+        if (text.trim()) {
+          localStorage.setItem(draftPrayerKey, text);
+        } else {
+          localStorage.removeItem(draftPrayerKey);
+        }
+      } catch (e) {}
+    }
+  };
 
   // Estados de Oportunidades
   const [oppName, setOppName] = useState('');
@@ -119,7 +162,10 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
     updateBlock(block.id, [...current, ...newItems]);
     setVisitorBatchText('');
-    setVisitorBatchMode(false);
+    if (draftVisitorKey) {
+      try { localStorage.removeItem(draftVisitorKey); } catch (e) {}
+    }
+    // Mantém no modo de lote para que o irmão continue anotando os próximos
     showFeedback(`${newItems.length} visitantes adicionados à folha!`);
   };
 
@@ -175,8 +221,11 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
     updateBlock(block.id, [...current, ...newItems]);
     setPrayerBatchText('');
-    setPrayerBatchMode(false);
+    if (draftPrayerKey) {
+      try { localStorage.removeItem(draftPrayerKey); } catch (e) {}
+    }
     setPrayerUrgent(false);
+    // Mantém no modo de lote para que o irmão continue anotando os próximos
     showFeedback(`${newItems.length} pedidos de oração adicionados!`);
   };
 
@@ -360,9 +409,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   rows={9}
                   placeholder="Digite ou cole aqui os visitantes (1 por linha), como se fosse em uma folha em branco...&#10;&#10;Exemplo:&#10;Irmão Carlos Eduardo e Família (Igreja Batista)&#10;Irmã Valéria Souza (A.D. São Mateus)&#10;Jovem Matheus Henrique (Convidado pelo Gabriel)&#10;Pastor Marcos e Pastora Aline"
                   value={visitorBatchText}
-                  onChange={e => setVisitorBatchText(e.target.value)}
+                  onChange={e => handleVisitorBatchTextChange(e.target.value)}
                   className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
                 />
+                {visitorBatchText.trim() && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium px-3 pb-1 pt-0.5 border-t border-church-sand/40">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>Rascunho salvo no aparelho (não se perde se a tela desligar ou recarregar)</span>
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
                 <button
@@ -375,7 +430,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 {visitorBatchText.trim() && (
                   <button
                     type="button"
-                    onClick={() => setVisitorBatchText('')}
+                    onClick={() => handleVisitorBatchTextChange('')}
                     className="px-4 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                   >
                     Limpar Folha
@@ -524,9 +579,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   rows={9}
                   placeholder="Digite ou cole aqui os pedidos de oração livremente (1 por linha)...&#10;&#10;Exemplo:&#10;Irmão João Batista - UTI do Hospital Santa Marcelina&#10;Irmã Sebastiana - Cirurgia do fêmur&#10;Família da Irmã Iva - Consolo e fortalecimento&#10;Irmão Marcos Vinicius - Libertação dos vícios"
                   value={prayerBatchText}
-                  onChange={e => setPrayerBatchText(e.target.value)}
+                  onChange={e => handlePrayerBatchTextChange(e.target.value)}
                   className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
                 />
+                {prayerBatchText.trim() && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium px-3 pb-1 pt-0.5 border-t border-church-sand/40">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>Rascunho salvo no aparelho (não se perde se a tela desligar ou recarregar)</span>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
                 <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
@@ -549,7 +610,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   {prayerBatchText.trim() && (
                     <button
                       type="button"
-                      onClick={() => setPrayerBatchText('')}
+                      onClick={() => handlePrayerBatchTextChange('')}
                       className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                     >
                       Limpar Folha
