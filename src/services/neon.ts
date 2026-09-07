@@ -163,7 +163,7 @@ export async function createRoom(
     return { room, blocks: existingBlocks as LiturgicalBlock[] };
   }
 
-  // Cria os blocos padrão da congregação (baseado no Google Docs da A.D. Utinga)
+  // Cria os blocos padrão da congregação (folha limpa com os 5 departamentos padrão)
   const defaultBlocks: Array<{
     type: BlockType;
     title: string;
@@ -174,52 +174,40 @@ export async function createRoom(
     {
       type: 'visitors',
       title: 'Visitantes',
-      content: [
-        { id: '1', name: 'Mãe da Andrei', church: '', invited_by: 'Andrei' }
-      ],
+      content: [],
       order: 1,
       sheet: 1, // Folha 1 (Esquerda)
     },
     {
       type: 'prayer',
       title: 'Pedidos de Oração',
-      content: [
-        { id: '1', description: 'Pedidos de oração do Irmão Ervelino: Pastor Silas e Kelly; Irmã Nadir; Irmã Graciete; Valentina; Talita; Leonor; Regina e Beto; Deilton e Esposa; Tânia; Antonio; Rosângela; Irmã Aninha; Irmã Eluana; Guilherme; Irmã Celia;', urgent: false },
-        { id: '2', description: 'Oração pela irmã Sebastiana', urgent: false },
-        { id: '3', description: 'Oração por João está na UTI - irmão da irmã Sara', urgent: true },
-        { id: '4', description: 'Irmã Iva', urgent: false },
-        { id: '5', description: 'Irmã Shirlei está internada', urgent: true }
-      ],
+      content: [],
       order: 2,
       sheet: 1, // Folha 1 (Esquerda)
     },
     {
       type: 'youtube',
       title: 'Pedidos de Oração Youtube',
-      content: [
-        { id: '1', description: 'Família do Irmão Marcos (Live)', urgent: false }
-      ],
+      content: [],
       order: 3,
       sheet: 1, // Folha 1 (Esquerda)
     },
     {
       type: 'opportunities',
-      title: 'Oportunidade',
-      content: [
-        { id: '1', name: 'Grupo Renovo' }
-      ],
+      title: 'Oportunidades',
+      content: [],
       order: 4,
       sheet: 2, // Folha 2 (Direita)
     },
     {
       type: 'choirs',
-      title: 'Conjuntos',
+      title: 'Departamentos',
       content: [
         { id: '1', name: 'Mocidade', checked: false },
         { id: '2', name: 'Círculo de Oração', checked: false },
-        { id: '3', name: 'Varões', checked: true },
+        { id: '3', name: 'Varões', checked: false },
         { id: '4', name: 'Juniores', checked: false },
-        { id: '5', name: 'Crianças', checked: true }
+        { id: '5', name: 'Crianças', checked: false }
       ],
       order: 5,
       sheet: 2, // Folha 2 (Direita)
