@@ -19,8 +19,24 @@ import {
   Image as ImageIcon,
   Trash2,
   Plus,
-  Pencil
+  Pencil,
+  ClipboardCopy,
+  Sparkles
 } from 'lucide-react';
+import { 
+  VisitorItem, 
+  ChoirItem, 
+  OpportunityItem 
+} from '../../types/liturgy';
+import { 
+  formatVisitorsList, 
+  formatPrayersList, 
+  formatYoutubeList, 
+  formatChoirsList, 
+  formatOpportunitiesList, 
+  formatFullLiturgy, 
+  copyTextToClipboard 
+} from '../../utils/liturgyExport';
 
 export const ControladorPanel: React.FC = () => {
   const { room, blocks, isFastSync, updateBlock, appendItemsToBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
@@ -28,6 +44,9 @@ export const ControladorPanel: React.FC = () => {
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
   const [showPulpitPreview, setShowPulpitPreview] = useState(false);
+  const [showFullListModal, setShowFullListModal] = useState(false);
+  const [fullListTab, setFullListTab] = useState<'all' | 'visitors' | 'prayers' | 'youtube' | 'choirs' | 'opps'>('all');
+  const [isListCopied, setIsListCopied] = useState(false);
   const [newTitleInput, setNewTitleInput] = useState('Culto de Celebração');
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -394,6 +413,17 @@ export const ControladorPanel: React.FC = () => {
                 <span>{isFastSync ? 'Sinc. Rápida (2.5s)' : 'Modo Calmo (6s)'}</span>
               </div>
 
+              {/* Botão Ver Lista Completa (Google Docs / Bloco de Notas) */}
+              <button
+                type="button"
+                onClick={() => { setFullListTab('all'); setShowFullListModal(true); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-title font-bold uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95"
+                title="Abrir lista completa do culto formatada para copiar para Google Docs ou Bloco de Notas"
+              >
+                <ClipboardCopy className="w-3.5 h-3.5" />
+                <span>Ver Lista Completa</span>
+              </button>
+
               {/* Botão de Prévia do Púlpito */}
               <button
                 type="button"
@@ -478,7 +508,7 @@ export const ControladorPanel: React.FC = () => {
       {/* SEÇÃO EXCLUSIVA DO CONTROLADOR: TRANSMISSÃO AO VIVO / YOUTUBE COM PRINTS */}
       <section className="max-w-4xl w-full mx-auto p-4 sm:p-6 pb-0">
         <div className="bg-white rounded-2xl border-2 border-red-200 p-4 sm:p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4 border-b border-red-100 pb-3">
+          <div className="flex items-center justify-between mb-4 border-b border-red-100 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Youtube className="w-5 h-5 text-red-600" />
               <h3 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
@@ -488,9 +518,26 @@ export const ControladorPanel: React.FC = () => {
                 {youtubeList.length}
               </span>
             </div>
-            <span className="text-xs font-serif italic text-church-muted hidden sm:inline">
-              Área exclusiva da Cabine
-            </span>
+            <div className="flex items-center gap-2">
+              {youtubeList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const text = formatYoutubeList(youtubeList);
+                    const success = await copyTextToClipboard(text);
+                    if (success) triggerFeedback('Pedidos do YouTube copiados para a área de transferência!');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                  title="Copiar pedidos do YouTube formatados para o Google Docs ou Bloco de Notas"
+                >
+                  <ClipboardCopy className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Copiar</span>
+                </button>
+              )}
+              <span className="text-xs font-serif italic text-church-muted hidden sm:inline">
+                Área exclusiva da Cabine
+              </span>
+            </div>
           </div>
 
           {/* Lista de Pedidos / Prints do YouTube */}
@@ -676,6 +723,198 @@ export const ControladorPanel: React.FC = () => {
           </div>
         </div>
       )}
+      {/* MODAL DA LISTA COMPLETA DO CULTO (CONTINGÊNCIA PARA GOOGLE DOCS / BLOCO DE NOTAS) */}
+      {showFullListModal && (() => {
+        const visitorsList = (blocks.find(b => b.block_type === 'visitors')?.content || []) as VisitorItem[];
+        const prayersList = (blocks.find(b => b.block_type === 'prayer')?.content || []) as PrayerItem[];
+        const oppsList = (blocks.find(b => b.block_type === 'opportunities')?.content || []) as OpportunityItem[];
+        const choirsList = (blocks.find(b => b.block_type === 'choirs')?.content || []) as ChoirItem[];
+
+        const getSelectedTextForModal = () => {
+          switch (fullListTab) {
+            case 'visitors':
+              return formatVisitorsList(visitorsList);
+            case 'prayers':
+              return formatPrayersList(prayersList);
+            case 'youtube':
+              return formatYoutubeList(youtubeList);
+            case 'choirs':
+              return formatChoirsList(choirsList.filter(c => c.checked));
+            case 'opps':
+              return formatOpportunitiesList(oppsList);
+            default:
+              return formatFullLiturgy({
+                title: room.title,
+                code: room.code,
+                visitors: visitorsList,
+                prayers: prayersList,
+                youtube: youtubeList,
+                choirs: choirsList.filter(c => c.checked),
+                opportunities: oppsList,
+              });
+          }
+        };
+
+        const handleCopyModalText = async () => {
+          const text = getSelectedTextForModal();
+          const success = await copyTextToClipboard(text);
+          if (success) {
+            setIsListCopied(true);
+            setTimeout(() => setIsListCopied(false), 2500);
+            triggerFeedback('Copiado para a área de transferência!');
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-church-sand overflow-hidden">
+              
+              {/* Cabeçalho do Modal */}
+              <header className="p-4 sm:p-5 bg-church-parchment border-b border-church-sand flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200">
+                    <ClipboardCopy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-title text-sm sm:text-base font-extrabold uppercase text-church-charcoal">
+                      Lista Completa do Culto
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-church-muted mt-0.5">
+                      Texto pronto para copiar e colar no Google Docs ou Bloco de Notas em caso de emergência
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFullListModal(false)}
+                  className="p-1.5 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-church-sand/40 transition-colors cursor-pointer"
+                  title="Fechar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </header>
+
+              {/* Seletor de Seções (Abas Rápidas) */}
+              <div className="px-4 pt-3 pb-2 bg-white border-b border-church-sand/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setFullListTab('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase whitespace-nowrap transition-all cursor-pointer ${
+                    fullListTab === 'all'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-church-parchment text-church-charcoal hover:bg-church-sand/50'
+                  }`}
+                >
+                  📄 Tudo do Culto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFullListTab('visitors')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase whitespace-nowrap transition-all cursor-pointer ${
+                    fullListTab === 'visitors'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-church-parchment text-church-charcoal hover:bg-church-sand/50'
+                  }`}
+                >
+                  Visitantes ({visitorsList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFullListTab('prayers')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase whitespace-nowrap transition-all cursor-pointer ${
+                    fullListTab === 'prayers'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-church-parchment text-church-charcoal hover:bg-church-sand/50'
+                  }`}
+                >
+                  Orações Presenciais ({prayersList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFullListTab('youtube')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase whitespace-nowrap transition-all cursor-pointer ${
+                    fullListTab === 'youtube'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-church-parchment text-church-charcoal hover:bg-church-sand/50'
+                  }`}
+                >
+                  YouTube ({youtubeList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFullListTab('choirs')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase whitespace-nowrap transition-all cursor-pointer ${
+                    fullListTab === 'choirs'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-church-parchment text-church-charcoal hover:bg-church-sand/50'
+                  }`}
+                >
+                  Departamentos ({choirsList.filter(c => c.checked).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFullListTab('opps')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-title font-bold uppercase whitespace-nowrap transition-all cursor-pointer ${
+                    fullListTab === 'opps'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-church-parchment text-church-charcoal hover:bg-church-sand/50'
+                  }`}
+                >
+                  Oportunidades ({oppsList.length})
+                </button>
+              </div>
+
+              {/* Área de Visualização do Texto Formatado (Folha / Bloco de Notas) */}
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 bg-church-parchment/30">
+                <div className="bg-white rounded-xl border border-church-sand p-4 font-mono text-xs sm:text-sm text-church-charcoal whitespace-pre-wrap leading-relaxed shadow-xs selection:bg-emerald-100 selection:text-emerald-900 border-l-4 border-l-emerald-600">
+                  {getSelectedTextForModal()}
+                </div>
+              </div>
+
+              {/* Rodapé com Botão Principal de Cópia e Instrução */}
+              <footer className="p-4 sm:p-5 bg-white border-t border-church-sand flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                <div className="text-[11px] text-church-muted flex items-center gap-1.5 text-center sm:text-left">
+                  <Sparkles className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+                  <span>Basta clicar no botão e colar com <strong>Ctrl+V / Cmd+V</strong> no Google Docs ou Bloco de Notas.</span>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowFullListModal(false)}
+                    className="w-1/3 sm:w-auto px-4 py-2.5 rounded-xl border border-church-sand font-title text-xs font-bold uppercase text-church-muted hover:text-church-charcoal hover:bg-church-parchment transition-colors cursor-pointer"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyModalText}
+                    className={`w-2/3 sm:w-auto px-5 py-2.5 rounded-xl font-title text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer ${
+                      isListCopied 
+                        ? 'bg-emerald-600 text-white' 
+                        : 'bg-emerald-700 hover:bg-emerald-800 text-white active:scale-95'
+                    }`}
+                  >
+                    {isListCopied ? (
+                      <>
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>Copiado com Sucesso!</span>
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardCopy className="w-4 h-4 stroke-[2.5]" />
+                        <span>Copiar para Área de Transferência</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </footer>
+
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 };

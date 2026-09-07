@@ -22,8 +22,16 @@ import {
   Pencil,
   X,
   Plus,
-  Tablet
+  Tablet,
+  ClipboardCopy
 } from 'lucide-react';
+import { 
+  formatVisitorsList, 
+  formatPrayersList, 
+  formatChoirsList, 
+  formatOpportunitiesList, 
+  copyTextToClipboard 
+} from '../../utils/liturgyExport';
 
 interface ObreiroEditorProps {
   showHeader?: boolean;
@@ -371,6 +379,23 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Botão de Cópia Rápida para o Controlador */}
+              {role === 'controlador' && visitorsList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const text = formatVisitorsList(visitorsList);
+                    const success = await copyTextToClipboard(text);
+                    if (success) showFeedback('Lista de visitantes copiada para a área de transferência!');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                  title="Copiar lista de visitantes formatada para o Google Docs ou Bloco de Notas"
+                >
+                  <ClipboardCopy className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Copiar</span>
+                </button>
+              )}
+
               {/* Botão exclusivo da Direção/Controlador para limpar tudo */}
               {role === 'controlador' && visitorsList.length > 0 && (
                 <button
@@ -541,6 +566,23 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Botão de Cópia Rápida para o Controlador */}
+              {role === 'controlador' && prayersList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const text = formatPrayersList(prayersList);
+                    const success = await copyTextToClipboard(text);
+                    if (success) showFeedback('Pedidos de oração copiados para a área de transferência!');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                  title="Copiar pedidos de oração formatados para o Google Docs ou Bloco de Notas"
+                >
+                  <ClipboardCopy className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Copiar</span>
+                </button>
+              )}
+
               {/* Botão exclusivo da Direção/Controlador para limpar tudo */}
               {role === 'controlador' && prayersList.length > 0 && (
                 <button
@@ -705,9 +747,26 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                       Departamentos do Culto
                     </h2>
                   </div>
-                  <span className="text-[11px] font-title font-bold px-2.5 py-0.5 rounded-full bg-church-gold/15 text-church-gold-dark whitespace-nowrap shrink-0">
-                    {choirsList.filter(c => c.checked).length} Confirmados
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-title font-bold px-2.5 py-0.5 rounded-full bg-church-gold/15 text-church-gold-dark whitespace-nowrap shrink-0">
+                      {choirsList.filter(c => c.checked).length} Confirmados
+                    </span>
+                    {choirsList.filter(c => c.checked).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const text = formatChoirsList(choirsList.filter(c => c.checked));
+                          const success = await copyTextToClipboard(text);
+                          if (success) showFeedback('Departamentos confirmados copiados para a área de transferência!');
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                        title="Copiar departamentos confirmados para o Google Docs ou Bloco de Notas"
+                      >
+                        <ClipboardCopy className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Copiar</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Adicionar Novo Departamento */}
@@ -846,11 +905,31 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           {/* Oportunidades */}
           <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-4 border-b border-church-sand pb-3">
-                <Mic2 className="w-5 h-5 text-church-gold" />
-                <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-                  Oportunidades
-                </h2>
+              <div className="flex items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
+                <div className="flex items-center gap-2">
+                  <Mic2 className="w-5 h-5 text-church-gold" />
+                  <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
+                    Oportunidades
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark whitespace-nowrap shrink-0">
+                    {oppsList.length}
+                  </span>
+                </div>
+                {role === 'controlador' && oppsList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const text = formatOpportunitiesList(oppsList);
+                      const success = await copyTextToClipboard(text);
+                      if (success) showFeedback('Oportunidades copiadas para a área de transferência!');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors cursor-pointer shadow-2xs"
+                    title="Copiar oportunidades formatadas para o Google Docs ou Bloco de Notas"
+                  >
+                    <ClipboardCopy className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Copiar</span>
+                  </button>
+                )}
               </div>
 
               {/* Formulário de Adicionar no TOPO */}
