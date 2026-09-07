@@ -313,3 +313,31 @@ export async function archiveAndResetRoom(roomId: string, newTitle: string): Pro
     WHERE room_id = ${roomId} AND block_type = 'choirs'
   `;
 }
+
+/**
+ * Substitui um culto existente com nova folha limpa e atualiza o PIN
+ */
+export async function overwriteExistingRoom(roomId: string, newTitle: string, newPin: string): Promise<void> {
+  await sql`
+    UPDATE rooms 
+    SET title = ${newTitle}, controller_pin = ${newPin.trim()}, active_alert = NULL, current_page = 1, version = version + 1, updated_at = NOW()
+    WHERE id = ${roomId}
+  `;
+  await sql`
+    UPDATE liturgical_blocks 
+    SET content = '[]'::jsonb, updated_at = NOW()
+    WHERE room_id = ${roomId} AND block_type IN ('visitors', 'prayer', 'youtube', 'opportunities')
+  `;
+  await sql`
+    UPDATE liturgical_blocks 
+    SET content = CASE 
+      WHEN content IS NULL OR jsonb_array_length(content) = 0 THEN '[]'::jsonb
+      ELSE (
+        SELECT COALESCE(jsonb_agg(jsonb_set(elem, '{checked}', 'false'::jsonb)), '[]'::jsonb)
+        FROM jsonb_array_elements(content) AS elem
+      )
+    END,
+    updated_at = NOW()
+    WHERE room_id = ${roomId} AND block_type = 'choirs'
+  `;
+}

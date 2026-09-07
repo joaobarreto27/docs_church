@@ -9,7 +9,8 @@ import {
   setRoomCurrentPage, 
   archiveAndResetRoom,
   createRoom,
-  verifyControllerPin 
+  verifyControllerPin,
+  overwriteExistingRoom 
 } from '../services/neon';
 
 interface RoomContextType {
@@ -21,6 +22,7 @@ interface RoomContextType {
   error: string | null;
   joinRoom: (code: string, role: UserRole, pin?: string) => Promise<{ success: boolean; error?: string }>;
   startNewService: (title: string, pin: string, preferredCode?: string) => Promise<{ success: boolean; code?: string; error?: string }>;
+  overwriteExistingService: (roomId: string, code: string, title: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   leaveRoom: () => void;
   updateBlock: (blockId: string, newContent: any) => Promise<void>;
   sendAlert: (text: string | null) => Promise<void>;
@@ -239,6 +241,40 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [saveToCache]);
 
+  // Substitui uma sala existente com folha limpa e novo PIN
+  const overwriteExistingService = useCallback(async (roomId: string, code: string, title: string, pin: string): Promise<{ success: boolean; error?: string }> => {
+    setIsColdStarting(true);
+    try {
+      await overwriteExistingRoom(roomId, title, pin);
+      const foundRoom = await getRoomByCode(code);
+      if (!foundRoom) throw new Error('Sala não encontrada após substituição.');
+      const foundBlocks = await getBlocksByRoomId(roomId);
+
+      setRoom(foundRoom);
+      setBlocks(foundBlocks);
+      setRole('controlador');
+      setIsConnected(true);
+      setError(null);
+      saveToCache(foundRoom, foundBlocks);
+
+      try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+          code: foundRoom.code,
+          role: 'controlador',
+          pin,
+          expiresAt: Date.now() + THREE_HOURS_MS
+        }));
+      } catch (e) {}
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Erro ao substituir sala:', err);
+      return { success: false, error: 'Erro ao substituir o culto existente.' };
+    } finally {
+      setIsColdStarting(false);
+    }
+  }, [saveToCache]);
+
   // Revalida em segundo plano caso exista sessão ativa restaurada
   useEffect(() => {
     const activeSession = getStoredSession();
@@ -441,6 +477,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       error,
       joinRoom,
       startNewService,
+      overwriteExistingService,
       leaveRoom,
       updateBlock,
       sendAlert,

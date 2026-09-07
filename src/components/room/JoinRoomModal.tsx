@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
-import { UserRole } from '../../types/liturgy';
-import { BookOpen, Edit3, ShieldAlert, Sparkles, KeyRound } from 'lucide-react';
+import { UserRole, Room } from '../../types/liturgy';
+import { BookOpen, Edit3, ShieldAlert, Sparkles, KeyRound, AlertTriangle, FolderOpen, RefreshCw } from 'lucide-react';
+import { getRoomByCode } from '../../services/neon';
 
 export const JoinRoomModal: React.FC = () => {
-  const { joinRoom, startNewService, error: contextError } = useRoom();
+  const { joinRoom, startNewService, overwriteExistingService, error: contextError } = useRoom();
 
   const [mode, setMode] = useState<'join' | 'create'>('join');
   const [code, setCode] = useState('');
@@ -15,6 +16,7 @@ export const JoinRoomModal: React.FC = () => {
   const [customCode, setCustomCode] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [conflictRoom, setConflictRoom] = useState<Room | null>(null);
 
   // Formata o código conforme a pessoa digita (aceita letras, números e hífens em maiúsculas)
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,14 +53,62 @@ export const JoinRoomModal: React.FC = () => {
       return;
     }
 
+    const preferred = customCode.trim() ? customCode.trim().toUpperCase() : undefined;
+
     setIsLoading(true);
     setLocalError(null);
-    const preferred = customCode.trim() ? customCode.trim().toUpperCase() : undefined;
+
+    // Se informou um código personalizado, verifica previamente se ele já existe
+    if (preferred) {
+      try {
+        const existing = await getRoomByCode(preferred);
+        if (existing) {
+          setIsLoading(false);
+          setConflictRoom(existing);
+          return;
+        }
+      } catch (err) {
+        console.warn('Erro ao verificar código existente:', err);
+      }
+    }
+
     const result = await startNewService(newTitle, newPin, preferred);
     if (!result.success && result.error) {
       setLocalError(result.error);
     }
     setIsLoading(false);
+  };
+
+  // Abre a sala existente mantendo todo o histórico e pedidos anotados
+  const handleOpenExisting = async () => {
+    if (!conflictRoom) return;
+    setIsLoading(true);
+    setLocalError(null);
+    const result = await joinRoom(conflictRoom.code, 'controlador', newPin);
+    setIsLoading(false);
+    if (result.success) {
+      setConflictRoom(null);
+    } else {
+      setConflictRoom(null);
+      setMode('join');
+      setCode(conflictRoom.code);
+      setSelectedRole('controlador');
+      setLocalError(result.error || 'O PIN digitado não confere com o PIN gravado desta sala existente.');
+    }
+  };
+
+  // Substitui a sala existente com uma folha limpa em branco
+  const handleOverwriteExisting = async () => {
+    if (!conflictRoom) return;
+    setIsLoading(true);
+    setLocalError(null);
+    const result = await overwriteExistingService(conflictRoom.id, conflictRoom.code, newTitle, newPin);
+    setIsLoading(false);
+    if (result.success) {
+      setConflictRoom(null);
+    } else {
+      setLocalError(result.error || 'Falha ao substituir sala.');
+    }
   };
 
   return (
@@ -272,6 +322,68 @@ export const JoinRoomModal: React.FC = () => {
       <footer className="mt-8 text-center text-xs text-church-muted font-serif italic">
         "Aqui chegamos pela fé!" — A.D. Utinga
       </footer>
+
+      {/* Modal de Conflito: Sala Já Existente */}
+      {conflictRoom && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-2xl border-2 border-amber-300 p-6 sm:p-7 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600">
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-title font-bold text-base text-church-charcoal">
+                  Sala Já Existente: {conflictRoom.code}
+                </h3>
+                <p className="text-xs text-church-muted">
+                  Este código já está em uso por outro culto.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-church-parchment p-3.5 rounded-xl border border-church-sand space-y-2 text-xs">
+              <div className="flex items-center justify-between text-church-charcoal font-medium">
+                <span>Culto Atual:</span>
+                <span className="font-bold text-church-gold-dark">{conflictRoom.title}</span>
+              </div>
+              <p className="text-church-charcoal/80 leading-relaxed pt-1 border-t border-church-sand/60">
+                O que você deseja fazer com esta reunião?
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={handleOpenExisting}
+                disabled={isLoading}
+                className="w-full py-3 px-4 rounded-xl font-title font-bold text-xs uppercase tracking-wider text-church-charcoal bg-church-sand/40 hover:bg-church-sand active:scale-[0.98] transition-all flex items-center justify-center gap-2 border border-church-sand"
+              >
+                <FolderOpen className="w-4 h-4 text-church-gold-dark shrink-0" />
+                <span>Abrir Sala Existente (Manter Anotações)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOverwriteExisting}
+                disabled={isLoading}
+                className="w-full py-3 px-4 rounded-xl font-title font-bold text-xs uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+              >
+                <RefreshCw className="w-4 h-4 shrink-0" />
+                <span>Substituir (Iniciar Folha Limpa)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setConflictRoom(null)}
+                disabled={isLoading}
+                className="w-full py-2 px-4 rounded-xl font-title font-bold text-xs text-church-muted hover:text-church-charcoal transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
