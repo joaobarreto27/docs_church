@@ -21,7 +21,7 @@ import {
   Plus,
   Pencil,
   ClipboardCopy,
-  Sparkles
+  Info
 } from 'lucide-react';
 import { 
   VisitorItem, 
@@ -874,7 +874,7 @@ export const ControladorPanel: React.FC = () => {
               {/* Rodapé com Botão Principal de Cópia e Instrução */}
               <footer className="p-4 sm:p-5 bg-white border-t border-church-sand flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                 <div className="text-[11px] text-church-muted flex items-center gap-1.5 text-center sm:text-left">
-                  <Sparkles className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+                  <Info className="w-3.5 h-3.5 text-church-muted shrink-0" />
                   <span>Basta clicar no botão e colar com <strong>Ctrl+V / Cmd+V</strong> no Google Docs ou Bloco de Notas.</span>
                 </div>
 

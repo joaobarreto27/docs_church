@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import { UserRole, Room } from '../../types/liturgy';
-import { BookOpen, Edit3, ShieldAlert, Sparkles, KeyRound, AlertTriangle, FolderOpen, RefreshCw } from 'lucide-react';
+import { BookOpen, Edit3, ShieldAlert, Plus, KeyRound, AlertTriangle, FolderOpen, RefreshCw } from 'lucide-react';
 import { getRoomByCode, formatRoomCodeMask } from '../../services/neon';
 
 export const JoinRoomModal: React.FC = () => {
@@ -311,7 +311,7 @@ export const JoinRoomModal: React.FC = () => {
               disabled={isLoading || !newTitle.trim() || newPin.length < 4}
               className="w-full mt-2 py-3.5 px-4 rounded-xl font-title font-bold text-sm uppercase tracking-wider text-white bg-church-gold hover:bg-church-gold-dark active:scale-[0.98] transition-all disabled:opacity-50 shadow-soft-gold flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               {isLoading ? 'Criando no Neon...' : 'Iniciar Folha do Culto'}
             </button>
           </form>
