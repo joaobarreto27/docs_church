@@ -253,7 +253,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
     updateBlock(block.id, [...current, newItem]);
     setOppName('');
-    showFeedback('Oportunidade escalada!');
+    showFeedback('Oportunidade adicionada!');
   };
 
   // Remove Oportunidade
@@ -855,7 +855,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               {/* Formulário de Adicionar no TOPO */}
               <form onSubmit={handleAddOpp} className="space-y-2 mb-4 pb-4 border-b border-church-sand/40">
                 <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-charcoal">
-                  Escalar Cantor ou Grupo
+                  Adicionar Cantor ou Grupo
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -870,15 +870,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     disabled={!oppName.trim()}
                     className="px-4 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
                   >
-                    + Escalar
+                    + Adicionar
                   </button>
                 </div>
               </form>
 
-              {/* Lista de Oportunidades Escaladas Abaixo do Formulário */}
+              {/* Lista de Oportunidades Adicionadas Abaixo do Formulário */}
               <div className="space-y-2">
                 {oppsList.length === 0 ? (
-                  <p className="font-serif italic text-church-muted text-xs p-2">Nenhuma oportunidade escalada ainda.</p>
+                  <p className="font-serif italic text-church-muted text-xs p-2">Nenhuma oportunidade adicionada ainda.</p>
                 ) : (
                   oppsList.map(op => (
                     <div key={op.id} className="flex items-center justify-between p-2.5 rounded-xl bg-church-parchment/60 border border-church-sand">
