@@ -5,7 +5,8 @@ import {
   getBlocksByRoomId, 
   getRoomMeta, 
   syncRoomState,
-  updateBlockContent, 
+  updateBlockContent,
+  appendBlockContent,
   setRoomAlert, 
   setRoomCurrentPage, 
   archiveAndResetRoom,
@@ -31,6 +32,7 @@ interface RoomContextType {
   overwriteExistingService: (roomId: string, code: string, title: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   leaveRoom: () => void;
   updateBlock: (blockId: string, newContent: any) => Promise<void>;
+  appendItemsToBlock: (blockId: string, newItems: any[]) => Promise<void>;
   sendAlert: (text: string | null) => Promise<void>;
   setPage: (page: number) => Promise<void>;
   resetCurrentService: (newTitle: string) => Promise<void>;
@@ -347,7 +349,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
   }, []);
 
-  // Atualiza bloco de liturgia
+  // Atualiza bloco de liturgia (substituição integral)
   const updateBlock = useCallback(async (blockId: string, newContent: any) => {
     if (!room) return;
     
@@ -360,6 +362,29 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao atualizar bloco no Neon:', err);
+      setIsConnected(false);
+    }
+  }, [room, broadcastLocalChange]);
+
+  // Concatenação atômica de itens a um bloco (blindagem total contra concorrência entre múltiplos obreiros)
+  const appendItemsToBlock = useCallback(async (blockId: string, newItems: any[]) => {
+    if (!room || !newItems || newItems.length === 0) return;
+
+    // Atualização otimista imediata na UI local
+    setBlocks(prev => prev.map(b => {
+      if (b.id === blockId) {
+        const current = (b.content || []) as any[];
+        return { ...b, content: [...current, ...newItems] };
+      }
+      return b;
+    }));
+
+    try {
+      await appendBlockContent(blockId, newItems, room.id);
+      setIsConnected(true);
+      broadcastLocalChange();
+    } catch (err) {
+      console.warn('Erro ao concatenar itens no Neon:', err);
       setIsConnected(false);
     }
   }, [room, broadcastLocalChange]);
@@ -621,6 +646,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       overwriteExistingService,
       leaveRoom,
       updateBlock,
+      appendItemsToBlock,
       sendAlert,
       setPage,
       resetCurrentService,

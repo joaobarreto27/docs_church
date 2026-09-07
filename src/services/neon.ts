@@ -334,6 +334,25 @@ export async function updateBlockContent(blockId: string, content: any, roomId: 
 }
 
 /**
+ * Concatena novos itens a um bloco de forma atômica no PostgreSQL (sem risco de sobrescrita concorrente)
+ * Se 2 ou mais obreiros adicionarem itens no mesmo milissegundo, o Postgres enfileira e preserva todos!
+ */
+export async function appendBlockContent(blockId: string, newItems: any[], roomId: string): Promise<void> {
+  if (!newItems || newItems.length === 0) return;
+  const itemsJson = JSON.stringify(newItems);
+  await sql`
+    WITH upd AS (
+      UPDATE liturgical_blocks 
+      SET content = COALESCE(content, '[]'::jsonb) || ${itemsJson}::jsonb, updated_at = NOW()
+      WHERE id = ${blockId}
+    )
+    UPDATE rooms 
+    SET version = version + 1, updated_at = NOW()
+    WHERE id = ${roomId}
+  `;
+}
+
+/**
  * Dispara ou limpa o aviso urgente no topo da tela do púlpito
  */
 export async function setRoomAlert(roomId: string, alertText: string | null): Promise<void> {
