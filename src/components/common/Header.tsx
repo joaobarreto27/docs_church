@@ -7,7 +7,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
-  const { room, role, isConnected, leaveRoom, refreshData } = useRoom();
+  const { room, role, isConnected, isFastSync, hasFreshUpdates, leaveRoom, refreshData } = useRoom();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleManualRefresh = async () => {
@@ -45,13 +45,29 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false }) => {
       <div className="flex items-center gap-2">
         {/* Indicador de Status da Conexão */}
         <div 
-          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/70 border border-church-sand text-[11px] font-medium"
-          title={isConnected ? 'Conectado em tempo real' : 'Sem internet - exibindo cópia local offline'}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/70 border border-church-sand text-[11px] font-medium transition-all"
+          title={
+            !isConnected 
+              ? 'Sem internet - exibindo cópia local offline' 
+              : isFastSync 
+                ? 'Sincronização Rápida Ativa (2s) - Novidades recentes no culto' 
+                : 'Conectado em tempo real (Modo Econômico)'
+          }
         >
           {isConnected ? (
             <>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="hidden md:inline text-emerald-700">Ao vivo</span>
+              <span 
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  hasFreshUpdates 
+                    ? 'bg-church-gold ring-4 ring-church-gold/40 scale-125' 
+                    : isFastSync 
+                      ? 'bg-emerald-500 animate-pulse' 
+                      : 'bg-emerald-500'
+                }`} 
+              />
+              <span className="hidden md:inline text-emerald-700 font-medium">
+                {hasFreshUpdates ? 'Atualizado!' : isFastSync ? 'Ao vivo ⚡' : 'Ao vivo'}
+              </span>
             </>
           ) : (
             <>

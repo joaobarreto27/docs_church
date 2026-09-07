@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const ControladorPanel: React.FC = () => {
-  const { room, blocks, updateBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
+  const { room, blocks, isFastSync, updateBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
@@ -377,7 +377,24 @@ export const ControladorPanel: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Badge de Sincronização Inteligente */}
+              <div 
+                className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-title font-bold uppercase tracking-wider border shadow-2xs transition-colors ${
+                  isFastSync 
+                    ? 'bg-amber-50 border-amber-300 text-amber-900' 
+                    : 'bg-purple-50 border-purple-200 text-purple-700'
+                }`}
+                title={
+                  isFastSync 
+                    ? 'Modo Rápido Ativo (2.5s) - Movimentação recente no culto' 
+                    : 'Modo Econômico Ativo (6s) - Calmaria (mais de 2,5min sem alterações)'
+                }
+              >
+                <span className={`w-2 h-2 rounded-full ${isFastSync ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                <span>{isFastSync ? 'Sinc. Rápida (2.5s)' : 'Modo Calmo (6s)'}</span>
+              </div>
+
               {/* Botão de Prévia do Púlpito */}
               <button
                 type="button"

@@ -19,7 +19,7 @@ import {
 import { LoadingScreen } from '../common/LoadingScreen';
 
 export const PulpitView: React.FC = () => {
-  const { room, blocks, isConnected, leaveRoom } = useRoom();
+  const { room, blocks, isConnected, isFastSync, hasFreshUpdates, leaveRoom } = useRoom();
 
   // Escala de fonte para pregadores idosos (padrão aumentado em 2 níveis: 1.22 ~ 122%)
   const [fontScale, setFontScale] = useState<number>(() => {
@@ -495,11 +495,25 @@ export const PulpitView: React.FC = () => {
         {/* Status de Conexão Silencioso */}
         <div className="flex items-center gap-2">
           <span 
-            className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-amber-500 pulse-status'}`}
-            title={isConnected ? 'Conectado em tempo real' : 'Modo offline resiliente (conteúdo salvo localmente)'}
+            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+              !isConnected 
+                ? 'bg-amber-500 pulse-status' 
+                : hasFreshUpdates 
+                  ? 'bg-church-gold ring-4 ring-church-gold/40 scale-125' 
+                  : isFastSync 
+                    ? 'bg-emerald-500 animate-pulse' 
+                    : 'bg-emerald-500'
+            }`}
+            title={
+              !isConnected 
+                ? 'Modo offline resiliente (conteúdo salvo localmente)' 
+                : isFastSync 
+                  ? 'Sincronização Rápida Ativa (2s) - Novidades recentes no culto' 
+                  : 'Conectado em tempo real (Modo Econômico)'
+            }
           />
           <span className="text-[11px] font-sans">
-            {isConnected ? 'Sincronizado' : 'Offline (Seguro)'}
+            {!isConnected ? 'Offline (Seguro)' : hasFreshUpdates ? 'Atualizado!' : isFastSync ? 'Ao vivo ⚡ (2s)' : 'Sincronizado'}
           </span>
         </div>
 

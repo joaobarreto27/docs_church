@@ -129,6 +129,73 @@ export async function getRoomMeta(code: string): Promise<{ version: number; acti
   return rows[0] as { version: number; active_alert: string | null; current_page: number };
 }
 
+export interface RoomSyncResult {
+  version: number;
+  active_alert: string | null;
+  current_page: number;
+  blocks?: LiturgicalBlock[];
+  hasChanged: boolean;
+}
+
+/**
+ * Sincronização inteligente em 1 viagem só (Sem Waterfall):
+ * Busca a versão da sala. Se a versão mudou, já agrega e retorna os blocos litúrgicos no mesmo payload.
+ */
+export async function syncRoomState(
+  roomId: string,
+  code: string,
+  currentVersion: number
+): Promise<RoomSyncResult | null> {
+  const normalized = code.trim().toUpperCase();
+  const withoutHyphen = normalized.replace(/-/g, '');
+
+  const rows = await sql`
+    WITH room_meta AS (
+      SELECT id, version, active_alert, current_page 
+      FROM rooms 
+      WHERE (id = ${roomId} OR UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
+        AND status = 'active'
+      LIMIT 1
+    )
+    SELECT 
+      r.version, 
+      r.active_alert, 
+      r.current_page,
+      CASE 
+        WHEN r.version != ${currentVersion} THEN (
+          SELECT json_agg(b.*) FROM (
+            SELECT DISTINCT ON (block_type) * 
+            FROM liturgical_blocks 
+            WHERE room_id = r.id 
+            ORDER BY block_type, updated_at DESC
+          ) b
+        )
+        ELSE NULL 
+      END as blocks_data
+    FROM room_meta r
+  `;
+
+  if (!rows || rows.length === 0) return null;
+  const row = rows[0] as any;
+  const version = Number(row.version);
+  const hasChanged = version !== currentVersion;
+
+  let blocks: LiturgicalBlock[] | undefined = undefined;
+  if (hasChanged && row.blocks_data && Array.isArray(row.blocks_data)) {
+    blocks = (row.blocks_data as LiturgicalBlock[]).sort(
+      (a, b) => (a.order_index || 0) - (b.order_index || 0)
+    );
+  }
+
+  return {
+    version,
+    active_alert: row.active_alert ?? null,
+    current_page: Number(row.current_page ?? 1),
+    blocks,
+    hasChanged,
+  };
+}
+
 /**
  * Busca todos os blocos litúrgicos de uma sala ordenados por ordem de exibição
  */
@@ -250,17 +317,16 @@ export async function createRoom(
 }
 
 /**
- * Atualiza o conteúdo de um bloco e incrementa a versão da sala
+ * Atualiza o conteúdo de um bloco e incrementa a versão da sala em 1 única viagem HTTP (CTE atômica)
  */
 export async function updateBlockContent(blockId: string, content: any, roomId: string): Promise<void> {
   const contentJson = typeof content === 'string' ? content : JSON.stringify(content);
   await sql`
-    UPDATE liturgical_blocks 
-    SET content = ${contentJson}::jsonb, updated_at = NOW()
-    WHERE id = ${blockId}
-  `;
-  // Incrementa a versão da sala para avisar os leitores
-  await sql`
+    WITH upd AS (
+      UPDATE liturgical_blocks 
+      SET content = ${contentJson}::jsonb, updated_at = NOW()
+      WHERE id = ${blockId}
+    )
     UPDATE rooms 
     SET version = version + 1, updated_at = NOW()
     WHERE id = ${roomId}

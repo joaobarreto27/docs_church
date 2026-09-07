@@ -4,6 +4,7 @@ import {
   getRoomByCode, 
   getBlocksByRoomId, 
   getRoomMeta, 
+  syncRoomState,
   updateBlockContent, 
   setRoomAlert, 
   setRoomCurrentPage, 
@@ -22,6 +23,8 @@ interface RoomContextType {
   role: UserRole | null;
   isConnected: boolean;
   isColdStarting: boolean;
+  isFastSync: boolean;
+  hasFreshUpdates: boolean;
   error: string | null;
   joinRoom: (code: string, role: UserRole, pin?: string) => Promise<{ success: boolean; error?: string }>;
   startNewService: (title: string, pin: string, preferredCode?: string) => Promise<{ success: boolean; code?: string; error?: string }>;
@@ -41,6 +44,8 @@ const RoomContext = createContext<RoomContextType | undefined>(undefined);
 const CACHE_PREFIX = 'docs_church_cache_';
 const SESSION_KEY = 'docs_church_session';
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+const FAST_SYNC_THRESHOLD_MS = 2.5 * 60 * 1000; // 150.000 ms = 2,5 minutos de modo rápido
+const BROADCAST_SYNC_KEY = 'docs_church_intertab_sync';
 
 interface StoredSession {
   code: string;
@@ -96,8 +101,27 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isColdStarting, setIsColdStarting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isFastSync, setIsFastSync] = useState<boolean>(false);
+  const [hasFreshUpdates, setHasFreshUpdates] = useState<boolean>(false);
+  const lastActivityTimeRef = useRef<number>(Date.now());
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPollingRef = useRef<boolean>(false);
+  const pollRef = useRef<() => Promise<void>>(async () => {});
+
+  // Transmite aviso imediato para outras abas na mesma máquina (0ms via BroadcastChannel ou localStorage)
+  const broadcastLocalChange = useCallback(() => {
+    lastActivityTimeRef.current = Date.now();
+    setIsFastSync(true);
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const channel = new BroadcastChannel(BROADCAST_SYNC_KEY);
+        channel.postMessage({ type: 'CHANGE_OCCURRED', timestamp: Date.now() });
+        channel.close();
+      } else if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(BROADCAST_SYNC_KEY, String(Date.now()));
+      }
+    } catch (e) {}
+  }, []);
 
   // Salva no localStorage sempre que receber novos dados
   const saveToCache = useCallback((roomData: Room, blocksData: LiturgicalBlock[]) => {
@@ -333,11 +357,12 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await updateBlockContent(blockId, newContent, room.id);
       setIsConnected(true);
+      broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao atualizar bloco no Neon:', err);
       setIsConnected(false);
     }
-  }, [room]);
+  }, [room, broadcastLocalChange]);
 
   // Dispara ou limpa alerta
   const sendAlert = useCallback(async (text: string | null) => {
@@ -346,11 +371,12 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await setRoomAlert(room.id, text);
       setIsConnected(true);
+      broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao enviar alerta:', err);
       setIsConnected(false);
     }
-  }, [room]);
+  }, [room, broadcastLocalChange]);
 
   // Atualiza página ativa
   const setPage = useCallback(async (page: number) => {
@@ -359,11 +385,12 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await setRoomCurrentPage(room.id, page);
       setIsConnected(true);
+      broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao mudar página:', err);
       setIsConnected(false);
     }
-  }, [room]);
+  }, [room, broadcastLocalChange]);
 
   // Reseta culto para uma nova reunião
   const resetCurrentService = useCallback(async (newTitle: string) => {
@@ -372,12 +399,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await archiveAndResetRoom(room.id, newTitle);
       await fetchFullRoom(room.code);
+      broadcastLocalChange();
     } catch (err) {
       console.error('Erro ao reiniciar culto:', err);
     } finally {
       setIsColdStarting(false);
     }
-  }, [room, fetchFullRoom]);
+  }, [room, fetchFullRoom, broadcastLocalChange]);
 
   // Força sincronização manual dos dados da sala
   const refreshData = useCallback(async () => {
@@ -394,10 +422,11 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await updateRoomTitle(room.id, clean);
       setIsConnected(true);
+      broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao atualizar título do culto:', err);
     }
-  }, [room]);
+  }, [room, broadcastLocalChange]);
 
   // Atualiza o código/chave da sala no formato padrão XXX-XXX
   const updateCode = useCallback(async (newCode: string): Promise<{ success: boolean; error?: string }> => {
@@ -418,27 +447,70 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sessionStorage.setItem(SESSION_KEY, JSON.stringify(active));
           }
         } catch (e) {}
+        broadcastLocalChange();
       }
       return res;
     } catch (err: any) {
       console.warn('Erro ao atualizar código da sala:', err);
       return { success: false, error: 'Falha ao atualizar o código no banco.' };
     }
-  }, [room]);
+  }, [room, broadcastLocalChange]);
 
-  // Loop de Smart-Polling com detecção de tela ativa (Page Visibility API)
-  // Adaptado por papel: Púlpito (3.5s), Cabine (4.5s), Tablet Obreiro (30s)
+  // Escuta avisos imediatos de outras abas na mesma máquina (0ms via BroadcastChannel ou storage)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleSyncNotice = () => {
+      lastActivityTimeRef.current = Date.now();
+      setIsFastSync(true);
+      if (pollRef.current) {
+        pollRef.current();
+      }
+    };
+
+    if ('BroadcastChannel' in window) {
+      try {
+        const channel = new BroadcastChannel(BROADCAST_SYNC_KEY);
+        channel.onmessage = handleSyncNotice;
+        return () => {
+          try { channel.close(); } catch (e) {}
+        };
+      } catch (e) {}
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === BROADCAST_SYNC_KEY) {
+        handleSyncNotice();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  // Loop de Smart-Polling Adaptativo (2,5 minutos de Modo Rápido + 0-waterfall sync)
+  // - Púlpito: 2.0s no modo rápido / 6.0s no modo lento (após 2,5min sem alterações)
+  // - Cabine: 2.5s no modo rápido / 6.0s no modo lento
+  // - Obreiro: 30s (aparelho anotador antigo / KitKat)
   useEffect(() => {
     if (!room) return;
 
-    // Frequência adaptada por perfil:
-    // - Pastor (Púlpito): leitor em tempo real (3.5s)
-    // - Controlador (Cabine): direção e avisos (4.5s)
-    // - Obreiro (Tablet anotador): escritor, 30s (reduz 88% do tráfego no tablet antigo de 2014)
-    const getRolePollingInterval = (): number => {
-      if (role === 'pastor') return 3500;
-      if (role === 'controlador') return 4500;
-      return 30000;
+    const getDynamicPollingInterval = (): number => {
+      if (role === 'obreiro') return 30000;
+      const timeSinceLast = Date.now() - lastActivityTimeRef.current;
+      const isFast = timeSinceLast < FAST_SYNC_THRESHOLD_MS;
+      setIsFastSync(isFast);
+      if (isFast) {
+        return role === 'pastor' ? 2000 : 2500;
+      }
+      return 6000;
+    };
+
+    const scheduleNextPoll = (customDelayMs?: number) => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      const delay = customDelayMs ?? getDynamicPollingInterval();
+      pollTimerRef.current = setTimeout(poll, delay);
     };
 
     const poll = async () => {
@@ -457,79 +529,80 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isPollingRef.current = true;
 
       try {
-        const meta = await getRoomMeta(room.code);
-        if (meta) {
-          setIsConnected(prev => {
-            if (!prev) startPolling();
-            return true;
-          });
+        // Sincronização inteligente em 1 viagem só: busca versão e blocos se houver mudança
+        const syncResult = await syncRoomState(room.id, room.code, room.version);
+        if (syncResult) {
+          setIsConnected(true);
 
-          // Se a versão mudou, busca blocos atualizados
-          if (meta.version !== room.version) {
-            const updatedBlocks = await getBlocksByRoomId(room.id);
+          if (syncResult.hasChanged) {
+            // Reinicia a janela de 2,5 minutos de modo rápido
+            lastActivityTimeRef.current = Date.now();
+            setIsFastSync(true);
+            setHasFreshUpdates(true);
+            setTimeout(() => setHasFreshUpdates(false), 3500);
+
+            let updatedBlocks = syncResult.blocks;
+            if (!updatedBlocks || updatedBlocks.length === 0) {
+              updatedBlocks = await getBlocksByRoomId(room.id);
+            }
             setBlocks(updatedBlocks);
             setRoom(prev => prev ? { 
               ...prev, 
-              version: meta.version,
-              active_alert: meta.active_alert,
-              current_page: meta.current_page 
+              version: syncResult.version,
+              active_alert: syncResult.active_alert,
+              current_page: syncResult.current_page 
             } : null);
-            saveToCache({ ...room, ...meta }, updatedBlocks);
-          } else if (meta.active_alert !== room.active_alert || meta.current_page !== room.current_page) {
-            // Atualiza alerta e página mesmo se versão for igual
+            saveToCache(
+              { ...room, version: syncResult.version, active_alert: syncResult.active_alert, current_page: syncResult.current_page },
+              updatedBlocks
+            );
+          } else if (syncResult.active_alert !== room.active_alert || syncResult.current_page !== room.current_page) {
+            // Atualiza alerta ou página mesmo se versão dos blocos for igual
             setRoom(prev => prev ? { 
               ...prev, 
-              active_alert: meta.active_alert,
-              current_page: meta.current_page 
+              active_alert: syncResult.active_alert,
+              current_page: syncResult.current_page 
             } : null);
           }
         }
       } catch (err) {
         // Falha silenciosa de rede: continua exibindo a tela sem erros bloqueantes
         setIsConnected(false);
-        // Aplica backoff temporário em caso de erro para não sobrecarregar e evitar rate-limit
         const backoffInterval = role === 'obreiro' ? 45000 : 7000;
-        if (pollTimerRef.current) {
-          clearInterval(pollTimerRef.current);
-          pollTimerRef.current = setInterval(poll, backoffInterval);
-        }
+        scheduleNextPoll(backoffInterval);
+        return;
       } finally {
         isPollingRef.current = false;
+        scheduleNextPoll();
       }
     };
 
-    const startPolling = (intervalMs?: number) => {
-      const interval = intervalMs ?? getRolePollingInterval();
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      pollTimerRef.current = setInterval(poll, interval);
-    };
-
-    const stopPolling = () => {
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-    };
+    pollRef.current = poll;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         poll(); // Sincronização imediata ao acordar a tela
-        startPolling();
       } else {
-        stopPolling(); // Suspende polling enquanto tela desligada
+        if (pollTimerRef.current) {
+          clearTimeout(pollTimerRef.current);
+          pollTimerRef.current = null;
+        }
       }
     };
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', handleVisibilityChange);
     }
-    startPolling();
+    scheduleNextPoll();
 
     return () => {
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
-      stopPolling();
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
     };
   }, [room, role, saveToCache, leaveRoom]);
 
@@ -540,6 +613,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role,
       isConnected,
       isColdStarting,
+      isFastSync,
+      hasFreshUpdates,
       error,
       joinRoom,
       startNewService,
