@@ -274,7 +274,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     updateBlock(block.id, updated);
   };
 
-  // Adiciona novo conjunto (Controlador)
+  // Adiciona novo departamento (Controlador)
   const handleAddChoir = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChoirName.trim()) return;
@@ -290,10 +290,10 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
     updateBlock(block.id, [...current, newItem]);
     setNewChoirName('');
-    showFeedback('Conjunto adicionado com sucesso!');
+    showFeedback('Departamento adicionado com sucesso!');
   };
 
-  // Salva renomeação de conjunto (Controlador)
+  // Salva renomeação de departamento (Controlador)
   const handleSaveChoirName = (id: string) => {
     if (!editingChoirName.trim()) return;
     const block = getBlock('choirs');
@@ -304,17 +304,17 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     updateBlock(block.id, updated);
     setEditingChoirId(null);
     setEditingChoirName('');
-    showFeedback('Nome do conjunto atualizado!');
+    showFeedback('Nome do departamento atualizado!');
   };
 
-  // Exclui conjunto (Controlador)
+  // Exclui departamento (Controlador)
   const handleDeleteChoir = (id: string) => {
     const block = getBlock('choirs');
     if (!block) return;
 
     const current = (block.content || []) as ChoirItem[];
     updateBlock(block.id, current.filter(ch => ch.id !== id));
-    showFeedback('Conjunto removido.');
+    showFeedback('Departamento removido.');
   };
 
   // Exclusão em massa com confirmação (Controlador)
@@ -691,9 +691,9 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           )}
         </section>
 
-        {/* ================= SEÇÃO CONJUNTOS (CONTROLADOR) & OPORTUNIDADES ================= */}
+        {/* ================= SEÇÃO DEPARTAMENTOS (CONTROLADOR) & OPORTUNIDADES ================= */}
         <div className={`grid gap-6 ${role === 'controlador' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-          {/* Conjuntos - VISÍVEL E EDITÁVEL EXCLUSIVAMENTE PELO CONTROLADOR */}
+          {/* Departamentos - VISÍVEL E EDITÁVEL EXCLUSIVAMENTE PELO CONTROLADOR */}
           {role === 'controlador' && (
             <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
               <div>
@@ -701,7 +701,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-church-gold" />
                     <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-                      Conjuntos do Culto
+                      Departamentos do Culto
                     </h2>
                   </div>
                   <span className="text-[11px] font-title font-bold px-2.5 py-0.5 rounded-full bg-church-gold/15 text-church-gold-dark">
@@ -709,11 +709,11 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   </span>
                 </div>
 
-                {/* Adicionar Novo Conjunto */}
+                {/* Adicionar Novo Departamento */}
                 <form onSubmit={handleAddChoir} className="flex gap-2 mb-4">
                   <input
                     type="text"
-                    placeholder="Novo conjunto (Ex: Coral Geral, Grupo de Louvor)..."
+                    placeholder="Novo departamento (Ex: Mocidade, Círculo de Oração, Varões)..."
                     value={newChoirName}
                     onChange={e => setNewChoirName(e.target.value)}
                     className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
@@ -722,18 +722,18 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     type="submit"
                     disabled={!newChoirName.trim()}
                     className="px-3.5 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
-                    title="Adicionar à lista de conjuntos"
+                    title="Adicionar à lista de departamentos"
                   >
                     <Plus className="w-4 h-4" />
                     <span className="hidden sm:inline">Adicionar</span>
                   </button>
                 </form>
 
-                {/* Lista de Conjuntos Cadastrados com Edição e Exclusão */}
+                {/* Lista de Departamentos Cadastrados com Edição e Exclusão */}
                 <div className="space-y-2">
                   {choirsList.length === 0 ? (
                     <p className="font-serif italic text-church-muted text-xs p-3 text-center border border-dashed border-church-sand rounded-xl">
-                      Nenhum conjunto cadastrado. Adicione um conjunto no campo acima.
+                      Nenhum departamento cadastrado. Adicione um departamento no campo acima.
                     </p>
                   ) : (
                     choirsList.map(ch => (
@@ -817,7 +817,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                                 setEditingChoirName(ch.name);
                               }}
                               className="p-1.5 text-church-muted hover:text-church-charcoal hover:bg-church-sand/50 rounded-lg transition-colors cursor-pointer"
-                              title="Renomear conjunto"
+                              title="Renomear departamento"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -825,7 +825,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                               type="button"
                               onClick={() => handleDeleteChoir(ch.id)}
                               className="p-1.5 text-church-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                              title="Excluir conjunto"
+                              title="Excluir departamento"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -837,7 +837,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 </div>
               </div>
               <p className="text-[11px] text-church-muted mt-4 font-serif italic border-t border-church-sand/50 pt-2">
-                * Toque no botão de status para marcar no Louvor Final do púlpito. Use o lápis para renomear ou a lixeira para excluir.
+                * Toque no botão de status para marcar nos Departamentos do púlpito. Use o lápis para renomear ou a lixeira para excluir.
               </p>
             </section>
           )}
