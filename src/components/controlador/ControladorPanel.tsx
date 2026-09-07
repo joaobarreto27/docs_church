@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 export const ControladorPanel: React.FC = () => {
-  const { room, blocks, isFastSync, updateBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
+  const { room, blocks, isFastSync, updateBlock, appendItemsToBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
@@ -205,7 +205,6 @@ export const ControladorPanel: React.FC = () => {
     const block = blocks.find(b => b.block_type === 'youtube');
     if (!block) return;
 
-    const current = (block.content || []) as PrayerItem[];
     const newItem: PrayerItem = {
       id: `${Date.now()}_yt`,
       description: youtubeText.trim() || 'Print da Transmissão (YouTube)',
@@ -213,7 +212,7 @@ export const ControladorPanel: React.FC = () => {
       created_at: Date.now(),
     };
 
-    updateBlock(block.id, [...current, newItem]);
+    appendItemsToBlock(block.id, [newItem]);
     setYoutubeText('');
     setYoutubeImageBase64(null);
     triggerFeedback('Pedido do YouTube transmitido ao púlpito!');
@@ -473,26 +472,6 @@ export const ControladorPanel: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* STATUS DO PÚLPITO E MODO PASTA ABERTA (OPÇÃO 1) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-purple-200/60 mt-2">
-            <div>
-              <span className="text-xs font-title font-extrabold text-purple-950 uppercase tracking-wide block">
-                Visualização do Púlpito (Tablet do Pastor):
-              </span>
-              <span className="text-[11px] text-purple-700 font-sans">
-                Modo <strong className="text-purple-950 font-bold">Pasta Aberta (Folhas 1 e 2 Lado a Lado)</strong> com rolagem vertical suave (sem virada de página).
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-900 text-[11px] font-title font-bold shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Sincronização Ativa
-              </span>
-            </div>
-          </div>
-
         </div>
       </section>
 

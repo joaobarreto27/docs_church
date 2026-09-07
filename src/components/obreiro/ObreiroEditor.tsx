@@ -28,7 +28,7 @@ interface ObreiroEditorProps {
 }
 
 export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
-  const { room, blocks, updateBlock, role } = useRoom();
+  const { room, blocks, updateBlock, appendItemsToBlock, role } = useRoom();
 
   const draftVisitorKey = room ? `docs_church_draft_visitors_${room.code}` : '';
   const draftPrayerKey = room ? `docs_church_draft_prayers_${room.code}` : '';
@@ -109,7 +109,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   // Encontra bloco por tipo
   const getBlock = (type: string) => blocks.find(b => b.block_type === type);
 
-  // Adiciona Visitante Único
+  // Adiciona Visitante Único (com blindagem atômica de concorrência)
   const handleAddVisitor = (e: React.FormEvent) => {
     e.preventDefault();
     if (!visitorName.trim()) return;
@@ -117,7 +117,6 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     const block = getBlock('visitors');
     if (!block) return;
 
-    const current = (block.content || []) as VisitorItem[];
     const newItem: VisitorItem = {
       id: Date.now().toString(),
       name: visitorName.trim(),
@@ -125,14 +124,14 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
       invited_by: visitorInvitedBy.trim() || undefined,
     };
 
-    updateBlock(block.id, [...current, newItem]);
+    appendItemsToBlock(block.id, [newItem]);
     setVisitorName('');
     setVisitorChurch('');
     setVisitorInvitedBy('');
     showFeedback('Visitante enviado ao púlpito!');
   };
 
-  // Adiciona Visitantes em Lote (Estilo Google Docs)
+  // Adiciona Visitantes em Lote (com blindagem atômica de concorrência)
   const handleAddBatchVisitor = (e: React.FormEvent) => {
     e.preventDefault();
     if (!visitorBatchText.trim()) return;
@@ -147,7 +146,6 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
     if (lines.length === 0) return;
 
-    const current = (block.content || []) as VisitorItem[];
     const newItems: VisitorItem[] = lines.map((line, idx) => {
       // Se tiver parênteses ex: "Irmão Carlos (Igreja Central)"
       const match = line.match(/^([^(]+)(?:\(([^)]+)\))?/);
@@ -161,7 +159,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
       };
     });
 
-    updateBlock(block.id, [...current, ...newItems]);
+    appendItemsToBlock(block.id, newItems);
     setVisitorBatchText('');
     if (draftVisitorKey) {
       try { localStorage.removeItem(draftVisitorKey); } catch (e) {}
@@ -178,7 +176,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     updateBlock(block.id, current.filter(v => v.id !== id));
   };
 
-  // Adiciona Pedido Presencial Único
+  // Adiciona Pedido Presencial Único (com blindagem atômica de concorrência)
   const handleAddPrayer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prayerDesc.trim()) return;
@@ -186,20 +184,19 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     const block = getBlock('prayer');
     if (!block) return;
 
-    const current = (block.content || []) as PrayerItem[];
     const newItem: PrayerItem = {
       id: Date.now().toString(),
       description: prayerDesc.trim(),
       urgent: prayerUrgent,
     };
 
-    updateBlock(block.id, [...current, newItem]);
+    appendItemsToBlock(block.id, [newItem]);
     setPrayerDesc('');
     setPrayerUrgent(false);
     showFeedback('Pedido de oração enviado ao púlpito!');
   };
 
-  // Adiciona Lote de Pedidos Presenciais (Estilo Google Docs)
+  // Adiciona Lote de Pedidos Presenciais (com blindagem atômica de concorrência)
   const handleAddBatchPrayer = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prayerBatchText.trim()) return;
@@ -213,14 +210,13 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
     if (lines.length === 0) return;
 
-    const current = (block.content || []) as PrayerItem[];
     const newItems: PrayerItem[] = lines.map((desc, idx) => ({
       id: `${Date.now()}_${idx}`,
       description: desc,
       urgent: prayerUrgent,
     }));
 
-    updateBlock(block.id, [...current, ...newItems]);
+    appendItemsToBlock(block.id, newItems);
     setPrayerBatchText('');
     if (draftPrayerKey) {
       try { localStorage.removeItem(draftPrayerKey); } catch (e) {}
@@ -238,7 +234,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     updateBlock(block.id, current.filter(p => p.id !== id));
   };
 
-  // Adiciona Oportunidade
+  // Adiciona Oportunidade (com blindagem atômica de concorrência)
   const handleAddOpp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!oppName.trim()) return;
@@ -246,13 +242,12 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     const block = getBlock('opportunities');
     if (!block) return;
 
-    const current = (block.content || []) as OpportunityItem[];
     const newItem: OpportunityItem = {
       id: Date.now().toString(),
       name: oppName.trim(),
     };
 
-    updateBlock(block.id, [...current, newItem]);
+    appendItemsToBlock(block.id, [newItem]);
     setOppName('');
     showFeedback('Oportunidade adicionada!');
   };
@@ -275,21 +270,20 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     updateBlock(block.id, updated);
   };
 
-  // Adiciona novo departamento (Controlador)
+  // Adiciona novo departamento (Controlador) (com blindagem atômica de concorrência)
   const handleAddChoir = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChoirName.trim()) return;
     const block = getBlock('choirs');
     if (!block) return;
 
-    const current = (block.content || []) as ChoirItem[];
     const newItem: ChoirItem = {
       id: Date.now().toString(),
       name: newChoirName.trim(),
       checked: true,
     };
 
-    updateBlock(block.id, [...current, newItem]);
+    appendItemsToBlock(block.id, [newItem]);
     setNewChoirName('');
     showFeedback('Departamento adicionado com sucesso!');
   };
