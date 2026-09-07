@@ -248,7 +248,7 @@ export const PulpitView: React.FC = () => {
                   <header className="flex items-center gap-2 mb-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-church-gold" />
                     <h3 className="font-title text-xs font-bold uppercase tracking-wider text-church-gold-dark">
-                      Visitantes da Noite ({visitors.length})
+                      Visitantes do Culto ({visitors.length})
                     </h3>
                   </header>
                   {visitors.length === 0 ? (

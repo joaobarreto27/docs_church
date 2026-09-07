@@ -3,6 +3,7 @@ import { useRoom } from '../../context/RoomContext';
 import { PrayerItem } from '../../types/liturgy';
 import { ObreiroEditor } from '../obreiro/ObreiroEditor';
 import { PulpitView } from '../pastor/PulpitView';
+import { Header } from '../common/Header';
 import { 
   AlertTriangle, 
   Send, 
@@ -166,6 +167,9 @@ export const ControladorPanel: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-church-parchment flex flex-col">
+      {/* Barra de Cabeçalho Oficial no Topo */}
+      <Header />
+
       {/* Toast Feedback */}
       {feedback && (
         <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-purple-800 text-white px-4 py-1.5 rounded-full text-xs font-title font-bold flex items-center gap-2 shadow-lg animate-fadeIn">
@@ -442,7 +446,7 @@ export const ControladorPanel: React.FC = () => {
 
       {/* REAPROVEITA TODA A ÁREA DE EDIÇÃO DO OBREIRO */}
       <div className="flex-1">
-        <ObreiroEditor />
+        <ObreiroEditor showHeader={false} />
       </div>
 
       {/* MODAL DE CONFIRMAÇÃO DE NOVO CULTO */}

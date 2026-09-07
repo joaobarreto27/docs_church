@@ -22,20 +22,24 @@ import {
   Plus
 } from 'lucide-react';
 
-export const ObreiroEditor: React.FC = () => {
+interface ObreiroEditorProps {
+  showHeader?: boolean;
+}
+
+export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
   const { room, blocks, updateBlock, role } = useRoom();
 
   // Estados de Visitantes
   const [visitorName, setVisitorName] = useState('');
   const [visitorChurch, setVisitorChurch] = useState('');
   const [visitorInvitedBy, setVisitorInvitedBy] = useState('');
-  const [visitorBatchMode, setVisitorBatchMode] = useState(false);
+  const [visitorBatchMode, setVisitorBatchMode] = useState(true);
   const [visitorBatchText, setVisitorBatchText] = useState('');
 
   // Estados de Oração Presencial
   const [prayerDesc, setPrayerDesc] = useState('');
   const [prayerUrgent, setPrayerUrgent] = useState(false);
-  const [prayerBatchMode, setPrayerBatchMode] = useState(false);
+  const [prayerBatchMode, setPrayerBatchMode] = useState(true);
   const [prayerBatchText, setPrayerBatchText] = useState('');
 
   // Estados de Oportunidades
@@ -289,8 +293,8 @@ export const ObreiroEditor: React.FC = () => {
   const choirsList = (getBlock('choirs')?.content || []) as ChoirItem[];
 
   return (
-    <div className="min-h-screen bg-church-parchment flex flex-col">
-      <Header />
+    <div className={`${showHeader ? 'min-h-screen' : ''} bg-church-parchment flex flex-col`}>
+      {showHeader && <Header />}
 
       {/* Notificação Flutuante de Feedback */}
       {savedSuccess && (
@@ -309,7 +313,7 @@ export const ObreiroEditor: React.FC = () => {
             <div className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-church-gold" />
               <h2 className="font-title text-sm font-bold uppercase tracking-wide text-church-charcoal">
-                Visitantes da Noite
+                Visitantes do Culto
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-church-gold/15 text-church-gold-dark">
                 {visitorsList.length}
@@ -787,7 +791,31 @@ export const ObreiroEditor: React.FC = () => {
                 </h2>
               </div>
 
-              <div className="space-y-2 mb-4">
+              {/* Formulário de Adicionar no TOPO */}
+              <form onSubmit={handleAddOpp} className="space-y-2 mb-4 pb-4 border-b border-church-sand/40">
+                <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-charcoal">
+                  Escalar Cantor ou Grupo
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nome do cantor ou grupo"
+                    value={oppName}
+                    onChange={e => setOppName(e.target.value)}
+                    className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!oppName.trim()}
+                    className="px-4 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
+                  >
+                    + Escalar
+                  </button>
+                </div>
+              </form>
+
+              {/* Lista de Oportunidades Escaladas Abaixo do Formulário */}
+              <div className="space-y-2">
                 {oppsList.length === 0 ? (
                   <p className="font-serif italic text-church-muted text-xs p-2">Nenhuma oportunidade escalada ainda.</p>
                 ) : (
@@ -807,28 +835,6 @@ export const ObreiroEditor: React.FC = () => {
                 )}
               </div>
             </div>
-
-            <form onSubmit={handleAddOpp} className="space-y-2 pt-2 border-t border-church-sand/40">
-              <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-charcoal">
-                Escalar Cantor ou Grupo
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Nome do cantor ou grupo"
-                  value={oppName}
-                  onChange={e => setOppName(e.target.value)}
-                  className="flex-1 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={!oppName.trim()}
-                  className="px-4 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
-                >
-                  + Escalar
-                </button>
-              </div>
-            </form>
           </section>
         </div>
 
