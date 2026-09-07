@@ -170,7 +170,7 @@ export const JoinRoomModal: React.FC = () => {
               <input
                 type="text"
                 maxLength={7}
-                placeholder="EX: ADU-PNO"
+                placeholder="EX: CUL-DOM"
                 value={code}
                 onChange={handleCodeChange}
                 autoFocus
@@ -280,7 +280,7 @@ export const JoinRoomModal: React.FC = () => {
                 maxLength={7}
                 value={customCode}
                 onChange={(e) => setCustomCode(formatRoomCodeMask(e.target.value))}
-                placeholder="Ex: ADU-PNO (ou deixe vazio para automático)"
+                placeholder="Ex: CUL-DOM (ou deixe vazio para automático)"
                 className="w-full text-center font-mono font-bold text-sm tracking-wider uppercase text-church-charcoal bg-church-parchment border border-church-sand focus:border-church-gold rounded-xl px-3 py-2.5 outline-none"
               />
               <p className="text-[11px] text-church-muted mt-1">
