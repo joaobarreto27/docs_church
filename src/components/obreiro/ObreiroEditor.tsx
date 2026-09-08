@@ -32,13 +32,14 @@ import {
   formatOpportunitiesList, 
   copyTextToClipboard 
 } from '../../utils/liturgyExport';
+import { InteractiveLineSheet } from '../common/InteractiveLineSheet';
 
 interface ObreiroEditorProps {
   showHeader?: boolean;
 }
 
 export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
-  const { room, blocks, updateBlock, appendItemsToBlock, role } = useRoom();
+  const { room, blocks, updateBlock, appendItemsToBlock, removeItemFromBlock, role } = useRoom();
 
   const draftVisitorKey = room ? `docs_church_draft_visitors_${room.code}` : '';
   const draftPrayerKey = room ? `docs_church_draft_prayers_${room.code}` : '';
@@ -59,6 +60,16 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
       return '';
     }
   });
+  const [visitorLines, setVisitorLines] = useState<string[]>(() => {
+    try {
+      const saved = room ? localStorage.getItem(`docs_church_draft_visitors_${room.code}`) : null;
+      if (saved) {
+        const arr = saved.split('\n');
+        if (arr.length > 0) return arr;
+      }
+    } catch {}
+    return Array(12).fill('');
+  });
 
   // Estados de Oração Presencial
   const [prayerDesc, setPrayerDesc] = useState('');
@@ -71,10 +82,22 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
       return '';
     }
   });
+  const [prayerLines, setPrayerLines] = useState<string[]>(() => {
+    try {
+      const saved = room ? localStorage.getItem(`docs_church_draft_prayers_${room.code}`) : null;
+      if (saved) {
+        const arr = saved.split('\n');
+        if (arr.length > 0) return arr;
+      }
+    } catch {}
+    return Array(15).fill('');
+  });
 
   // Salva rascunho de visitantes no localStorage do tablet sem fazer requisições à Vercel
   const handleVisitorBatchTextChange = (text: string) => {
     setVisitorBatchText(text);
+    const split = text.split('\n');
+    setVisitorLines(split.length > 0 ? split : Array(12).fill(''));
     if (draftVisitorKey) {
       try {
         if (text.trim()) {
@@ -86,9 +109,34 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     }
   };
 
+  const handleVisitorLinesChange = (newLines: string[]) => {
+    setVisitorLines(newLines);
+    const nonBlank = newLines.map(l => l.trim()).filter(Boolean).join('\n');
+    setVisitorBatchText(nonBlank);
+    if (draftVisitorKey) {
+      try {
+        if (nonBlank) {
+          localStorage.setItem(draftVisitorKey, nonBlank);
+        } else {
+          localStorage.removeItem(draftVisitorKey);
+        }
+      } catch (e) {}
+    }
+  };
+
+  const handleClearVisitorBatch = () => {
+    setVisitorBatchText('');
+    setVisitorLines(Array(12).fill(''));
+    if (draftVisitorKey) {
+      try { localStorage.removeItem(draftVisitorKey); } catch (e) {}
+    }
+  };
+
   // Salva rascunho de oração no localStorage do tablet sem fazer requisições à Vercel
   const handlePrayerBatchTextChange = (text: string) => {
     setPrayerBatchText(text);
+    const split = text.split('\n');
+    setPrayerLines(split.length > 0 ? split : Array(15).fill(''));
     if (draftPrayerKey) {
       try {
         if (text.trim()) {
@@ -97,6 +145,29 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           localStorage.removeItem(draftPrayerKey);
         }
       } catch (e) {}
+    }
+  };
+
+  const handlePrayerLinesChange = (newLines: string[]) => {
+    setPrayerLines(newLines);
+    const nonBlank = newLines.map(l => l.trim()).filter(Boolean).join('\n');
+    setPrayerBatchText(nonBlank);
+    if (draftPrayerKey) {
+      try {
+        if (nonBlank) {
+          localStorage.setItem(draftPrayerKey, nonBlank);
+        } else {
+          localStorage.removeItem(draftPrayerKey);
+        }
+      } catch (e) {}
+    }
+  };
+
+  const handleClearPrayerBatch = () => {
+    setPrayerBatchText('');
+    setPrayerLines(Array(15).fill(''));
+    if (draftPrayerKey) {
+      try { localStorage.removeItem(draftPrayerKey); } catch (e) {}
     }
   };
 
@@ -145,23 +216,20 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     showFeedback('Visitante enviado ao púlpito!');
   };
 
-  // Adiciona Visitantes em Lote (com blindagem atômica de concorrência)
+  // Adiciona Visitantes em Lote (com blindagem atômica de concorrência e filtro de linhas vazias)
   const handleAddBatchVisitor = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!visitorBatchText.trim()) return;
+    const linesToProcess = visitorLines.some(l => l.trim().length > 0)
+      ? visitorLines.map(l => l.trim()).filter(l => l.length > 0)
+      : visitorBatchText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    if (linesToProcess.length === 0) return;
 
     const block = getBlock('visitors');
     if (!block) return;
 
-    const lines = visitorBatchText
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 0);
-
-    if (lines.length === 0) return;
-
-    const newItems: VisitorItem[] = lines.map((line, idx) => {
-      // Se tiver parênteses ex: "Irmão Carlos (Igreja Central)"
+    const newItems: VisitorItem[] = linesToProcess.map((line, idx) => {
+      // Se tiver parênteses ex: "Irmão Carlos (Igreja Batista)"
       const match = line.match(/^([^(]+)(?:\(([^)]+)\))?/);
       const name = match ? match[1].trim() : line;
       const church = match && match[2] ? match[2].trim() : undefined;
@@ -174,20 +242,16 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     });
 
     appendItemsToBlock(block.id, newItems);
-    setVisitorBatchText('');
-    if (draftVisitorKey) {
-      try { localStorage.removeItem(draftVisitorKey); } catch (e) {}
-    }
+    handleClearVisitorBatch();
     // Mantém no modo de lote para que o irmão continue anotando os próximos
     showFeedback(`${newItems.length} visitantes adicionados à folha!`);
   };
 
-  // Remove Visitante
+  // Remove Visitante (atômico sem flicker)
   const handleRemoveVisitor = (id: string) => {
     const block = getBlock('visitors');
     if (!block) return;
-    const current = (block.content || []) as VisitorItem[];
-    updateBlock(block.id, current.filter(v => v.id !== id));
+    removeItemFromBlock(block.id, id);
   };
 
   // Adiciona Pedido Presencial Único (com blindagem atômica de concorrência)
@@ -210,42 +274,36 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     showFeedback('Pedido de oração enviado ao púlpito!');
   };
 
-  // Adiciona Lote de Pedidos Presenciais (com blindagem atômica de concorrência)
+  // Adiciona Lote de Pedidos Presenciais (com blindagem atômica de concorrência e filtro de linhas vazias)
   const handleAddBatchPrayer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prayerBatchText.trim()) return;
+    const linesToProcess = prayerLines.some(l => l.trim().length > 0)
+      ? prayerLines.map(l => l.trim()).filter(l => l.length > 0)
+      : prayerBatchText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    if (linesToProcess.length === 0) return;
+
     const block = getBlock('prayer');
     if (!block) return;
 
-    const lines = prayerBatchText
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 0);
-
-    if (lines.length === 0) return;
-
-    const newItems: PrayerItem[] = lines.map((desc, idx) => ({
+    const newItems: PrayerItem[] = linesToProcess.map((desc, idx) => ({
       id: `${Date.now()}_${idx}`,
       description: desc,
       urgent: prayerUrgent,
     }));
 
     appendItemsToBlock(block.id, newItems);
-    setPrayerBatchText('');
-    if (draftPrayerKey) {
-      try { localStorage.removeItem(draftPrayerKey); } catch (e) {}
-    }
+    handleClearPrayerBatch();
     setPrayerUrgent(false);
     // Mantém no modo de lote para que o irmão continue anotando os próximos
     showFeedback(`${newItems.length} pedidos de oração adicionados!`);
   };
 
-  // Remove Pedido Presencial
+  // Remove Pedido Presencial (atômico sem flicker)
   const handleRemovePrayer = (id: string) => {
     const block = getBlock('prayer');
     if (!block) return;
-    const current = (block.content || []) as PrayerItem[];
-    updateBlock(block.id, current.filter(p => p.id !== id));
+    removeItemFromBlock(block.id, id);
   };
 
   // Adiciona Oportunidade (com blindagem atômica de concorrência)
@@ -270,8 +328,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   const handleRemoveOpp = (id: string) => {
     const block = getBlock('opportunities');
     if (!block) return;
-    const current = (block.content || []) as OpportunityItem[];
-    updateBlock(block.id, current.filter(o => o.id !== id));
+    removeItemFromBlock(block.id, id);
   };
 
   // Alterna Checkbox de Conjunto
@@ -423,40 +480,27 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (MUITO MAIS FÁCIL PARA ESCREVER) */}
           {visitorBatchMode ? (
             <form onSubmit={handleAddBatchVisitor} className="space-y-4">
-              <div className="bg-white rounded-xl border-2 border-dashed border-church-sand p-3 shadow-inner focus-within:border-church-gold transition-all">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-church-sand/60 text-xs text-church-muted font-sans">
-                  <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-church-gold" />
-                    Folha para Digitar Vários Nomes (1 por linha)
-                  </span>
-                  <span className="text-[11px] font-mono text-church-gold-dark font-medium">Aperte Enter para pular linha</span>
-                </div>
-                <textarea
-                  rows={9}
-                  placeholder="Digite ou cole aqui os visitantes (1 por linha), como se fosse em uma folha em branco...&#10;&#10;Exemplo:&#10;Irmão Carlos Eduardo e Família (Igreja Batista)&#10;Irmã Valéria Souza (A.D. São Mateus)&#10;Jovem Matheus Henrique (Convidado pelo Gabriel)&#10;Pr. Marcos e Pra. Aline"
-                  value={visitorBatchText}
-                  onChange={e => handleVisitorBatchTextChange(e.target.value)}
-                  className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
-                />
-                {visitorBatchText.trim() && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium px-3 pb-1 pt-0.5 border-t border-church-sand/40">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>Rascunho salvo no aparelho (não se perde se a tela desligar ou recarregar)</span>
-                  </div>
-                )}
-              </div>
+              <InteractiveLineSheet
+                lines={visitorLines}
+                onChange={handleVisitorLinesChange}
+                rawText={visitorBatchText}
+                onChangeRawText={handleVisitorBatchTextChange}
+                title="Folha para Digitar Vários Nomes"
+                helperText="Toque diretamente em qualquer linha para digitar o nome (sem precisar apertar Enter):"
+                hasDraft={Boolean(visitorBatchText.trim() || visitorLines.some(l => l.trim().length > 0))}
+              />
               <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
                 <button
                   type="submit"
-                  disabled={!visitorBatchText.trim()}
+                  disabled={!visitorLines.some(l => l.trim().length > 0) && !visitorBatchText.trim()}
                   className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                 >
                   + Adicionar Todos à Lista
                 </button>
-                {visitorBatchText.trim() && (
+                {(visitorBatchText.trim() || visitorLines.some(l => l.trim().length > 0)) && (
                   <button
                     type="button"
-                    onClick={() => handleVisitorBatchTextChange('')}
+                    onClick={handleClearVisitorBatch}
                     className="px-4 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                   >
                     Limpar Folha
@@ -610,28 +654,16 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (MUITO MAIS FÁCIL PARA ESCREVER) */}
           {prayerBatchMode ? (
             <form onSubmit={handleAddBatchPrayer} className="space-y-4">
-              <div className="bg-white rounded-xl border-2 border-dashed border-church-sand p-3 shadow-inner focus-within:border-church-gold transition-all">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-church-sand/60 text-xs text-church-muted font-sans">
-                  <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-church-gold" />
-                    Folha para Digitar Vários Pedidos (1 por linha)
-                  </span>
-                  <span className="text-[11px] font-mono text-church-gold-dark font-medium">Aperte Enter para pular linha</span>
-                </div>
-                <textarea
-                  rows={9}
-                  placeholder="Digite ou cole aqui os pedidos de oração livremente (1 por linha)...&#10;&#10;Exemplo:&#10;Irmão João Batista - UTI do Hospital Santa Marcelina&#10;Irmã Sebastiana - Cirurgia do fêmur&#10;Família da Irmã Iva - Consolo e fortalecimento&#10;Irmão Marcos Vinicius - Libertação dos vícios"
-                  value={prayerBatchText}
-                  onChange={e => handlePrayerBatchTextChange(e.target.value)}
-                  className="w-full text-base font-sans p-3 bg-white border-0 focus:ring-0 outline-none resize-y min-h-[260px] sm:min-h-[300px] leading-relaxed text-church-charcoal placeholder:text-church-muted/50"
-                />
-                {prayerBatchText.trim() && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium px-3 pb-1 pt-0.5 border-t border-church-sand/40">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>Rascunho salvo no aparelho (não se perde se a tela desligar ou recarregar)</span>
-                  </div>
-                )}
-              </div>
+              <InteractiveLineSheet
+                lines={prayerLines}
+                onChange={handlePrayerLinesChange}
+                rawText={prayerBatchText}
+                onChangeRawText={handlePrayerBatchTextChange}
+                title="Folha para Digitar Vários Pedidos de Oração"
+                helperText="Toque diretamente em qualquer linha para digitar o motivo da oração (sem precisar apertar Enter):"
+                minLines={15}
+                hasDraft={Boolean(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0))}
+              />
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
                 <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
                   <input
@@ -645,15 +677,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 <div className="flex items-center gap-2">
                   <button
                     type="submit"
-                    disabled={!prayerBatchText.trim()}
+                    disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
                     className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                   >
                     + Adicionar Todos os Pedidos
                   </button>
-                  {prayerBatchText.trim() && (
+                  {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
                     <button
                       type="button"
-                      onClick={() => handlePrayerBatchTextChange('')}
+                      onClick={handleClearPrayerBatch}
                       className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                     >
                       Limpar Folha

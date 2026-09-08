@@ -39,7 +39,7 @@ import {
 } from '../../utils/liturgyExport';
 
 export const ControladorPanel: React.FC = () => {
-  const { room, blocks, isFastSync, updateBlock, appendItemsToBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
+  const { room, blocks, isFastSync, appendItemsToBlock, removeItemFromBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
@@ -241,8 +241,7 @@ export const ControladorPanel: React.FC = () => {
   const handleRemoveYoutubeItem = (id: string) => {
     const block = blocks.find(b => b.block_type === 'youtube');
     if (!block) return;
-    const current = (block.content || []) as PrayerItem[];
-    updateBlock(block.id, current.filter(p => p.id !== id));
+    removeItemFromBlock(block.id, id);
     triggerFeedback('Pedido do YouTube removido.');
   };
 
