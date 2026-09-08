@@ -41,8 +41,8 @@ interface ObreiroEditorProps {
 export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
   const { room, blocks, updateBlock, appendItemsToBlock, removeItemFromBlock, role } = useRoom();
 
-  const draftVisitorKey = room ? `docs_church_draft_visitors_${room.code}` : '';
-  const draftPrayerKey = room ? `docs_church_draft_prayers_${room.code}` : '';
+  const draftVisitorKey = room ? `docs_church_draft_visitors_${room.id}` : '';
+  const draftPrayerKey = room ? `docs_church_draft_prayers_${room.id}` : '';
 
   // Estados de Prévia do Púlpito (Protegida contra toques acidentais para idosos)
   const [showPulpitConfirm, setShowPulpitConfirm] = useState(false);
@@ -55,14 +55,18 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   const [visitorBatchMode, setVisitorBatchMode] = useState(true);
   const [visitorBatchText, setVisitorBatchText] = useState(() => {
     try {
-      return (room ? localStorage.getItem(`docs_church_draft_visitors_${room.code}`) : null) || '';
+      if (!room) return '';
+      return localStorage.getItem(`docs_church_draft_visitors_${room.id}`) ||
+             localStorage.getItem(`docs_church_draft_visitors_${room.code}`) || '';
     } catch {
       return '';
     }
   });
   const [visitorLines, setVisitorLines] = useState<string[]>(() => {
     try {
-      const saved = room ? localStorage.getItem(`docs_church_draft_visitors_${room.code}`) : null;
+      if (!room) return Array(12).fill('');
+      const saved = localStorage.getItem(`docs_church_draft_visitors_${room.id}`) ||
+                    localStorage.getItem(`docs_church_draft_visitors_${room.code}`);
       if (saved) {
         const arr = saved.split('\n');
         if (arr.length > 0) return arr;
@@ -77,14 +81,18 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   const [prayerBatchMode, setPrayerBatchMode] = useState(true);
   const [prayerBatchText, setPrayerBatchText] = useState(() => {
     try {
-      return (room ? localStorage.getItem(`docs_church_draft_prayers_${room.code}`) : null) || '';
+      if (!room) return '';
+      return localStorage.getItem(`docs_church_draft_prayers_${room.id}`) ||
+             localStorage.getItem(`docs_church_draft_prayers_${room.code}`) || '';
     } catch {
       return '';
     }
   });
   const [prayerLines, setPrayerLines] = useState<string[]>(() => {
     try {
-      const saved = room ? localStorage.getItem(`docs_church_draft_prayers_${room.code}`) : null;
+      if (!room) return Array(15).fill('');
+      const saved = localStorage.getItem(`docs_church_draft_prayers_${room.id}`) ||
+                    localStorage.getItem(`docs_church_draft_prayers_${room.code}`);
       if (saved) {
         const arr = saved.split('\n');
         if (arr.length > 0) return arr;

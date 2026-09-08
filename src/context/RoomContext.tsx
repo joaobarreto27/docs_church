@@ -52,38 +52,102 @@ const BROADCAST_SYNC_KEY = 'docs_church_intertab_sync';
 
 interface StoredSession {
   code: string;
+  roomId?: string;
   role: UserRole;
   pin?: string;
   expiresAt: number;
 }
 
+
+
+const PENDING_APPENDS_KEY = 'docs_church_pending_appends';
+
+interface PendingAppend {
+  id: string;
+  blockId: string;
+  roomId: string;
+  newItems: any[];
+  timestamp: number;
+}
+
+function getPendingAppends(): PendingAppend[] {
+  try {
+    const raw = localStorage.getItem(PENDING_APPENDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingAppends(items: PendingAppend[]) {
+  try {
+    if (items.length === 0) {
+      localStorage.removeItem(PENDING_APPENDS_KEY);
+    } else {
+      localStorage.setItem(PENDING_APPENDS_KEY, JSON.stringify(items));
+    }
+  } catch {}
+}
+
+function saveStoredSession(session: StoredSession) {
+  try {
+    const raw = JSON.stringify(session);
+    sessionStorage.setItem(SESSION_KEY, raw);
+    localStorage.setItem(SESSION_KEY, raw);
+    localStorage.setItem('docs_church_last_code', session.code);
+    localStorage.setItem('docs_church_last_role', session.role);
+  } catch (e) {}
+}
+
+function clearStoredSession() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch (e) {}
+}
+
 function getStoredSession(): StoredSession | null {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed: StoredSession = JSON.parse(raw);
     const now = Date.now();
     // Se a sessão expirou (mais de 3 horas), remove imediatamente
     if (parsed.expiresAt && now > parsed.expiresAt) {
-      sessionStorage.removeItem(SESSION_KEY);
+      clearStoredSession();
       return null;
     }
     if (parsed.code && parsed.role) {
       return parsed;
     }
   } catch (e) {
-    console.warn('Erro ao ler sessionStorage:', e);
+    console.warn('Erro ao ler sessionStorage/localStorage:', e);
   }
   return null;
 }
 
-function getStoredCache(code: string): { room: Room; blocks: LiturgicalBlock[] } | null {
+function getStoredCache(codeOrId: string): { room: Room; blocks: LiturgicalBlock[] } | null {
   try {
-    const cached = localStorage.getItem(`${CACHE_PREFIX}${code}`);
+    const cached = localStorage.getItem(`${CACHE_PREFIX}${codeOrId}`);
     if (cached) {
       const parsed = JSON.parse(cached);
       if (parsed.room && parsed.blocks) {
         return { room: parsed.room, blocks: parsed.blocks };
+      }
+    }
+    // Fallback resiliente: se a chave da sala mudou, busca por room.id ou room.code
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(CACHE_PREFIX)) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.room && (parsed.room.id === codeOrId || parsed.room.code === codeOrId)) {
+              return { room: parsed.room, blocks: parsed.blocks };
+            }
+          }
+        } catch {}
       }
     }
   } catch (e) {
@@ -95,7 +159,7 @@ function getStoredCache(code: string): { room: Room; blocks: LiturgicalBlock[] }
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Inicialização síncrona imediata para evitar qualquer piscada de tela ao dar refresh
   const [initialSession] = useState<StoredSession | null>(getStoredSession);
-  const initialCache = initialSession?.code ? getStoredCache(initialSession.code) : null;
+  const initialCache = initialSession ? getStoredCache(initialSession.roomId || initialSession.code) : null;
 
   const [room, setRoom] = useState<Room | null>(initialCache?.room || null);
   const [blocks, setBlocks] = useState<LiturgicalBlock[]>(initialCache?.blocks || []);
@@ -162,13 +226,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Busca dados completos da sala
-  const fetchFullRoom = useCallback(async (code: string, isInitial: boolean = false) => {
+  const fetchFullRoom = useCallback(async (codeOrId: string, isInitial: boolean = false) => {
     if (isInitial) {
       setIsColdStarting(true);
     }
 
     try {
-      const foundRoom = await getRoomByCode(code);
+      const foundRoom = await getRoomByCode(codeOrId);
       if (!foundRoom) {
         setError('Culto não encontrado com este código.');
         setIsColdStarting(false);
@@ -181,11 +245,22 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsConnected(true);
       setError(null);
       saveToCache(foundRoom, foundBlocks);
+
+      // Sincroniza sessão
+      const active = getStoredSession();
+      if (active) {
+        saveStoredSession({
+          ...active,
+          code: foundRoom.code,
+          roomId: foundRoom.id
+        });
+      }
+
       return true;
     } catch (err: any) {
       console.warn('Erro ao conectar ao Neon:', err);
       // Se tiver cache local, usa imediatamente
-      const hasCached = loadFromCache(code);
+      const hasCached = loadFromCache(codeOrId);
       if (hasCached) {
         setIsConnected(false); // Avisa que está operando offline
         return true;
@@ -234,15 +309,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       saveToCache(foundRoom, foundBlocks);
 
-      // Salva sessão no sessionStorage com validade de 3 horas para resistir a refresh
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ 
-          code: cleanCode, 
-          role: selectedRole,
-          pin: pin || undefined,
-          expiresAt: Date.now() + THREE_HOURS_MS
-        }));
-      } catch (e) {}
+      // Salva sessão resiliente (3 horas) persistida para resistir a refresh e hibernação
+      saveStoredSession({ 
+        code: foundRoom.code, 
+        roomId: foundRoom.id,
+        role: selectedRole,
+        pin: pin || undefined,
+        expiresAt: Date.now() + THREE_HOURS_MS
+      });
 
       return { success: true };
     } catch (err: any) {
@@ -266,15 +340,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       saveToCache(newRoom, newBlocks);
 
-      // Salva sessão de 3 horas no sessionStorage
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ 
-          code: newRoom.code, 
-          role: 'controlador',
-          pin,
-          expiresAt: Date.now() + THREE_HOURS_MS
-        }));
-      } catch (e) {}
+      // Salva sessão resiliente
+      saveStoredSession({ 
+        code: newRoom.code, 
+        roomId: newRoom.id,
+        role: 'controlador',
+        pin,
+        expiresAt: Date.now() + THREE_HOURS_MS
+      });
 
       return { success: true, code: newRoom.code };
     } catch (err: any) {
@@ -301,14 +374,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       saveToCache(foundRoom, foundBlocks);
 
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-          code: foundRoom.code,
-          role: 'controlador',
-          pin,
-          expiresAt: Date.now() + THREE_HOURS_MS
-        }));
-      } catch (e) {}
+      saveStoredSession({
+        code: foundRoom.code,
+        roomId: foundRoom.id,
+        role: 'controlador',
+        pin,
+        expiresAt: Date.now() + THREE_HOURS_MS
+      });
 
       return { success: true };
     } catch (err: any) {
@@ -324,19 +396,52 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activeSession = getStoredSession();
     if (!activeSession) return;
 
+    // Se temos roomId salvo na sessão ou no cache inicial, usamos prioritariamente para suportar renomeação de chave
+    const lookupKey = activeSession.roomId || initialCache?.room?.id || room?.id || activeSession.code;
+
     // Se não tínhamos cache local dos blocos, busca completo
     if (!room || blocks.length === 0) {
-      joinRoom(activeSession.code, activeSession.role, activeSession.pin);
+      joinRoom(lookupKey, activeSession.role, activeSession.pin);
     } else {
       // Já tínhamos cache: revalidação silenciosa em background com o Neon
-      getRoomMeta(activeSession.code).then(async (meta) => {
+      getRoomMeta(lookupKey).then(async (meta) => {
         if (meta) {
           setIsConnected(true);
-          if (meta.version !== room.version) {
-            const updatedBlocks = await getBlocksByRoomId(room.id);
+          const codeChanged = Boolean(meta.code && meta.code !== room.code);
+          const titleChanged = Boolean(meta.title && meta.title !== room.title);
+          const versionChanged = meta.version !== room.version;
+
+          if (versionChanged) {
+            const updatedBlocks = await getBlocksByRoomId(meta.id || room.id);
             setBlocks(updatedBlocks);
-            setRoom(prev => prev ? { ...prev, ...meta } : null);
-            saveToCache({ ...room, ...meta }, updatedBlocks);
+            setRoom(prev => prev ? { 
+              ...prev, 
+              code: meta.code || prev.code,
+              title: meta.title || prev.title,
+              version: meta.version,
+              active_alert: meta.active_alert,
+              current_page: meta.current_page 
+            } : null);
+            saveToCache({ 
+              ...room, 
+              code: meta.code || room.code,
+              title: meta.title || room.title,
+              version: meta.version,
+              active_alert: meta.active_alert,
+              current_page: meta.current_page 
+            }, updatedBlocks);
+          } else if (codeChanged || titleChanged) {
+            setRoom(prev => prev ? { ...prev, code: meta.code, title: meta.title } : null);
+            saveToCache({ ...room, code: meta.code, title: meta.title }, blocksRef.current);
+          }
+
+          // Se a chave da sala foi alterada pelo controlador, atualiza a sessão resiliente
+          if (codeChanged || activeSession.code !== meta.code || !activeSession.roomId) {
+            saveStoredSession({
+              ...activeSession,
+              code: meta.code,
+              roomId: meta.id
+            });
           }
         }
       }).catch(() => {
@@ -356,9 +461,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBlocks([]);
     setRole(null);
     setError(null);
-    try {
-      sessionStorage.removeItem(SESSION_KEY);
-    } catch (e) {}
+    clearStoredSession();
   }, []);
 
   // Atualiza bloco de liturgia (substituição integral sequencial)
@@ -430,27 +533,47 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await blockMutationQueueRef.current;
   }, [room, broadcastLocalChange]);
 
-  // Concatenação atômica de itens a um bloco (blindagem total contra concorrência entre múltiplos obreiros)
+  // Concatenação atômica de itens a um bloco (blindagem total contra concorrência entre múltiplos obreiros e fila offline)
   const appendItemsToBlock = useCallback(async (blockId: string, newItems: any[]) => {
     if (!room || !newItems || newItems.length === 0) return;
 
-    // Atualização otimista imediata na UI local
-    setBlocks(prev => prev.map(b => {
+    // Atualização otimista imediata na UI local e no ref síncrono
+    blocksRef.current = blocksRef.current.map(b => {
       if (b.id === blockId) {
         const current = (b.content || []) as any[];
         return { ...b, content: [...current, ...newItems] };
       }
       return b;
-    }));
+    });
+    setBlocks(blocksRef.current);
+    pendingMutationsCountRef.current += 1;
+    lastMutationTimeRef.current = Date.now();
 
-    try {
-      await appendBlockContent(blockId, newItems, room.id);
-      setIsConnected(true);
-      broadcastLocalChange();
-    } catch (err) {
-      console.warn('Erro ao concatenar itens no Neon:', err);
-      setIsConnected(false);
-    }
+    blockMutationQueueRef.current = blockMutationQueueRef.current
+      .then(async () => {
+        try {
+          await appendBlockContent(blockId, newItems, room.id);
+          setIsConnected(true);
+          broadcastLocalChange();
+        } catch (err) {
+          console.warn('Erro ao concatenar itens no Neon (enfileirando offline):', err);
+          setIsConnected(false);
+          const pending = getPendingAppends();
+          pending.push({
+            id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            blockId,
+            roomId: room.id,
+            newItems,
+            timestamp: Date.now()
+          });
+          savePendingAppends(pending);
+        }
+      })
+      .finally(() => {
+        pendingMutationsCountRef.current = Math.max(0, pendingMutationsCountRef.current - 1);
+      });
+
+    await blockMutationQueueRef.current;
   }, [room, broadcastLocalChange]);
 
   // Dispara ou limpa alerta
@@ -487,7 +610,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsColdStarting(true);
     try {
       await archiveAndResetRoom(room.id, newTitle);
-      await fetchFullRoom(room.code);
+      await fetchFullRoom(room.id || room.code);
       broadcastLocalChange();
     } catch (err) {
       console.error('Erro ao reiniciar culto:', err);
@@ -499,7 +622,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Força sincronização manual dos dados da sala
   const refreshData = useCallback(async () => {
     if (!room) return;
-    await fetchFullRoom(room.code);
+    await fetchFullRoom(room.id || room.code);
   }, [room, fetchFullRoom]);
 
   // Atualiza o nome/título do culto
@@ -529,13 +652,15 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await updateRoomCode(room.id, formatted);
       if (res.success) {
         setRoom(prev => prev ? { ...prev, code: formatted } : null);
-        try {
-          const active = getStoredSession();
-          if (active) {
-            active.code = formatted;
-            sessionStorage.setItem(SESSION_KEY, JSON.stringify(active));
-          }
-        } catch (e) {}
+        const active = getStoredSession();
+        if (active) {
+          saveStoredSession({
+            ...active,
+            code: formatted,
+            roomId: room.id
+          });
+        }
+        saveToCache({ ...room, code: formatted }, blocksRef.current);
         broadcastLocalChange();
       }
       return res;
@@ -543,7 +668,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Erro ao atualizar código da sala:', err);
       return { success: false, error: 'Falha ao atualizar o código no banco.' };
     }
-  }, [room, broadcastLocalChange]);
+  }, [room, saveToCache, broadcastLocalChange]);
 
   // Escuta avisos imediatos de outras abas na mesma máquina (0ms via BroadcastChannel ou storage)
   useEffect(() => {
@@ -608,7 +733,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Se a aba estiver minimizada ou tela desligada, economiza Neon e bateria
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
 
-      // Se a sessão de 3 horas na aba expirou, encerra polling e volta ao login para poupar Neon/Vercel
+      // Se a sessão de 3 horas expirou, encerra polling e volta ao login
       const currentSession = getStoredSession();
       if (!currentSession) {
         leaveRoom();
@@ -618,10 +743,43 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isPollingRef.current = true;
 
       try {
-        // Sincronização inteligente em 1 viagem só: busca versão e blocos se houver mudança
+        // Se houver itens adicionados offline na fila local, descarrega primeiro no Neon
+        const pending = getPendingAppends();
+        if (pending.length > 0) {
+          const remaining: PendingAppend[] = [];
+          for (const item of pending) {
+            try {
+              await appendBlockContent(item.blockId, item.newItems, item.roomId);
+            } catch {
+              remaining.push(item);
+            }
+          }
+          savePendingAppends(remaining);
+          if (remaining.length > 0) {
+            // Se ainda não conseguiu enviar todos por falta de sinal, adia o poll
+            return;
+          }
+        }
+
+        // Sincronização inteligente em 1 viagem só: busca versão, código, título e blocos se houver mudança
         const syncResult = await syncRoomState(room.id, room.code, room.version);
         if (syncResult) {
           setIsConnected(true);
+
+          const codeChanged = Boolean(syncResult.code && syncResult.code !== room.code);
+          const titleChanged = Boolean(syncResult.title && syncResult.title !== room.title);
+
+          // Se a chave ou o título da sala mudou, sincroniza imediatamente a sessão do obreiro/pulpito
+          if (codeChanged || titleChanged) {
+            const active = getStoredSession();
+            if (active) {
+              saveStoredSession({
+                ...active,
+                code: syncResult.code,
+                roomId: syncResult.id || room.id
+              });
+            }
+          }
 
           if (syncResult.hasChanged) {
             // Se houver mutações locais em andamento ou muito recentes (exclusões consecutivas), não sobrescreve com snapshot antigo
@@ -642,21 +800,47 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setBlocks(updatedBlocks);
             setRoom(prev => prev ? { 
               ...prev, 
+              code: syncResult.code || prev.code,
+              title: syncResult.title || prev.title,
               version: syncResult.version,
               active_alert: syncResult.active_alert,
               current_page: syncResult.current_page 
             } : null);
             saveToCache(
-              { ...room, version: syncResult.version, active_alert: syncResult.active_alert, current_page: syncResult.current_page },
+              { 
+                ...room, 
+                code: syncResult.code || room.code,
+                title: syncResult.title || room.title,
+                version: syncResult.version, 
+                active_alert: syncResult.active_alert, 
+                current_page: syncResult.current_page 
+              },
               updatedBlocks
             );
-          } else if (syncResult.active_alert !== room.active_alert || syncResult.current_page !== room.current_page) {
-            // Atualiza alerta ou página mesmo se versão dos blocos for igual
+          } else if (
+            syncResult.active_alert !== room.active_alert || 
+            syncResult.current_page !== room.current_page ||
+            codeChanged ||
+            titleChanged
+          ) {
+            // Atualiza alerta, página, código ou título mesmo se versão dos blocos for igual
             setRoom(prev => prev ? { 
               ...prev, 
+              code: syncResult.code || prev.code,
+              title: syncResult.title || prev.title,
               active_alert: syncResult.active_alert,
               current_page: syncResult.current_page 
             } : null);
+            saveToCache(
+              {
+                ...room,
+                code: syncResult.code || room.code,
+                title: syncResult.title || room.title,
+                active_alert: syncResult.active_alert,
+                current_page: syncResult.current_page
+              },
+              blocksRef.current
+            );
           }
         }
       } catch (err) {

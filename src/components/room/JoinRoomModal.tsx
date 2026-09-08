@@ -8,8 +8,20 @@ export const JoinRoomModal: React.FC = () => {
   const { joinRoom, startNewService, overwriteExistingService, error: contextError } = useRoom();
 
   const [mode, setMode] = useState<'join' | 'create'>('join');
-  const [code, setCode] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('pastor');
+  const [code, setCode] = useState(() => {
+    try {
+      return localStorage.getItem('docs_church_last_code') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [selectedRole, setSelectedRole] = useState<UserRole>(() => {
+    try {
+      const saved = localStorage.getItem('docs_church_last_role');
+      if (saved === 'pastor' || saved === 'obreiro' || saved === 'controlador') return saved;
+    } catch {}
+    return 'pastor';
+  });
   const [pin, setPin] = useState('');
   const [newTitle, setNewTitle] = useState('Culto de Celebração');
   const [newPin, setNewPin] = useState('');
