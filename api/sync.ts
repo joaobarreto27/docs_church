@@ -1,4 +1,44 @@
-import { sql } from './_db';
+import { neon } from '@neondatabase/serverless';
+
+function getDatabaseUrl(): string {
+  const raw = process.env.DATABASE_URL || 
+              process.env.POSTGRES_URL || 
+              process.env.NEON_DATABASE_URL || 
+              process.env.DATABASE_URL_UNPOOLED ||
+              process.env.VITE_DATABASE_URL;
+  if (!raw) {
+    const keys = Object.keys(process.env)
+      .filter(k => !k.toLowerCase().includes('secret') && !k.toLowerCase().includes('token') && !k.toLowerCase().includes('key'));
+    throw new Error(`DATABASE_URL não configurada no ambiente. Variáveis disponíveis: [${keys.join(', ')}]`);
+  }
+
+  let url = raw.trim();
+  if (url.startsWith('DATABASE_URL=')) url = url.substring('DATABASE_URL='.length).trim();
+  else if (url.startsWith('POSTGRES_URL=')) url = url.substring('POSTGRES_URL='.length).trim();
+  else if (url.startsWith('NEON_DATABASE_URL=')) url = url.substring('NEON_DATABASE_URL='.length).trim();
+  else if (url.startsWith('VITE_DATABASE_URL=')) url = url.substring('VITE_DATABASE_URL='.length).trim();
+  url = url.replace(/^["']+|["']+$/g, '').trim();
+
+  if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
+    throw new Error('DATABASE_URL inválida (deve iniciar com postgresql:// ou postgres://).');
+  }
+
+  return url;
+}
+
+let _cachedUrl = '';
+let _sqlInstance: any = null;
+function getSql() {
+  const currentUrl = getDatabaseUrl();
+  if (!_sqlInstance || _cachedUrl !== currentUrl) {
+    _cachedUrl = currentUrl;
+    _sqlInstance = neon(currentUrl);
+  }
+  return _sqlInstance;
+}
+
+type SqlFunction = (strings: TemplateStringsArray, ...values: any[]) => Promise<any[]>;
+const sql: SqlFunction = ((...args: any[]) => (getSql() as any)(...args)) as any;
 
 export default async function handler(req: any, res: any) {
   // CORS
@@ -11,7 +51,15 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const params = req.method === 'POST' ? req.body || {} : req.query || {};
+    let params = req.method === 'POST' ? req.body || {} : req.query || {};
+    if (typeof params === 'string') {
+      try {
+        params = JSON.parse(params);
+      } catch {
+        params = {};
+      }
+    }
+
     const roomId = String(params.roomId || params.id || '').trim();
     const code = String(params.code || '').trim().toUpperCase();
     const currentVersion = Number(params.version ?? -1);
@@ -80,6 +128,7 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     console.error('Erro no /api/sync:', error);
-    return res.status(500).json({ error: 'Falha interna ao sincronizar sala.' });
+    const safeMsg = error?.message ? String(error.message).replace(/:[^:@]+@/, ':***@') : 'Falha interna ao sincronizar sala.';
+    return res.status(500).json({ error: safeMsg });
   }
 }

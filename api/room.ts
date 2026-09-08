@@ -1,4 +1,80 @@
-import { sql, signControllerToken, verifyControllerToken } from './_db';
+import { neon } from '@neondatabase/serverless';
+import crypto from 'crypto';
+
+function getDatabaseUrl(): string {
+  const raw = process.env.DATABASE_URL || 
+              process.env.POSTGRES_URL || 
+              process.env.NEON_DATABASE_URL || 
+              process.env.DATABASE_URL_UNPOOLED ||
+              process.env.VITE_DATABASE_URL;
+  if (!raw) {
+    const keys = Object.keys(process.env)
+      .filter(k => !k.toLowerCase().includes('secret') && !k.toLowerCase().includes('token') && !k.toLowerCase().includes('key'));
+    throw new Error(`DATABASE_URL não configurada no ambiente. Variáveis disponíveis: [${keys.join(', ')}]`);
+  }
+
+  let url = raw.trim();
+  if (url.startsWith('DATABASE_URL=')) url = url.substring('DATABASE_URL='.length).trim();
+  else if (url.startsWith('POSTGRES_URL=')) url = url.substring('POSTGRES_URL='.length).trim();
+  else if (url.startsWith('NEON_DATABASE_URL=')) url = url.substring('NEON_DATABASE_URL='.length).trim();
+  else if (url.startsWith('VITE_DATABASE_URL=')) url = url.substring('VITE_DATABASE_URL='.length).trim();
+  url = url.replace(/^["']+|["']+$/g, '').trim();
+
+  if (!url.startsWith('postgresql://') && !url.startsWith('postgres://')) {
+    throw new Error('DATABASE_URL inválida (deve iniciar com postgresql:// ou postgres://).');
+  }
+
+  return url;
+}
+
+let _cachedUrl = '';
+let _sqlInstance: any = null;
+function getSql() {
+  const currentUrl = getDatabaseUrl();
+  if (!_sqlInstance || _cachedUrl !== currentUrl) {
+    _cachedUrl = currentUrl;
+    _sqlInstance = neon(currentUrl);
+  }
+  return _sqlInstance;
+}
+
+type SqlFunction = (strings: TemplateStringsArray, ...values: any[]) => Promise<any[]>;
+const sql: SqlFunction = ((...args: any[]) => (getSql() as any)(...args)) as any;
+
+// Chave secreta de servidor para assinatura de tokens de sessão do controlador
+const TOKEN_SECRET = process.env.SESSION_SECRET || 'docs_church_sec_token_k982_adutinga_congresso_2026';
+
+function signControllerToken(roomId: string, pin: string): string {
+  const payload = {
+    roomId,
+    pinHash: crypto.createHash('sha256').update(pin.trim()).digest('hex'),
+    issuedAt: Date.now(),
+    expiresAt: Date.now() + 1000 * 60 * 60 * 12 // 12 horas de validade máxima
+  };
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', TOKEN_SECRET).update(data).digest('base64url');
+  return `${data}.${signature}`;
+}
+
+function verifyControllerToken(token: string | null | undefined, roomId: string): boolean {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+
+  const [data, signature] = parts;
+  const expectedSignature = crypto.createHmac('sha256', TOKEN_SECRET).update(data).digest('base64url');
+
+  if (signature !== expectedSignature) return false;
+
+  try {
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf-8'));
+    if (payload.roomId !== roomId) return false;
+    if (payload.expiresAt && Date.now() > payload.expiresAt) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function formatRoomCodeMask(value: string): string {
   const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
@@ -85,7 +161,15 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const body = req.method === 'POST' ? req.body || {} : req.query || {};
+    let body = req.method === 'POST' ? req.body || {} : req.query || {};
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    }
+
     const action = String(body.action || '').trim();
 
     // 1. LOOKUP: Busca sala e blocos por código ou ID
@@ -249,39 +333,42 @@ export default async function handler(req: any, res: any) {
 
     const isAuthorized = await authorizeController(roomId, token, pin);
     if (!isAuthorized) {
-      return res.status(403).json({ success: false, error: 'Acesso negado: token de controlador inválido ou expirado.' });
+      return res.status(403).json({
+        success: false,
+        error: 'Acesso negado. Ação administrativa restrita ao Controlador com sessão válida.'
+      });
     }
 
     if (action === 'update-code') {
-      const newCode = formatRoomCodeMask(String(body.newCode || ''));
-      const withoutHyphen = newCode.replace(/-/g, '');
-      if (withoutHyphen.length < 6) {
-        return res.status(400).json({ success: false, error: 'O código deve conter 6 caracteres no formato XXX-XXX.' });
+      const newCode = formatRoomCodeMask(String(body.code || ''));
+      if (newCode.length < 6) {
+        return res.status(400).json({ success: false, error: 'Código de culto inválido.' });
       }
 
-      const conflict = await sql`
+      // Verifica se o novo código já existe em outra sala
+      const existing = await sql`
         SELECT id FROM rooms 
-        WHERE (UPPER(code) = ${newCode} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
-          AND id::text != ${roomId}
-          AND status = 'active'
+        WHERE UPPER(code) = ${newCode} AND id::text != ${roomId}
         LIMIT 1
       `;
-      if (conflict && conflict.length > 0) {
-        return res.status(409).json({ success: false, error: `O código ${newCode} já está em uso por outro culto ativo.` });
+      if (existing && existing.length > 0) {
+        return res.status(409).json({ success: false, error: 'Este código de culto já está em uso.' });
       }
 
-      await sql`
+      const updated = await sql`
         UPDATE rooms 
         SET code = ${newCode}, version = version + 1, updated_at = NOW()
         WHERE id::text = ${roomId}
+        RETURNING code, version
       `;
-      return res.status(200).json({ success: true, code: newCode });
+      return res.status(200).json({ success: true, code: updated[0].code, version: updated[0].version });
     }
 
     if (action === 'update-title') {
       const title = String(body.title || '').trim().slice(0, 100);
-      if (!title) return res.status(400).json({ success: false, error: 'Título não pode ser vazio.' });
-
+      if (!title) {
+        return res.status(400).json({ success: false, error: 'Título não pode ser vazio.' });
+      }
       await sql`
         UPDATE rooms 
         SET title = ${title}, version = version + 1, updated_at = NOW()
@@ -291,10 +378,19 @@ export default async function handler(req: any, res: any) {
     }
 
     if (action === 'send-alert') {
-      const alert = body.alert ? String(body.alert).trim().slice(0, 300) : null;
+      const message = String(body.message || '').trim().slice(0, 200);
       await sql`
         UPDATE rooms 
-        SET active_alert = ${alert}, version = version + 1, updated_at = NOW()
+        SET active_alert = ${message || null}, version = version + 1, updated_at = NOW()
+        WHERE id::text = ${roomId}
+      `;
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'clear-alert') {
+      await sql`
+        UPDATE rooms 
+        SET active_alert = NULL, version = version + 1, updated_at = NOW()
         WHERE id::text = ${roomId}
       `;
       return res.status(200).json({ success: true });
@@ -374,6 +470,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Ação não reconhecida.' });
   } catch (err: any) {
     console.error('Erro em /api/room:', err);
-    return res.status(500).json({ success: false, error: 'Erro interno ao processar operação da sala.' });
+    const safeMsg = err?.message ? String(err.message).replace(/:[^:@]+@/, ':***@') : 'Erro interno ao processar operação da sala.';
+    return res.status(500).json({ success: false, error: safeMsg });
   }
 }

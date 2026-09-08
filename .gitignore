@@ -8,3 +8,5 @@ dist-ssr
 env.txt
 *.env.txt
 .DS_Store
+.vercel
+.env*
