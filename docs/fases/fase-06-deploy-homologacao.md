@@ -17,7 +17,7 @@ O projeto está 100% pronto para a Vercel através do arquivo [`vercel.json`](fi
    - **Output Directory:** `dist`
 4. Na seção **Environment Variables**, adicione a variável:
    - **Nome:** `VITE_DATABASE_URL`
-   - **Valor:** `postgresql://neondb_owner:npg_eI5ZzX7rGqmd@ep-mute-band-a4uq5qfl-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require` (ou a string de conexão da sua branch ativa no Neon).
+   - **Valor:** `postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require` (ou a string de conexão da sua branch ativa no Neon).
 5. Clique em **Deploy**.
 
 ---

@@ -1996,10 +1996,10 @@ Dê um **recarregar (F5 ou Cmd+R)** na sua página do navegador: **o app já est
 Ao inspecionar os logs do navegador na Vercel, encontramos o erro:
 ```text
 Error: Database connection string provided to neon() is not a valid URL.
-Connection string: VITE_DATABASE_URL="postgresql://neondb_owner:..."
+Connection string: VITE_DATABASE_URL="postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require"
 ```
 No painel da Vercel, no campo **Value**, foi colada a linha inteira do `.env` com as aspas e o nome da variável:  
-`VITE_DATABASE_URL="postgresql://..."` em vez de apenas a URL limpa. Como a string continha o texto `VITE_DATABASE_URL="`, a biblioteca do Neon disparava um erro antes mesmo do React montar os componentes na tela.
+`VITE_DATABASE_URL="postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require"` em vez de apenas a URL limpa. Como a string continha o texto `VITE_DATABASE_URL="`, a biblioteca do Neon disparava um erro antes mesmo do React montar os componentes na tela.
 
 ---
 
@@ -2115,7 +2115,7 @@ rm -f /Users/joaovitorbarreto/.gemini/antigravity-ide/brain/ae745325-5e9d-4ead-9
 ```bash
 node -e '
 import("/Users/joaovitorbarreto/Projects/docs_church/node_modules/@neondatabase/serverless/index.mjs").then(async ({ neon }) => {
-  const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+  const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
   const rooms = await sql`SELECT code, title, version FROM rooms WHERE code = "ADU-TESTE"`;
   const blocks = await sql`SELECT count(*) FROM liturgical_blocks WHERE room_id = (SELECT id FROM rooms WHERE code = "ADU-TESTE")`;
   console.log("Room:", rooms[0], "Blocks count:", blocks[0].count);
@@ -2125,7 +2125,7 @@ import("/Users/joaovitorbarreto/Projects/docs_church/node_modules/@neondatabase/
 ```bash
 node -e '
 import("/Users/joaovitorbarreto/Projects/docs_church/node_modules/@neondatabase/serverless/index.mjs").then(async ({ neon }) => {
-  const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+  const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
   const rooms = await sql`SELECT code, title, version FROM rooms WHERE code = ${"ADU-TESTE"}`;
   const blocks = await sql`SELECT count(*) FROM liturgical_blocks WHERE room_id = (SELECT id FROM rooms WHERE code = ${"ADU-TESTE"})`;
   console.log("Room:", rooms[0], "Blocks count:", blocks[0].count);
@@ -2907,7 +2907,7 @@ As correções já foram validadas com sucesso (`npm run build`), enviadas para 
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 async function main() {
   const rooms = await sql`SELECT * FROM rooms`;
   console.log("Rooms:", rooms);
@@ -2920,7 +2920,7 @@ main().catch(console.error);
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 async function main() {
   const blocks = await sql`SELECT id, room_id, block_type, title, content FROM liturgical_blocks WHERE room_id = '\''a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'\''`;
   console.log("All blocks in ADU-PNO:", JSON.stringify(blocks, null, 2));
@@ -2931,7 +2931,7 @@ main().catch(console.error);
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 async function main() {
   const blocks = await sql`SELECT id, room_id, block_type, title, order_index, sheet_assignment, created_at, updated_at FROM liturgical_blocks WHERE room_id = '\''a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'\'' ORDER BY block_type, created_at`;
   console.table(blocks);
@@ -2942,7 +2942,7 @@ main().catch(console.error);
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 async function main() {
   const constraints = await sql`
     SELECT conname, contype 
@@ -2957,7 +2957,7 @@ main().catch(console.error);
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 async function main() {
   const duplicates = await sql`
     SELECT room_id, block_type, count(*) 
@@ -3506,7 +3506,7 @@ Todas as alterações solicitadas foram implementadas e enviadas para as branche
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 async function search() {
   const res = await sql\`SELECT id, room_id, block_type, content, updated_at FROM liturgical_blocks WHERE content::text ILIKE '%toninho%'\`;
   console.log('Toninho in blocks:', JSON.stringify(res, null, 2));
@@ -3523,7 +3523,7 @@ search();
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 async function searchAll() {
   const tables = await sql\`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'\`;
   console.log('Tables:', tables);
@@ -3545,7 +3545,7 @@ searchAll();
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 async function addToninho() {
   const roomRows = await sql\`SELECT id FROM rooms WHERE code = 'ADU-PNO'\`;
   if (!roomRows.length) return console.log('Room not found');
@@ -4071,7 +4071,7 @@ Hoje o Controlador tem **duas ações principais de gerenciamento**, projetadas 
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function main() {
   const rooms = await sql\`SELECT id, code, title FROM rooms WHERE UPPER(code) = 'ADU-PNO'\`;
@@ -4089,7 +4089,7 @@ main();
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function main() {
   const prayers = await sql\`SELECT content FROM liturgical_blocks WHERE room_id = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d' AND block_type = 'prayer'\`;
@@ -4224,7 +4224,7 @@ As alterações já foram validadas e enviadas para produção no GitHub (`dev` 
 ```bash
 NODE_PATH=./node_modules node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function main() {
   const rooms = await sql\`SELECT id FROM rooms WHERE UPPER(code) = 'ADU-PNO'\`;

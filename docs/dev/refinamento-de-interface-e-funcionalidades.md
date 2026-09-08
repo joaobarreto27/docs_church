@@ -414,7 +414,7 @@ Você já pode abrir a sala **ADU-PNO** tanto na visão de **Obreiro** quanto no
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function check() {
   const rooms = await sql\`SELECT * FROM rooms WHERE code = 'ADU-PNO'\`;
@@ -430,7 +430,7 @@ check().catch(console.error);
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function populate() {
   const visitors = [
@@ -554,7 +554,7 @@ populate().catch(console.error);
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function check() {
   const blocks = await sql\`
@@ -625,7 +625,7 @@ Mais 8 visitantes foram adicionados com sucesso à sala **ADU-PNO**, totalizando
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function addVisitors() {
   const roomId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
@@ -701,7 +701,7 @@ addVisitors().catch(console.error);
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function listAll() {
   const rows = await sql\`
@@ -820,7 +820,7 @@ Ajustado! A sala **ADU-PNO** agora está com exatamente **8 visitantes**:
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function keep8Visitors() {
   const roomId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
@@ -853,7 +853,7 @@ keep8Visitors().catch(console.error);
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function check() {
   const blocks = await sql\`
@@ -1047,7 +1047,7 @@ Agora, a seção de **Oportunidades** no Púlpito ([PulpitView.tsx](file:///User
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function addOpps() {
   const roomId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
@@ -1271,7 +1271,7 @@ Eu fiz a alteração da chave no modo do controlador, e no painel do obreiro e p
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function inspectRooms() {
   const rooms = await sql\`SELECT id, code, title, version, status, updated_at FROM rooms ORDER BY updated_at DESC LIMIT 10\`;
@@ -1366,7 +1366,7 @@ O build de produção e a verificação de tipos TypeScript passaram sem nenhum 
 ```bash
 node -e "
 const { neon } = require('@neondatabase/serverless');
-const sql = neon('postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require');
+const sql = neon('postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require');
 
 async function inspectRooms() {
   const rooms = await sql\`SELECT id, code, title, version, status, updated_at FROM rooms ORDER BY updated_at DESC\`;
@@ -1390,7 +1390,7 @@ sql`SELECT id, code, title, version, status, updated_at FROM rooms ORDER BY upda
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 sql`SELECT id, code, title, version, status, updated_at FROM rooms ORDER BY updated_at DESC LIMIT 5;`
   .then(rows => console.log(JSON.stringify(rows, null, 2)))
   .catch(err => console.error(err));
@@ -1399,7 +1399,7 @@ sql`SELECT id, code, title, version, status, updated_at FROM rooms ORDER BY upda
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '\''rooms'\'';`
   .then(rows => console.log(JSON.stringify(rows, null, 2)))
   .catch(err => console.error(err));
@@ -1408,7 +1408,7 @@ sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_na
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 sql`SELECT id, code FROM rooms WHERE (id::text = '\''ADU-PNO'\'' OR UPPER(code) = '\''TES-TES'\'') AND status = '\''active'\'' LIMIT 1;`
   .then(rows => console.log(JSON.stringify(rows, null, 2)))
   .catch(err => console.error(err));
@@ -1506,7 +1506,7 @@ Deseja que eu execute o `/canonical-commit` para subir essas melhorias para a br
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 sql`SELECT indexname, indexdef FROM pg_indexes WHERE tablename = '\''rooms'\'';`
   .then(rows => console.log(JSON.stringify(rows, null, 2)))
   .catch(err => console.error(err));
@@ -1515,7 +1515,7 @@ sql`SELECT indexname, indexdef FROM pg_indexes WHERE tablename = '\''rooms'\'';`
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '\''liturgical_blocks'\'';`
   .then(rows => console.log(JSON.stringify(rows, null, 2)))
   .catch(err => console.error(err));
@@ -1524,7 +1524,7 @@ sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_na
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon("postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon("postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 sql`SELECT id, room_id, block_type, title, order_index FROM liturgical_blocks WHERE room_id = '\''a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d'\'' ORDER BY order_index ASC;`
   .then(rows => console.log(JSON.stringify(rows, null, 2)))
   .catch(err => console.error(err));
@@ -1650,9 +1650,9 @@ Abaixo está a auditoria forense completa, **arquivo por arquivo e linha por lin
 
 | Arquivo | Linhas | Vulnerabilidade |
 | :--- | :--- | :--- |
-| [`api/sql.ts`](file:///Users/joaovitorbarreto/Projects/docs_church/api/sql.ts#L32) | **Linha 32** | Conexão de contingência hardcoded com a string completa do banco: `postgresql://neondb_owner:npg_lCE6u9gIqOXc@...` com privilégios de **dono do banco**. |
-| [`src/services/neon.ts`](file:///Users/joaovitorbarreto/Projects/docs_church/src/services/neon.ts#L28) | **Linha 28** | String de conexão completa com senha exposta no código do frontend: `|| 'postgresql://neondb_owner:npg_lCE6u9gIqOXc@...'`. |
-| [`dist/assets/index-BdNFKVFT.js`](file:///Users/joaovitorbarreto/Projects/docs_church/dist/assets/index-BdNFKVFT.js#L45) | **Linha 45** | **Impacto Crítico:** Como [`src/services/neon.ts`](file:///Users/joaovitorbarreto/Projects/docs_church/src/services/neon.ts) é importado pelo React, o Vite compilou a senha `npg_lCE6u9gIqOXc` **dentro do arquivo JavaScript público da aplicação**. Qualquer visitante tem a credencial de administrador. |
+| [`api/sql.ts`](file:///Users/joaovitorbarreto/Projects/docs_church/api/sql.ts#L32) | **Linha 32** | Conexão de contingência hardcoded com a string completa do banco: `postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require` com privilégios de **dono do banco**. |
+| [`src/services/neon.ts`](file:///Users/joaovitorbarreto/Projects/docs_church/src/services/neon.ts#L28) | **Linha 28** | String de conexão completa com senha exposta no código do frontend: `|| 'postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require'`. |
+| [`dist/assets/index-BdNFKVFT.js`](file:///Users/joaovitorbarreto/Projects/docs_church/dist/assets/index-BdNFKVFT.js#L45) | **Linha 45** | **Impacto Crítico:** Como [`src/services/neon.ts`](file:///Users/joaovitorbarreto/Projects/docs_church/src/services/neon.ts) é importado pelo React, o Vite compilou a senha `[REDACTED_PASSWORD]` **dentro do arquivo JavaScript público da aplicação**. Qualquer visitante tem a credencial de administrador. |
 | `docs/dev/refinamento-de-interface-e-funcionalidades.md` | **Linhas 387, 403, 527, 598, 674, 793, 826, 1020** | Comandos com a credencial exposta salvos no histórico da documentação e commits do repositório. |
 
 ---
@@ -1708,7 +1708,7 @@ O sistema funcionava tecnicamente (as telas abriam, os tablets antigos conseguia
 ### O Que Precisa Ser Feito Imediatamente:
 
 1. **Trocar a Senha no Neon (AGORA):**
-   * Como a credencial `npg_lCE6u9gIqOXc` já está pública no código e no pacote compilado, a senha da role `neondb_owner` no painel do Neon precisa ser resetada para invalidar acessos externos.
+   * Como a credencial `[REDACTED_PASSWORD]` já está pública no código e no pacote compilado, a senha da role `neondb_owner` no painel do Neon precisa ser resetada para invalidar acessos externos.
 2. **Eliminar a Chave do Frontend e do Repositório:**
    * O frontend nunca deve ter a `DATABASE_URL`. A conexão com o banco deve existir **apenas** nas variáveis de ambiente do servidor na Vercel (`process.env.DATABASE_URL`).
 3. **Substituir o Proxy SQL Aberto por Endpoints de API Fechados:**
@@ -1769,7 +1769,7 @@ Por favor, clique no botão **Proceed** no plano ou confirme para iniciarmos a e
 ```bash
 node -e '
 const { neon } = require("@neondatabase/serverless");
-const sql = neon(process.env.DATABASE_URL || "postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require");
+const sql = neon(process.env.DATABASE_URL || "postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require");
 async function test() {
   const tables = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema = '\''public'\''`;
   console.log("Tables:", tables);
@@ -1856,7 +1856,7 @@ O relatório técnico detalhado com todas as validações está documentado no a
 > **Ação Final na Vercel:**
 > Como a senha da sua role `neondb_owner` no Neon foi rotacionada, certifique-se de que no painel da **Vercel** (`Settings -> Environment Variables`), a variável `DATABASE_URL` esteja preenchida com a nova string de conexão ativa:
 > ```text
-> postgresql://neondb_owner:npg_xKP24LEFWsdu@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require
+> postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require
 > ```
 
 #### 🛠️ Ações Técnicas e Ferramentas Executadas no Turno:
@@ -1929,7 +1929,7 @@ A Vercel percebeu que você tentou salvar com o prefixo público (provavelmente 
    *(Sem o prefixo `VITE_` na frente)*.
 2. No campo **Value (Valor)**, cole a nova string com a senha rotacionada:
    ```text
-   postgresql://neondb_owner:npg_xKP24LEFWsdu@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require
+   postgresql://[USER]:[PASSWORD]@[HOST]/[DATABASE]?sslmode=require
    ```
 3. Se ainda existir alguma variável antiga chamada `VITE_DATABASE_URL` salva na lista da Vercel, clique nos três pontinhos ao lado dela e **exclua-a**.
 
@@ -1949,7 +1949,7 @@ Em segurança de software nunca se usa "100%" de forma leviana, mas no que tange
 
 ### Checklist final para o congresso:
 - [x] Código com commits canônicos mesclados na branch `main`.
-- [x] Senha rotacionada no Neon (`npg_xKP24LEFWsdu`).
+- [x] Senha rotacionada no Neon (`[REDACTED_PASSWORD]`).
 - [x] Build do frontend validado: 160 KB mais leve e sem credenciais no código compilado.
 - [x] Polyfills do Android 4.4.4 preservados e funcionando.
 - [ ] **Ação sua:** Salvar na Vercel como `DATABASE_URL` (sem `VITE_`) e apagar a antiga se existir.
@@ -2144,7 +2144,7 @@ npm audit
 grep -rn "postgresql://" dist/ || echo "Nenhuma URL de banco encontrada no bundle"
 ```
 ```bash
-grep -rn "npg_xKP24LEFWsdu" dist/ src/ || echo "Senha ativa ausente do código do frontend e do bundle compilado"
+grep -rn "[REDACTED_PASSWORD]" dist/ src/ || echo "Senha ativa ausente do código do frontend e do bundle compilado"
 ```
 ```bash
 for i in {1..6}; do
@@ -2186,7 +2186,7 @@ Aqui está o porquê você pode ir para o congresso tranquilo:
 
 ---
 
-### 1. A Chave Nova (`npg_F7khPZtV1Hdv`) está 100% Protegida
+### 1. A Chave Nova (`[REDACTED_PASSWORD]`) está 100% Protegida
 * A senha foi rotacionada no Neon e agora está salva como **`DATABASE_URL`** (variável estritamente privada de servidor na Vercel e no seu `.env` local).
 * O navegador dos irmãos, obreiros e pastores **não recebe nem uma letra dessa credencial**.
 * Já testamos a conexão localmente e ela conectou perfeitamente ao banco com a nova senha.
