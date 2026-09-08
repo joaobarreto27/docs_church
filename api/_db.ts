@@ -35,9 +35,11 @@ export function getSql() {
   return _sqlInstance;
 }
 
-export const sql = ((...args: any[]) => {
+export type SqlFunction = (strings: TemplateStringsArray, ...values: any[]) => Promise<any[]>;
+
+export const sql: SqlFunction = ((...args: any[]) => {
   return (getSql() as any)(...args);
-}) as ReturnType<typeof neon>;
+}) as any;
 
 // Chave secreta de servidor para assinatura de tokens de sessão do controlador
 const TOKEN_SECRET = process.env.SESSION_SECRET || 'docs_church_sec_token_k982_adutinga_congresso_2026';
