@@ -33,6 +33,7 @@ interface RoomContextType {
   leaveRoom: () => void;
   updateBlock: (blockId: string, newContent: any) => Promise<void>;
   appendItemsToBlock: (blockId: string, newItems: any[]) => Promise<void>;
+  removeItemFromBlock: (blockId: string, itemId: string) => Promise<void>;
   sendAlert: (text: string | null) => Promise<void>;
   setPage: (page: number) => Promise<void>;
   resetCurrentService: (newTitle: string) => Promise<void>;
@@ -109,6 +110,17 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPollingRef = useRef<boolean>(false);
   const pollRef = useRef<() => Promise<void>>(async () => {});
+
+  // Refs para controle síncrono atômico de exclusões consecutivas sem race conditions
+  const blocksRef = useRef<LiturgicalBlock[]>(blocks);
+  const pendingMutationsCountRef = useRef<number>(0);
+  const lastMutationTimeRef = useRef<number>(0);
+  const blockMutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  // Mantém blocksRef sempre atualizado com o estado mais recente
+  useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
 
   // Transmite aviso imediato para outras abas na mesma máquina (0ms via BroadcastChannel ou localStorage)
   const broadcastLocalChange = useCallback(() => {
@@ -349,21 +361,73 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
   }, []);
 
-  // Atualiza bloco de liturgia (substituição integral)
+  // Atualiza bloco de liturgia (substituição integral sequencial)
   const updateBlock = useCallback(async (blockId: string, newContent: any) => {
     if (!room) return;
     
-    // Atualização otimista na UI imediata
-    setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, content: newContent } : b));
+    // Atualização otimista na UI imediata e no ref síncrono
+    blocksRef.current = blocksRef.current.map(b => b.id === blockId ? { ...b, content: newContent } : b);
+    setBlocks(blocksRef.current);
+    pendingMutationsCountRef.current += 1;
+    lastMutationTimeRef.current = Date.now();
     
-    try {
-      await updateBlockContent(blockId, newContent, room.id);
-      setIsConnected(true);
-      broadcastLocalChange();
-    } catch (err) {
-      console.warn('Erro ao atualizar bloco no Neon:', err);
-      setIsConnected(false);
-    }
+    blockMutationQueueRef.current = blockMutationQueueRef.current
+      .then(async () => {
+        const block = blocksRef.current.find(b => b.id === blockId);
+        const payload = block ? block.content : newContent;
+        await updateBlockContent(blockId, payload, room.id);
+        setIsConnected(true);
+        broadcastLocalChange();
+      })
+      .catch(err => {
+        console.warn('Erro ao atualizar bloco no Neon:', err);
+        setIsConnected(false);
+      })
+      .finally(() => {
+        pendingMutationsCountRef.current = Math.max(0, pendingMutationsCountRef.current - 1);
+      });
+
+    await blockMutationQueueRef.current;
+  }, [room, broadcastLocalChange]);
+
+  // Remoção atômica de item (blindagem absoluta contra cliques rápidos consecutivos e race conditions)
+  const removeItemFromBlock = useCallback(async (blockId: string, itemId: string) => {
+    if (!room) return;
+
+    // Atualiza imediatamente a referência interna síncrona para que cliques em sequência (1ms) já leiam sem o item
+    let updatedContent: any[] = [];
+    const nextBlocks = blocksRef.current.map(b => {
+      if (b.id === blockId) {
+        const current = (b.content || []) as any[];
+        updatedContent = current.filter(item => item.id !== itemId);
+        return { ...b, content: updatedContent };
+      }
+      return b;
+    });
+
+    blocksRef.current = nextBlocks;
+    setBlocks(nextBlocks);
+    pendingMutationsCountRef.current += 1;
+    lastMutationTimeRef.current = Date.now();
+
+    blockMutationQueueRef.current = blockMutationQueueRef.current
+      .then(async () => {
+        // Envia SEMPRE o estado mais fresco do bloco no momento da execução
+        const block = blocksRef.current.find(b => b.id === blockId);
+        const payload = block ? block.content : updatedContent;
+        await updateBlockContent(blockId, payload, room.id);
+        setIsConnected(true);
+        broadcastLocalChange();
+      })
+      .catch((err) => {
+        console.warn('Erro ao remover item no Neon:', err);
+        setIsConnected(false);
+      })
+      .finally(() => {
+        pendingMutationsCountRef.current = Math.max(0, pendingMutationsCountRef.current - 1);
+      });
+
+    await blockMutationQueueRef.current;
   }, [room, broadcastLocalChange]);
 
   // Concatenação atômica de itens a um bloco (blindagem total contra concorrência entre múltiplos obreiros)
@@ -560,6 +624,11 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsConnected(true);
 
           if (syncResult.hasChanged) {
+            // Se houver mutações locais em andamento ou muito recentes (exclusões consecutivas), não sobrescreve com snapshot antigo
+            if (pendingMutationsCountRef.current > 0 || (Date.now() - lastMutationTimeRef.current < 2500)) {
+              return;
+            }
+
             // Reinicia a janela de 2,5 minutos de modo rápido
             lastActivityTimeRef.current = Date.now();
             setIsFastSync(true);
@@ -647,6 +716,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       leaveRoom,
       updateBlock,
       appendItemsToBlock,
+      removeItemFromBlock,
       sendAlert,
       setPage,
       resetCurrentService,
