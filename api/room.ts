@@ -46,6 +46,35 @@ async function authorizeController(roomId: string, token?: string, pin?: string)
   return false;
 }
 
+// Proteção contra Força Bruta (Brute-force) no PIN do controlador: máx 5 erros por IP a cada 3 min
+const failedAttemptsByIp = new Map<string, { count: number; blockedUntil: number }>();
+
+function checkPinRateLimit(ip: string): { blocked: boolean; remainingSeconds?: number } {
+  const record = failedAttemptsByIp.get(ip);
+  if (!record) return { blocked: false };
+  const now = Date.now();
+  if (record.blockedUntil > now) {
+    return { blocked: true, remainingSeconds: Math.ceil((record.blockedUntil - now) / 1000) };
+  }
+  if (record.blockedUntil <= now && record.blockedUntil > 0) {
+    failedAttemptsByIp.delete(ip);
+  }
+  return { blocked: false };
+}
+
+function recordFailedPinAttempt(ip: string) {
+  const record = failedAttemptsByIp.get(ip) || { count: 0, blockedUntil: 0 };
+  record.count += 1;
+  if (record.count >= 5) {
+    record.blockedUntil = Date.now() + 3 * 60 * 1000; // Bloqueio temporário de 3 minutos
+  }
+  failedAttemptsByIp.set(ip, record);
+}
+
+function clearPinRateLimit(ip: string) {
+  failedAttemptsByIp.delete(ip);
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -110,12 +139,23 @@ export default async function handler(req: any, res: any) {
       let sessionToken: string | undefined;
 
       if (role === 'controlador') {
+        const clientIp = String(req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+        const rateLimitStatus = checkPinRateLimit(clientIp);
+        if (rateLimitStatus.blocked) {
+          return res.status(429).json({ 
+            success: false, 
+            error: `Muitas tentativas incorretas. Por segurança, tente novamente em ${rateLimitStatus.remainingSeconds} segundos.` 
+          });
+        }
+
         if (!pin || pin.length < 4) {
           return res.status(400).json({ success: false, error: 'O papel de Controlador exige um PIN de pelo menos 4 dígitos.' });
         }
         if (roomRow.controller_pin !== pin) {
+          recordFailedPinAttempt(clientIp);
           return res.status(401).json({ success: false, error: 'PIN do Controlador incorreto.' });
         }
+        clearPinRateLimit(clientIp);
         sessionToken = signControllerToken(roomRow.id, pin);
       }
 
