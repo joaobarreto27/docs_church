@@ -266,10 +266,27 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   // Encontra bloco por tipo
   const getBlock = (type: string) => blocks.find(b => b.block_type === type);
 
+  // Rolagem suave para o elemento em edição, com fallback 100% compatível com Android 4.4.4 (Chrome 30)
+  const scrollToEditItem = (elementId: string) => {
+    setTimeout(() => {
+      const el = document.getElementById(elementId);
+      if (el) {
+        try {
+          // Navegadores modernos
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch {
+          // Android 4.4.4 (Chrome 30) e WebViews legados
+          el.scrollIntoView(false);
+        }
+      }
+    }, 60);
+  };
+
   // Inicia correção de visitante na linha pautada
   const handleStartEditVisitor = (v: VisitorItem) => {
     setEditingVisitorId(v.id);
     setEditingVisitorText(v.church ? `${v.name} (${v.church})` : v.name);
+    scrollToEditItem(`editing-visitor-${v.id}`);
   };
 
   // Salva correção de visitante e sincroniza imediatamente com o púlpito
@@ -297,6 +314,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   const handleStartEditPrayer = (p: PrayerItem) => {
     setEditingPrayerId(p.id);
     setEditingPrayerText(p.description);
+    scrollToEditItem(`editing-prayer-${p.id}`);
   };
 
   // Salva correção de pedido de oração e sincroniza imediatamente com o púlpito
@@ -320,6 +338,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   const handleStartEditOpp = (op: OpportunityItem) => {
     setEditingOppId(op.id);
     setEditingOppText(op.name);
+    scrollToEditItem(`editing-opp-${op.id}`);
   };
 
   // Salva correção de oportunidade e sincroniza imediatamente com o púlpito
@@ -605,13 +624,13 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   Atualizado em tempo real no púlpito
                 </span>
               </div>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {visitorsList.map((v, idx) => {
                   const isEditing = editingVisitorId === v.id;
 
                   if (isEditing) {
                     return (
-                      <div key={v.id} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
+                      <div key={v.id} id={`editing-visitor-${v.id}`} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
                         <div className="flex items-center justify-between text-[11px] text-church-gold-dark font-title font-bold uppercase tracking-wider">
                           <div className="flex items-center gap-1.5">
                             <Pencil className="w-3.5 h-3.5 text-church-gold" />
@@ -801,13 +820,13 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   Atualizado em tempo real no púlpito
                 </span>
               </div>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {prayersList.map((p, idx) => {
                   const isEditing = editingPrayerId === p.id;
 
                   if (isEditing) {
                     return (
-                      <div key={p.id} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
+                      <div key={p.id} id={`editing-prayer-${p.id}`} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
                         <div className="flex items-center justify-between text-[11px] text-church-gold-dark font-title font-bold uppercase tracking-wider">
                           <div className="flex items-center gap-1.5">
                             <Pencil className="w-3.5 h-3.5 text-church-gold" />
@@ -1146,7 +1165,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
                     if (isEditing) {
                       return (
-                        <div key={op.id} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
+                        <div key={op.id} id={`editing-opp-${op.id}`} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
                           <div className="flex items-center justify-between text-[11px] text-church-gold-dark font-title font-bold uppercase tracking-wider">
                             <div className="flex items-center gap-1.5">
                               <Pencil className="w-3.5 h-3.5 text-church-gold" />
