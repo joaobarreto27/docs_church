@@ -1,62 +1,7 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
-import { Room, LiturgicalBlock, BlockType } from '../types/liturgy';
-
-// Sanitiza e valida a URL do banco contra erros comuns de digitação/colagem em painéis de env
-function cleanDatabaseUrl(raw?: string): string {
-  if (!raw) return '';
-  let url = raw.trim();
-  // Se foi colado no campo Value com 'VITE_DATABASE_URL=...'
-  if (url.startsWith('VITE_DATABASE_URL=')) {
-    url = url.substring('VITE_DATABASE_URL='.length).trim();
-  } else if (url.startsWith('DATABASE_URL=')) {
-    url = url.substring('DATABASE_URL='.length).trim();
-  }
-  // Remove aspas extras ao redor da URL
-  url = url.replace(/^["']+|["']+$/g, '').trim();
-
-  if (url.startsWith('postgresql://') || url.startsWith('postgres://')) {
-    return url;
-  }
-  return '';
-}
-
-const rawEnvUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DATABASE_URL) 
-  || (typeof process !== 'undefined' && process.env?.VITE_DATABASE_URL);
-
-// Obtém URL do banco configurada em ambiente com fallback seguro
-const databaseUrl = cleanDatabaseUrl(rawEnvUrl) 
-  || 'postgresql://neondb_owner:npg_lCE6u9gIqOXc@ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
-
-// Configura o endpoint do Neon para usar o proxy '/api/sql' na mesma origem.
-// Isso é essencial no Android 4.4.4 KitKat, cujo repositório nativo de certificados raiz (2013)
-// não confia no ISRG Root X1 (Let's Encrypt), bloqueando qualquer HTTPS direto ao domínio neon.tech.
-if (typeof window !== 'undefined' && window.location && window.location.origin) {
-  neonConfig.fetchEndpoint = () => {
-    return `${window.location.origin}/api/sql`;
-  };
-
-  const originalFetch = window.fetch.bind(window);
-  neonConfig.fetchFunction = async (url: string, options: any) => {
-    try {
-      const res = await originalFetch(url, options);
-      if (res.status !== 404) {
-        return res;
-      }
-    } catch (e) {
-      console.warn('Proxy /api/sql falhou, tentando fallback direto ao Neon...', e);
-    }
-    // Fallback direto caso /api/sql não exista
-    const match = databaseUrl.match(/@([^/:]+)/);
-    const host = match ? match[1] : 'ep-super-field-au3e58we-pooler.c-10.us-east-1.aws.neon.tech';
-    return originalFetch(`https://${host}/sql`, options);
-  };
-}
-
-// Inicializa o client HTTP serverless do Neon
-export const sql = neon(databaseUrl);
+import { Room, LiturgicalBlock } from '../types/liturgy';
 
 /**
- * Gera código de sala amigável no formato XXX-XXX (6 caracteres alfanuméricos com hífen automático)
+ * Gera código de sala amigável no formato XXX-XXX (6 caracteres alfanuméricos)
  */
 export function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -79,7 +24,7 @@ export function formatRoomCodeMask(value: string): string {
 }
 
 /**
- * Executa uma operação assíncrona com tentativas automáticas contra oscilações passageiras de rede (Wi-Fi de igreja)
+ * Executa uma operação assíncrona com tentativas automáticas contra oscilações de rede (Wi-Fi de igreja)
  */
 export async function withRetry<T>(operation: () => Promise<T>, maxRetries = 2, delayMs = 350): Promise<T> {
   let lastError: any;
@@ -97,57 +42,101 @@ export async function withRetry<T>(operation: () => Promise<T>, maxRetries = 2, 
 }
 
 /**
- * Busca sala ativa pelo código (aceita texto como ADU-PNO ou números)
+ * Helper seguro para requisições à API do servidor
+ */
+async function postApi<T>(endpoint: string, payload: any, token?: string): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    let errMsg = `Erro ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data && (data.error || data.message)) errMsg = data.error || data.message;
+    } catch {}
+    throw new Error(errMsg);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+/**
+ * Busca sala ativa pelo código através da API protegida
  */
 export async function getRoomByCode(code: string): Promise<Room | null> {
-  const normalized = code.trim().toUpperCase();
-  const withoutHyphen = normalized.replace(/-/g, '');
-  // SEGURANÇA: Não seleciona controller_pin para nunca vazar a senha ao púlpito/obreiro
-  const rows = await sql`
-    SELECT id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at 
-    FROM rooms 
-    WHERE (id::text = ${code} OR UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
-      AND status = 'active'
-    ORDER BY updated_at DESC
-    LIMIT 1
-  `;
-  if (!rows || rows.length === 0) return null;
-  return rows[0] as Room;
+  try {
+    const data = await postApi<{ room: Room; blocks: LiturgicalBlock[] }>('/api/room', {
+      action: 'lookup',
+      code,
+    });
+    return data.room || null;
+  } catch (err) {
+    return null;
+  }
 }
 
 /**
- * Valida o PIN do controlador com segurança diretamente no banco Neon.
- * O hash/senha real nunca trafega na resposta, retornando apenas confirmação booleana.
+ * Valida o PIN do controlador exclusivamente no servidor
  */
 export async function verifyControllerPin(code: string, pin: string): Promise<boolean> {
-  const normalized = code.trim().toUpperCase();
-  const withoutHyphen = normalized.replace(/-/g, '');
-  const rows = await sql`
-    SELECT id FROM rooms 
-    WHERE (id::text = ${code} OR UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
-      AND controller_pin = ${pin}
-      AND status = 'active'
-    ORDER BY updated_at DESC
-    LIMIT 1
-  `;
-  return Boolean(rows && rows.length > 0);
+  try {
+    const res = await postApi<{ success: boolean; sessionToken?: string }>('/api/room', {
+      action: 'join',
+      code,
+      role: 'controlador',
+      pin,
+    });
+    return Boolean(res && res.success);
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Busca a versão, código, título e aviso ativo da sala (Smart-Polling ultra leve com suporte a ID ou Código)
+ * Realiza o login na sala com emissão de token de sessão assinado
+ */
+export async function joinRoomApi(code: string, role: string, pin?: string): Promise<{ success: boolean; room?: Room; blocks?: LiturgicalBlock[]; sessionToken?: string; error?: string }> {
+  try {
+    return await postApi('/api/room', {
+      action: 'join',
+      code,
+      role,
+      pin,
+    });
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Falha ao conectar à sala.' };
+  }
+}
+
+/**
+ * Busca metadados da sala
  */
 export async function getRoomMeta(identifier: string): Promise<{ id: string; code: string; title: string; version: number; active_alert: string | null; current_page: number } | null> {
-  const normalized = identifier.trim().toUpperCase();
-  const withoutHyphen = normalized.replace(/-/g, '');
-  const rows = await sql`
-    SELECT id, code, title, version, active_alert, current_page FROM rooms 
-    WHERE (id::text = ${identifier} OR UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
-      AND status = 'active'
-    ORDER BY updated_at DESC
-    LIMIT 1
-  `;
-  if (!rows || rows.length === 0) return null;
-  return rows[0] as { id: string; code: string; title: string; version: number; active_alert: string | null; current_page: number };
+  try {
+    const res = await fetch(`/api/sync?roomId=${encodeURIComponent(identifier)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      id: data.id,
+      code: data.code,
+      title: data.title,
+      version: data.version,
+      active_alert: data.active_alert,
+      current_page: data.current_page,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export interface RoomSyncResult {
@@ -162,410 +151,168 @@ export interface RoomSyncResult {
 }
 
 /**
- * Sincronização inteligente em 1 viagem só (Sem Waterfall):
- * Busca a versão, código atual e título da sala. Se a versão mudou, já agrega e retorna os blocos litúrgicos no mesmo payload.
+ * Sincronização inteligente via /api/sync (sem expor credenciais)
  */
 export async function syncRoomState(
   roomId: string,
   code: string,
   currentVersion: number
 ): Promise<RoomSyncResult | null> {
-  const normalized = code.trim().toUpperCase();
-  const withoutHyphen = normalized.replace(/-/g, '');
-
-  const rows = await sql`
-    WITH room_meta AS (
-      SELECT id, code, title, version, active_alert, current_page 
-      FROM rooms 
-      WHERE (id::text = ${roomId} OR UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
-        AND status = 'active'
-      ORDER BY updated_at DESC
-      LIMIT 1
-    )
-    SELECT 
-      r.id,
-      r.code,
-      r.title,
-      r.version, 
-      r.active_alert, 
-      r.current_page,
-      CASE 
-        WHEN r.version != ${currentVersion} THEN (
-          SELECT json_agg(b.*) FROM (
-            SELECT DISTINCT ON (block_type) * 
-            FROM liturgical_blocks 
-            WHERE room_id = r.id 
-            ORDER BY block_type, updated_at DESC
-          ) b
-        )
-        ELSE NULL 
-      END as blocks_data
-    FROM room_meta r
-  `;
-
-  if (!rows || rows.length === 0) return null;
-  const row = rows[0] as any;
-  const version = Number(row.version);
-  const hasChanged = version !== currentVersion;
-
-  let blocks: LiturgicalBlock[] | undefined = undefined;
-  if (hasChanged && row.blocks_data && Array.isArray(row.blocks_data)) {
-    blocks = (row.blocks_data as LiturgicalBlock[]).sort(
-      (a, b) => (a.order_index || 0) - (b.order_index || 0)
-    );
+  try {
+    return await postApi<RoomSyncResult>('/api/sync', {
+      roomId,
+      code,
+      version: currentVersion,
+    });
+  } catch {
+    return null;
   }
-
-  return {
-    id: row.id,
-    code: row.code,
-    title: row.title,
-    version,
-    active_alert: row.active_alert ?? null,
-    current_page: Number(row.current_page ?? 1),
-    blocks,
-    hasChanged,
-  };
 }
 
 /**
- * Busca todos os blocos litúrgicos de uma sala ordenados por ordem de exibição com auto-recuperação
+ * Busca todos os blocos litúrgicos de uma sala
  */
 export async function getBlocksByRoomId(roomId: string): Promise<LiturgicalBlock[]> {
-  const fetchBlocks = async () => {
-    const rows = await sql`
-      SELECT DISTINCT ON (block_type) * FROM liturgical_blocks 
-      WHERE (room_id::text = ${roomId} OR room_id IN (SELECT id FROM rooms WHERE (UPPER(code) = UPPER(${roomId}) OR REPLACE(UPPER(code), '-', '') = REPLACE(UPPER(${roomId}), '-', '')) LIMIT 1))
-      ORDER BY block_type, updated_at DESC
-    `;
-    const blocks = (rows || []) as LiturgicalBlock[];
-    blocks.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-    return blocks;
-  };
-
-  let blocks = await fetchBlocks();
-
-  // Auto-healing: Se a sala não tiver os 5 blocos padrão, cria os faltantes automaticamente
-  const requiredTypes: BlockType[] = ['visitors', 'prayer', 'youtube', 'opportunities', 'choirs'];
-  const existingTypes = new Set(blocks.map(b => b.block_type));
-  const missing = requiredTypes.filter(t => !existingTypes.has(t));
-
-  if (missing.length > 0) {
-    const defaultMeta: Partial<Record<BlockType, { title: string; order: number; sheet: number; content: any }>> = {
-      visitors: { title: 'Visitantes', order: 1, sheet: 1, content: [] },
-      prayer: { title: 'Pedidos de Oração', order: 2, sheet: 1, content: [] },
-      youtube: { title: 'Pedidos de Oração Youtube', order: 3, sheet: 1, content: [] },
-      opportunities: { title: 'Oportunidades', order: 4, sheet: 2, content: [] },
-      choirs: { 
-        title: 'Departamentos', 
-        order: 5, 
-        sheet: 2, 
-        content: [
-          { id: '1', name: 'Mocidade', checked: false },
-          { id: '2', name: 'Círculo de Oração', checked: false },
-          { id: '3', name: 'Varões', checked: false },
-          { id: '4', name: 'Juniores', checked: false },
-          { id: '5', name: 'Crianças', checked: false }
-        ] 
-      }
-    };
-
-    for (const type of missing) {
-      const meta = defaultMeta[type];
-      if (!meta) continue;
-      try {
-        await sql`
-          INSERT INTO liturgical_blocks (room_id, block_type, title, content, order_index, sheet_assignment)
-          SELECT id, ${type}, ${meta.title}, ${JSON.stringify(meta.content)}::jsonb, ${meta.order}, ${meta.sheet}
-          FROM rooms 
-          WHERE id::text = ${roomId} OR UPPER(code) = UPPER(${roomId}) OR REPLACE(UPPER(code), '-', '') = REPLACE(UPPER(${roomId}), '-', '')
-          LIMIT 1
-          ON CONFLICT (room_id, block_type) DO NOTHING
-        `;
-      } catch (e) {
-        console.warn('Erro ao auto-criar bloco litúrgico faltante:', e);
-      }
-    }
-    blocks = await fetchBlocks();
+  try {
+    const data = await postApi<{ room: Room; blocks: LiturgicalBlock[] }>('/api/room', {
+      action: 'lookup',
+      id: roomId,
+    });
+    return data.blocks || [];
+  } catch {
+    return [];
   }
-
-  return blocks;
 }
 
 /**
- * Cria uma nova sala com a estrutura de blocos padrão da congregação A.D. Utinga
+ * Cria uma nova sala no servidor
  */
 export async function createRoom(
   title: string = 'Culto de Celebração',
   controllerPin: string,
   preferredCode?: string
-): Promise<{ room: Room; blocks: LiturgicalBlock[] }> {
-  // Permite código alfanumérico customizado (ex: ADU-PNO) ou gera 6 dígitos aleatórios
-  const code = preferredCode && preferredCode.trim().length >= 3 
-    ? preferredCode.trim().toUpperCase() 
-    : generateRoomCode();
-
-  if (!controllerPin || controllerPin.trim().length < 4) {
-    throw new Error('O PIN do Controlador deve conter pelo menos 4 dígitos.');
-  }
-
-  // Insere a sala no Neon
-  const roomRows = await sql`
-    INSERT INTO rooms (code, title, controller_pin, version, status)
-    VALUES (${code}, ${title}, ${controllerPin.trim()}, 1, 'active')
-    ON CONFLICT (code) DO UPDATE 
-    SET title = ${title}, controller_pin = ${controllerPin.trim()}, status = 'active', updated_at = NOW()
-    RETURNING id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at
-  `;
-  const room = roomRows[0] as Room;
-
-  // Verifica se a sala já tem blocos criados para evitar duplicidade
-  const existingBlocks = await sql`
-    SELECT * FROM liturgical_blocks 
-    WHERE room_id = ${room.id}
-    ORDER BY order_index ASC
-  `;
-
-  if (existingBlocks && existingBlocks.length > 0) {
-    return { room, blocks: existingBlocks as LiturgicalBlock[] };
-  }
-
-  // Cria os blocos padrão da congregação (folha limpa com os 5 departamentos padrão)
-  const defaultBlocks: Array<{
-    type: BlockType;
-    title: string;
-    content: any;
-    order: number;
-    sheet: number;
-  }> = [
-    {
-      type: 'visitors',
-      title: 'Visitantes',
-      content: [],
-      order: 1,
-      sheet: 1, // Folha 1 (Esquerda)
-    },
-    {
-      type: 'prayer',
-      title: 'Pedidos de Oração',
-      content: [],
-      order: 2,
-      sheet: 1, // Folha 1 (Esquerda)
-    },
-    {
-      type: 'youtube',
-      title: 'Pedidos de Oração Youtube',
-      content: [],
-      order: 3,
-      sheet: 1, // Folha 1 (Esquerda)
-    },
-    {
-      type: 'opportunities',
-      title: 'Oportunidades',
-      content: [],
-      order: 4,
-      sheet: 2, // Folha 2 (Direita)
-    },
-    {
-      type: 'choirs',
-      title: 'Departamentos',
-      content: [
-        { id: '1', name: 'Mocidade', checked: false },
-        { id: '2', name: 'Círculo de Oração', checked: false },
-        { id: '3', name: 'Varões', checked: false },
-        { id: '4', name: 'Juniores', checked: false },
-        { id: '5', name: 'Crianças', checked: false }
-      ],
-      order: 5,
-      sheet: 2, // Folha 2 (Direita)
-    }
-  ];
-
-  // Insere cada bloco no banco
-  const createdBlocks: LiturgicalBlock[] = [];
-  for (const b of defaultBlocks) {
-    const blockRows = await sql`
-      INSERT INTO liturgical_blocks (room_id, block_type, title, content, order_index, sheet_assignment)
-      VALUES (${room.id}, ${b.type}, ${b.title}, ${JSON.stringify(b.content)}, ${b.order}, ${b.sheet})
-      ON CONFLICT (room_id, block_type) DO NOTHING
-      RETURNING *
-    `;
-    if (blockRows && blockRows.length > 0) {
-      createdBlocks.push(blockRows[0] as LiturgicalBlock);
-    }
-  }
-
-  return { room, blocks: createdBlocks };
-}
-
-/**
- * Atualiza o conteúdo de um bloco e incrementa a versão da sala em 1 única viagem HTTP (CTE atômica com retry)
- */
-export async function updateBlockContent(blockId: string, content: any, roomId: string): Promise<void> {
-  const contentJson = typeof content === 'string' ? content : JSON.stringify(content);
-  await withRetry(async () => {
-    await sql`
-      WITH upd AS (
-        UPDATE liturgical_blocks 
-        SET content = ${contentJson}::jsonb, updated_at = NOW()
-        WHERE id = ${blockId}
-      )
-      UPDATE rooms 
-      SET version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
+): Promise<{ room: Room; blocks: LiturgicalBlock[]; sessionToken?: string }> {
+  return await postApi<{ room: Room; blocks: LiturgicalBlock[]; sessionToken?: string }>('/api/room', {
+    action: 'create',
+    title,
+    pin: controllerPin,
+    preferredCode,
   });
 }
 
 /**
- * Concatena novos itens a um bloco de forma atômica no PostgreSQL (com retry resiliente)
+ * Atualiza o conteúdo de um bloco (com proteção contra IDOR no servidor)
+ */
+export async function updateBlockContent(blockId: string, content: any, roomId: string, token?: string): Promise<void> {
+  await withRetry(async () => {
+    await postApi('/api/block', {
+      action: 'update',
+      blockId,
+      roomId,
+      content,
+    }, token);
+  });
+}
+
+/**
+ * Concatena novos itens a um bloco de forma atômica no servidor
  */
 export async function appendBlockContent(blockId: string, newItems: any[], roomId: string): Promise<void> {
   if (!newItems || newItems.length === 0) return;
-  const itemsJson = JSON.stringify(newItems);
   await withRetry(async () => {
-    await sql`
-      WITH upd AS (
-        UPDATE liturgical_blocks 
-        SET content = COALESCE(content, '[]'::jsonb) || ${itemsJson}::jsonb, updated_at = NOW()
-        WHERE id = ${blockId}
-      )
-      UPDATE rooms 
-      SET version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
+    await postApi('/api/block', {
+      action: 'append',
+      blockId,
+      roomId,
+      newItems,
+    });
   });
 }
 
 /**
  * Dispara ou limpa o aviso urgente no topo da tela do púlpito
  */
-export async function setRoomAlert(roomId: string, alertText: string | null): Promise<void> {
+export async function setRoomAlert(roomId: string, alertText: string | null, token?: string): Promise<void> {
   await withRetry(async () => {
-    await sql`
-      UPDATE rooms 
-      SET active_alert = ${alertText}, version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
+    await postApi('/api/room', {
+      action: 'send-alert',
+      roomId,
+      alert: alertText,
+      sessionToken: token,
+    }, token);
   });
 }
 
 /**
  * Atualiza a página ativa remotamente para o púlpito
  */
-export async function setRoomCurrentPage(roomId: string, page: number): Promise<void> {
+export async function setRoomCurrentPage(roomId: string, page: number, token?: string): Promise<void> {
   await withRetry(async () => {
-    await sql`
-      UPDATE rooms 
-      SET current_page = ${page}, version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
+    await postApi('/api/room', {
+      action: 'set-page',
+      roomId,
+      page,
+      sessionToken: token,
+    }, token);
   });
 }
 
 /**
  * Atualiza o nome/título do culto
  */
-export async function updateRoomTitle(roomId: string, newTitle: string): Promise<void> {
+export async function updateRoomTitle(roomId: string, newTitle: string, token?: string): Promise<void> {
   await withRetry(async () => {
-    await sql`
-      UPDATE rooms 
-      SET title = ${newTitle.trim()}, version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
+    await postApi('/api/room', {
+      action: 'update-title',
+      roomId,
+      title: newTitle,
+      sessionToken: token,
+    }, token);
   });
 }
 
 /**
  * Atualiza o código/chave da sala no formato padrão XXX-XXX
  */
-export async function updateRoomCode(roomId: string, newCode: string): Promise<{ success: boolean; error?: string }> {
-  const clean = formatRoomCodeMask(newCode);
-  const withoutHyphen = clean.replace(/-/g, '');
-  if (withoutHyphen.length < 6) {
-    return { success: false, error: 'O código deve conter 6 caracteres no formato XXX-XXX.' };
+export async function updateRoomCode(roomId: string, newCode: string, token?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await postApi<{ success: boolean; error?: string }>('/api/room', {
+      action: 'update-code',
+      roomId,
+      newCode,
+      sessionToken: token,
+    }, token);
+    return res;
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Falha ao atualizar código.' };
   }
-  
-  // Verifica se já existe outra sala ativa com este código
-  const existing = await sql`
-    SELECT id FROM rooms 
-    WHERE (UPPER(code) = ${clean} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
-      AND id::text != ${roomId}
-      AND status = 'active'
-    LIMIT 1
-  `;
-  if (existing && existing.length > 0) {
-    return { success: false, error: `O código ${clean} já está em uso por outro culto ativo.` };
-  }
-
-  await withRetry(async () => {
-    await sql`
-      UPDATE rooms 
-      SET code = ${clean}, version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
-  });
-  return { success: true };
 }
 
 /**
  * Arquiva o culto atual e reinicia as folhas para um novo culto
  */
-export async function archiveAndResetRoom(roomId: string, newTitle: string): Promise<void> {
+export async function archiveAndResetRoom(roomId: string, newTitle: string, token?: string): Promise<void> {
   await withRetry(async () => {
-    // Limpa o conteúdo dos blocos para uma folha limpa
-    await sql`
-      UPDATE rooms 
-      SET title = ${newTitle}, active_alert = NULL, current_page = 1, version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
-    // Reseta os blocos para vazios
-    await sql`
-      UPDATE liturgical_blocks 
-      SET content = '[]'::jsonb, updated_at = NOW()
-      WHERE room_id = ${roomId} AND block_type IN ('visitors', 'prayer', 'youtube', 'opportunities')
-    `;
-    // Desmarca checkboxes de conjuntos mantendo os nomes cadastrados pela igreja
-    await sql`
-      UPDATE liturgical_blocks 
-      SET content = CASE 
-        WHEN content IS NULL OR jsonb_typeof(content) != 'array' OR jsonb_array_length(content) = 0 THEN '[]'::jsonb
-        ELSE (
-          SELECT COALESCE(jsonb_agg(jsonb_set(elem, '{checked}', 'false'::jsonb)), '[]'::jsonb)
-          FROM jsonb_array_elements(content) AS elem
-        )
-      END,
-      updated_at = NOW()
-      WHERE room_id = ${roomId} AND block_type = 'choirs'
-    `;
+    await postApi('/api/room', {
+      action: 'reset-service',
+      roomId,
+      title: newTitle,
+      sessionToken: token,
+    }, token);
   });
 }
 
 /**
  * Substitui um culto existente com nova folha limpa e atualiza o PIN
  */
-export async function overwriteExistingRoom(roomId: string, newTitle: string, newPin: string): Promise<void> {
-  await withRetry(async () => {
-    await sql`
-      UPDATE rooms 
-      SET title = ${newTitle}, controller_pin = ${newPin.trim()}, active_alert = NULL, current_page = 1, version = version + 1, updated_at = NOW()
-      WHERE id = ${roomId}
-    `;
-    await sql`
-      UPDATE liturgical_blocks 
-      SET content = '[]'::jsonb, updated_at = NOW()
-      WHERE room_id = ${roomId} AND block_type IN ('visitors', 'prayer', 'youtube', 'opportunities')
-    `;
-    await sql`
-      UPDATE liturgical_blocks 
-      SET content = CASE 
-        WHEN content IS NULL OR jsonb_typeof(content) != 'array' OR jsonb_array_length(content) = 0 THEN '[]'::jsonb
-        ELSE (
-          SELECT COALESCE(jsonb_agg(jsonb_set(elem, '{checked}', 'false'::jsonb)), '[]'::jsonb)
-          FROM jsonb_array_elements(content) AS elem
-        )
-      END,
-      updated_at = NOW()
-      WHERE room_id = ${roomId} AND block_type = 'choirs'
-    `;
+export async function overwriteExistingRoom(roomId: string, newTitle: string, newPin: string, token?: string): Promise<{ success: boolean; sessionToken?: string }> {
+  return await withRetry(async () => {
+    return await postApi<{ success: boolean; sessionToken?: string }>('/api/room', {
+      action: 'overwrite-service',
+      roomId,
+      title: newTitle,
+      newPin,
+      sessionToken: token,
+    }, token);
   });
 }

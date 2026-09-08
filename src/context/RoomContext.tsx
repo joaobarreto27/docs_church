@@ -11,11 +11,11 @@ import {
   setRoomCurrentPage, 
   archiveAndResetRoom,
   createRoom,
-  verifyControllerPin,
   overwriteExistingRoom,
   updateRoomTitle,
   updateRoomCode,
-  formatRoomCodeMask 
+  formatRoomCodeMask,
+  joinRoomApi
 } from '../services/neon';
 
 interface RoomContextType {
@@ -55,6 +55,7 @@ interface StoredSession {
   roomId?: string;
   role: UserRole;
   pin?: string;
+  sessionToken?: string;
   expiresAt: number;
 }
 
@@ -164,6 +165,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [room, setRoom] = useState<Room | null>(initialCache?.room || null);
   const [blocks, setBlocks] = useState<LiturgicalBlock[]>(initialCache?.blocks || []);
   const [role, setRole] = useState<UserRole | null>(initialSession?.role || null);
+  const [sessionToken, setSessionToken] = useState<string | undefined>(initialSession?.sessionToken);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [isColdStarting, setIsColdStarting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +275,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [loadFromCache, saveToCache]);
 
-  // Entra na sala
+  // Entra na sala com autenticação no servidor
   const joinRoom = useCallback(async (code: string, selectedRole: UserRole, pin?: string): Promise<{ success: boolean; error?: string }> => {
     const cleanCode = code.trim().toUpperCase();
     if (cleanCode.length < 3) {
@@ -282,29 +284,18 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsColdStarting(true);
     try {
-      const foundRoom = await getRoomByCode(cleanCode);
-      if (!foundRoom) {
+      const res = await joinRoomApi(cleanCode, selectedRole, pin ? pin.trim() : undefined);
+      if (!res.success || !res.room) {
         setIsColdStarting(false);
-        return { success: false, error: 'Código de culto não encontrado ou inativo.' };
+        return { success: false, error: res.error || 'Código de culto não encontrado ou inativo.' };
       }
 
-      // SEGURANÇA: Validação do PIN do Controlador diretamente no servidor Neon
-      if (selectedRole === 'controlador') {
-        if (!pin || pin.trim().length < 4) {
-          setIsColdStarting(false);
-          return { success: false, error: 'O papel de Controlador exige um PIN de pelo menos 4 dígitos.' };
-        }
-        const isValidPin = await verifyControllerPin(cleanCode, pin.trim());
-        if (!isValidPin) {
-          setIsColdStarting(false);
-          return { success: false, error: 'PIN do Controlador incorreto.' };
-        }
-      }
-
-      const foundBlocks = await getBlocksByRoomId(foundRoom.id);
+      const foundRoom = res.room;
+      const foundBlocks = res.blocks || [];
       setRoom(foundRoom);
       setBlocks(foundBlocks);
       setRole(selectedRole);
+      setSessionToken(res.sessionToken);
       setIsConnected(true);
       setError(null);
       saveToCache(foundRoom, foundBlocks);
@@ -315,6 +306,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roomId: foundRoom.id,
         role: selectedRole,
         pin: pin || undefined,
+        sessionToken: res.sessionToken,
         expiresAt: Date.now() + THREE_HOURS_MS
       });
 
@@ -332,10 +324,11 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const startNewService = useCallback(async (title: string, pin: string, preferredCode?: string): Promise<{ success: boolean; code?: string; error?: string }> => {
     setIsColdStarting(true);
     try {
-      const { room: newRoom, blocks: newBlocks } = await createRoom(title, pin, preferredCode);
+      const { room: newRoom, blocks: newBlocks, sessionToken: newToken } = await createRoom(title, pin, preferredCode);
       setRoom(newRoom);
       setBlocks(newBlocks);
       setRole('controlador');
+      setSessionToken(newToken);
       setIsConnected(true);
       setError(null);
       saveToCache(newRoom, newBlocks);
@@ -346,13 +339,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roomId: newRoom.id,
         role: 'controlador',
         pin,
+        sessionToken: newToken,
         expiresAt: Date.now() + THREE_HOURS_MS
       });
 
       return { success: true, code: newRoom.code };
     } catch (err: any) {
       console.error('Erro ao criar sala:', err);
-      return { success: false, error: 'Erro ao criar nova sala no Neon.' };
+      return { success: false, error: err.message || 'Erro ao criar nova sala no servidor.' };
     } finally {
       setIsColdStarting(false);
     }
@@ -362,7 +356,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const overwriteExistingService = useCallback(async (roomId: string, code: string, title: string, pin: string): Promise<{ success: boolean; error?: string }> => {
     setIsColdStarting(true);
     try {
-      await overwriteExistingRoom(roomId, title, pin);
+      const res = await overwriteExistingRoom(roomId, title, pin, sessionToken);
       const foundRoom = await getRoomByCode(code);
       if (!foundRoom) throw new Error('Sala não encontrada após substituição.');
       const foundBlocks = await getBlocksByRoomId(roomId);
@@ -370,6 +364,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRoom(foundRoom);
       setBlocks(foundBlocks);
       setRole('controlador');
+      setSessionToken(res.sessionToken);
       setIsConnected(true);
       setError(null);
       saveToCache(foundRoom, foundBlocks);
@@ -379,17 +374,18 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roomId: foundRoom.id,
         role: 'controlador',
         pin,
+        sessionToken: res.sessionToken,
         expiresAt: Date.now() + THREE_HOURS_MS
       });
 
       return { success: true };
     } catch (err: any) {
       console.error('Erro ao substituir sala:', err);
-      return { success: false, error: 'Erro ao substituir o culto existente.' };
+      return { success: false, error: err.message || 'Erro ao substituir o culto existente.' };
     } finally {
       setIsColdStarting(false);
     }
-  }, [saveToCache]);
+  }, [saveToCache, sessionToken]);
 
   // Revalida em segundo plano caso exista sessão ativa restaurada
   useEffect(() => {
@@ -460,6 +456,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRoom(null);
     setBlocks([]);
     setRole(null);
+    setSessionToken(undefined);
     setError(null);
     clearStoredSession();
   }, []);
@@ -478,7 +475,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(async () => {
         const block = blocksRef.current.find(b => b.id === blockId);
         const payload = block ? block.content : newContent;
-        await updateBlockContent(blockId, payload, room.id);
+        await updateBlockContent(blockId, payload, room.id, sessionToken);
         setIsConnected(true);
         broadcastLocalChange();
       })
@@ -491,7 +488,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
     await blockMutationQueueRef.current;
-  }, [room, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange]);
 
   // Remoção atômica de item (blindagem absoluta contra cliques rápidos consecutivos e race conditions)
   const removeItemFromBlock = useCallback(async (blockId: string, itemId: string) => {
@@ -518,7 +515,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Envia SEMPRE o estado mais fresco do bloco no momento da execução
         const block = blocksRef.current.find(b => b.id === blockId);
         const payload = block ? block.content : updatedContent;
-        await updateBlockContent(blockId, payload, room.id);
+        await updateBlockContent(blockId, payload, room.id, sessionToken);
         setIsConnected(true);
         broadcastLocalChange();
       })
@@ -531,7 +528,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
     await blockMutationQueueRef.current;
-  }, [room, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange]);
 
   // Concatenação atômica de itens a um bloco (blindagem total contra concorrência entre múltiplos obreiros e fila offline)
   const appendItemsToBlock = useCallback(async (blockId: string, newItems: any[]) => {
@@ -581,35 +578,35 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!room) return;
     setRoom(prev => prev ? { ...prev, active_alert: text } : null);
     try {
-      await setRoomAlert(room.id, text);
+      await setRoomAlert(room.id, text, sessionToken);
       setIsConnected(true);
       broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao enviar alerta:', err);
       setIsConnected(false);
     }
-  }, [room, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange]);
 
   // Atualiza página ativa
   const setPage = useCallback(async (page: number) => {
     if (!room) return;
     setRoom(prev => prev ? { ...prev, current_page: page } : null);
     try {
-      await setRoomCurrentPage(room.id, page);
+      await setRoomCurrentPage(room.id, page, sessionToken);
       setIsConnected(true);
       broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao mudar página:', err);
       setIsConnected(false);
     }
-  }, [room, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange]);
 
   // Reseta culto para uma nova reunião
   const resetCurrentService = useCallback(async (newTitle: string) => {
     if (!room) return;
     setIsColdStarting(true);
     try {
-      await archiveAndResetRoom(room.id, newTitle);
+      await archiveAndResetRoom(room.id, newTitle, sessionToken);
       await fetchFullRoom(room.id || room.code);
       broadcastLocalChange();
     } catch (err) {
@@ -617,7 +614,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsColdStarting(false);
     }
-  }, [room, fetchFullRoom, broadcastLocalChange]);
+  }, [room, sessionToken, fetchFullRoom, broadcastLocalChange]);
 
   // Força sincronização manual dos dados da sala
   const refreshData = useCallback(async () => {
@@ -632,13 +629,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!clean) return;
     setRoom(prev => prev ? { ...prev, title: clean } : null);
     try {
-      await updateRoomTitle(room.id, clean);
+      await updateRoomTitle(room.id, clean, sessionToken);
       setIsConnected(true);
       broadcastLocalChange();
     } catch (err) {
       console.warn('Erro ao atualizar título do culto:', err);
     }
-  }, [room, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange]);
 
   // Atualiza o código/chave da sala no formato padrão XXX-XXX
   const updateCode = useCallback(async (newCode: string): Promise<{ success: boolean; error?: string }> => {
@@ -649,7 +646,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'O código deve conter 6 caracteres no formato XXX-XXX.' };
     }
     try {
-      const res = await updateRoomCode(room.id, formatted);
+      const res = await updateRoomCode(room.id, formatted, sessionToken);
       if (res.success) {
         setRoom(prev => prev ? { ...prev, code: formatted } : null);
         const active = getStoredSession();
@@ -657,7 +654,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
           saveStoredSession({
             ...active,
             code: formatted,
-            roomId: room.id
+            roomId: room.id,
+            sessionToken
           });
         }
         saveToCache({ ...room, code: formatted }, blocksRef.current);
@@ -668,7 +666,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Erro ao atualizar código da sala:', err);
       return { success: false, error: 'Falha ao atualizar o código no banco.' };
     }
-  }, [room, saveToCache, broadcastLocalChange]);
+  }, [room, sessionToken, saveToCache, broadcastLocalChange]);
 
   // Escuta avisos imediatos de outras abas na mesma máquina (0ms via BroadcastChannel ou storage)
   useEffect(() => {
