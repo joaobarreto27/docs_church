@@ -21,6 +21,31 @@ import {
 } from 'lucide-react';
 import { LoadingScreen } from '../common/LoadingScreen';
 
+// Detecção precisa e estrita de smartphone vs tablet/desktop.
+// Totalmente segura para Android 4.4.4 (KitKat - SM-T560), Galaxy Tab A9, iPads e navegadores legados.
+const isSmartphoneDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  const w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
+  const h = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+  const minDim = Math.min(w, h);
+
+  // Tablets como o Samsung Galaxy Tab E SM-T560 (Android 4.4.4) e Galaxy Tab A9 têm lado menor >= 534px a 800px.
+  // Se a menor dimensão for >= 520px, é com certeza um Tablet ou Desktop.
+  if (minDim >= 520) {
+    return false;
+  }
+
+  // Se a menor dimensão for < 520px, diferencia smartphone de tablet:
+  // - No Android: celulares trazem 'Android' E 'Mobile'. Tablets Android (SM-T560, Tab A9) NÃO trazem 'Mobile'.
+  // - No iOS: iPhones trazem 'iPhone' ou 'iPod'. iPads trazem 'iPad'.
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+  const isAndroidPhone = /Android/i.test(ua) && /Mobile/i.test(ua);
+  const isIPhone = /iPhone|iPod/i.test(ua);
+
+  return isAndroidPhone || isIPhone || minDim < 480;
+};
+
 export const PulpitView: React.FC = () => {
   const { room, blocks, isConnected, isFastSync, hasFreshUpdates, leaveRoom } = useRoom();
 
@@ -46,14 +71,35 @@ export const PulpitView: React.FC = () => {
     });
   };
 
+  // Detecção reativa de smartphone (atualiza ao rotacionar a tela ou redimensionar)
+  const [isMobilePhone, setIsMobilePhone] = useState<boolean>(isSmartphoneDevice);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobilePhone(isSmartphoneDevice());
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
   // Modo de visualização de folhas: 'two-sheets' (pasta aberta) vs 'single-sheet' (folha única contínua)
   const [sheetLayout, setSheetLayout] = useState<'two-sheets' | 'single-sheet'>(() => {
+    // Se for smartphone, sempre abre em folha única automática
+    if (isSmartphoneDevice()) {
+      return 'single-sheet';
+    }
+
     try {
       const saved = localStorage.getItem('pulpit_sheet_layout');
       if (saved === 'two-sheets' || saved === 'single-sheet') return saved;
-      // Detecção automática inteligente: em telas estreitas ou orientação retrato em tablet/mobile
+      // Detecção automática inteligente para tablets: orientação retrato inicia em folha única
       if (typeof window !== 'undefined') {
-        if (window.innerWidth < 768 || window.innerHeight > window.innerWidth) {
+        if (window.innerHeight > window.innerWidth) {
           return 'single-sheet';
         }
       }
@@ -67,6 +113,10 @@ export const PulpitView: React.FC = () => {
       localStorage.setItem('pulpit_sheet_layout', mode);
     } catch (e) {}
   };
+
+  // Em smartphones, força SEMPRE folha única (single-sheet) automática.
+  // Em tablets e desktops, respeita fielmente a preferência do pregador.
+  const effectiveLayout = isMobilePhone ? 'single-sheet' : sheetLayout;
 
   // Estados de detecção de overflow e rolagem fácil para idosos
   const [hasMoreSheet1, setHasMoreSheet1] = useState(false);
@@ -138,7 +188,7 @@ export const PulpitView: React.FC = () => {
       clearTimeout(timer);
       window.removeEventListener('resize', checkScrollState);
     };
-  }, [visitors, prayers, youtube, fontScale, opps, choirs, sheetLayout]);
+  }, [visitors, prayers, youtube, fontScale, opps, choirs, effectiveLayout]);
 
   // Funções de rolagem seguras com fallback para navegadores antigos (Android 4.4 / KitKat)
   const safeScrollBy = (el: HTMLElement | null, deltaY: number) => {
@@ -206,7 +256,7 @@ export const PulpitView: React.FC = () => {
         style={{ fontSize: `${fontScale}rem` }}
       >
         {/* ================= 1. VISUALIZAÇÃO EM FOLHA ÚNICA (PÁGINA CONTÍNUA ESTILO GOOGLE DOCS) ================= */}
-        {sheetLayout === 'single-sheet' && (
+        {effectiveLayout === 'single-sheet' && (
           <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 min-h-0 scrollbar-thin" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div className="max-w-3xl w-full mx-auto paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 border border-church-sand shadow-sheet">
               {/* Cabeçalho Oficial da Página */}
@@ -375,7 +425,7 @@ export const PulpitView: React.FC = () => {
         )}
 
         {/* ================= 2. VISUALIZAÇÃO TABLET / DESKTOP (PASTA ABERTA EM 2 COLUNAS) ================= */}
-        {sheetLayout === 'two-sheets' && (
+        {effectiveLayout === 'two-sheets' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 flex-1 p-2 sm:p-3 md:p-3.5 overflow-hidden h-full max-h-full min-h-0">
             {/* ================= FOLHA 1 (ESQUERDA) - ZERO SCROLL ================= */}
             <section className="paper-sheet rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-4 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
@@ -722,35 +772,37 @@ export const PulpitView: React.FC = () => {
           </span>
         </div>
 
-        {/* Centro: Seletor Sutil e Discreto de Visualização (Pasta Aberta vs Folha Única) */}
-        <div className="flex items-center gap-1 bg-white/90 p-0.5 rounded-lg border border-church-sand shadow-2xs">
-          <button
-            type="button"
-            onClick={() => handleToggleSheetLayout('two-sheets')}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              sheetLayout === 'two-sheets'
-                ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
-                : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
-            }`}
-            title="Visualização em Pasta Aberta (2 folhas lado a lado, estilo pasta de couro do púlpito)"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
-            <span className="hidden xs:inline">Pasta Aberta</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleToggleSheetLayout('single-sheet')}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              sheetLayout === 'single-sheet'
-                ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
-                : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
-            }`}
-            title="Visualização em Folha Única (leitura contínua vertical, ideal para tablet em pé)"
-          >
-            <FileText className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
-            <span className="hidden xs:inline">Folha Única</span>
-          </button>
-        </div>
+        {/* Centro: Seletor Sutil e Discreto de Visualização (Exibido apenas em Tablets e Desktops) */}
+        {!isMobilePhone && (
+          <div className="flex items-center gap-1 bg-white/90 p-0.5 rounded-lg border border-church-sand shadow-2xs">
+            <button
+              type="button"
+              onClick={() => handleToggleSheetLayout('two-sheets')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                effectiveLayout === 'two-sheets'
+                  ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
+                  : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
+              }`}
+              title="Visualização em Pasta Aberta (2 folhas lado a lado, estilo pasta de couro do púlpito)"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+              <span className="hidden xs:inline">Pasta Aberta</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleSheetLayout('single-sheet')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                effectiveLayout === 'single-sheet'
+                  ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
+                  : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
+              }`}
+              title="Visualização em Folha Única (leitura contínua vertical, ideal para tablet em pé)"
+            >
+              <FileText className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+              <span className="hidden xs:inline">Folha Única</span>
+            </button>
+          </div>
+        )}
 
         {/* Direita: Controles de zoom e Botão Sair do Púlpito */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
