@@ -16,8 +16,6 @@ import {
   Users, 
   Trash2, 
   Check,
-  ListPlus,
-  FileText,
   AlertTriangle,
   Pencil,
   X,
@@ -43,16 +41,13 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
   const draftVisitorKey = room ? `docs_church_draft_visitors_${room.id}` : '';
   const draftPrayerKey = room ? `docs_church_draft_prayers_${room.id}` : '';
+  const draftOppKey = room ? `docs_church_draft_opps_${room.id}` : '';
 
   // Estados de Prévia do Púlpito (Protegida contra toques acidentais para idosos)
   const [showPulpitConfirm, setShowPulpitConfirm] = useState(false);
   const [showPulpitPreview, setShowPulpitPreview] = useState(false);
 
-  // Estados de Visitantes
-  const [visitorName, setVisitorName] = useState('');
-  const [visitorChurch, setVisitorChurch] = useState('');
-  const [visitorInvitedBy, setVisitorInvitedBy] = useState('');
-  const [visitorBatchMode, setVisitorBatchMode] = useState(true);
+  // Estados de Visitantes (Folha Pautada Contínua)
   const [visitorBatchText, setVisitorBatchText] = useState(() => {
     try {
       if (!room) return '';
@@ -75,10 +70,8 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     return Array(12).fill('');
   });
 
-  // Estados de Oração Presencial
-  const [prayerDesc, setPrayerDesc] = useState('');
+  // Estados de Oração Presencial (Folha Pautada Contínua)
   const [prayerUrgent, setPrayerUrgent] = useState(false);
-  const [prayerBatchMode, setPrayerBatchMode] = useState(true);
   const [prayerBatchText, setPrayerBatchText] = useState(() => {
     try {
       if (!room) return '';
@@ -179,8 +172,71 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     }
   };
 
-  // Estados de Oportunidades
-  const [oppName, setOppName] = useState('');
+  // Estados de Oportunidades (Folha Pautada com 4 linhas)
+  const [oppBatchText, setOppBatchText] = useState(() => {
+    try {
+      if (!room) return '';
+      return localStorage.getItem(`docs_church_draft_opps_${room.id}`) ||
+             localStorage.getItem(`docs_church_draft_opps_${room.code}`) || '';
+    } catch {
+      return '';
+    }
+  });
+  const [oppLines, setOppLines] = useState<string[]>(() => {
+    try {
+      if (!room) return Array(4).fill('');
+      const saved = localStorage.getItem(`docs_church_draft_opps_${room.id}`) ||
+                    localStorage.getItem(`docs_church_draft_opps_${room.code}`);
+      if (saved) {
+        const arr = saved.split('\n');
+        if (arr.length > 0) return arr;
+      }
+    } catch {}
+    return Array(4).fill('');
+  });
+
+  // Salva rascunho de oportunidades no localStorage do tablet sem fazer requisições à Vercel
+  const handleOppBatchTextChange = (text: string) => {
+    setOppBatchText(text);
+    const split = text.split('\n');
+    setOppLines(split.length > 0 ? split : Array(4).fill(''));
+    if (draftOppKey) {
+      try {
+        if (text.trim()) {
+          localStorage.setItem(draftOppKey, text);
+        } else {
+          localStorage.removeItem(draftOppKey);
+        }
+      } catch (e) {}
+    }
+  };
+
+  const handleOppLinesChange = (newLines: string[]) => {
+    setOppLines(newLines);
+    const nonBlank = newLines.map(l => l.trim()).filter(Boolean).join('\n');
+    setOppBatchText(nonBlank);
+    if (draftOppKey) {
+      try {
+        if (nonBlank) {
+          localStorage.setItem(draftOppKey, nonBlank);
+        } else {
+          localStorage.removeItem(draftOppKey);
+        }
+      } catch (e) {}
+    }
+  };
+
+  const handleClearOppBatch = () => {
+    setOppBatchText('');
+    setOppLines(Array(4).fill(''));
+    if (draftOppKey) {
+      try { localStorage.removeItem(draftOppKey); } catch (e) {}
+    }
+  };
+
+  // Estados para Correção em Linha Pautada (Oportunidades)
+  const [editingOppId, setEditingOppId] = useState<string | null>(null);
+  const [editingOppText, setEditingOppText] = useState('');
 
   // Estados de Conjuntos do Culto (Gestão pelo Controlador)
   const [newChoirName, setNewChoirName] = useState('');
@@ -190,38 +246,97 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   // Modal de Confirmação para Exclusão em Massa (Controlador)
   const [confirmModal, setConfirmModal] = useState<{ type: 'visitors' | 'prayers'; count: number } | null>(null);
 
+  // Estados para Correção em Linha Pautada (Visitantes)
+  const [editingVisitorId, setEditingVisitorId] = useState<string | null>(null);
+  const [editingVisitorText, setEditingVisitorText] = useState('');
+
+  // Estados para Correção em Linha Pautada (Pedidos de Oração)
+  const [editingPrayerId, setEditingPrayerId] = useState<string | null>(null);
+  const [editingPrayerText, setEditingPrayerText] = useState('');
+
   const [savedSuccess, setSavedSuccess] = useState<string | null>(null);
 
   if (!room) return <LoadingScreen />;
 
   const showFeedback = (msg: string) => {
     setSavedSuccess(msg);
-    setTimeout(() => setSavedSuccess(null), 2500);
+    setTimeout(() => setSavedSuccess(null), 3500);
   };
 
   // Encontra bloco por tipo
   const getBlock = (type: string) => blocks.find(b => b.block_type === type);
 
-  // Adiciona Visitante Único (com blindagem atômica de concorrência)
-  const handleAddVisitor = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!visitorName.trim()) return;
+  // Inicia correção de visitante na linha pautada
+  const handleStartEditVisitor = (v: VisitorItem) => {
+    setEditingVisitorId(v.id);
+    setEditingVisitorText(v.church ? `${v.name} (${v.church})` : v.name);
+  };
 
+  // Salva correção de visitante e sincroniza imediatamente com o púlpito
+  const handleSaveEditVisitor = async (id: string) => {
+    if (!editingVisitorText.trim()) return;
     const block = getBlock('visitors');
     if (!block) return;
 
-    const newItem: VisitorItem = {
-      id: Date.now().toString(),
-      name: visitorName.trim(),
-      church: visitorChurch.trim() || undefined,
-      invited_by: visitorInvitedBy.trim() || undefined,
-    };
+    const match = editingVisitorText.match(/^([^(]+)(?:\(([^)]+)\))?/);
+    const name = match ? match[1].trim() : editingVisitorText.trim();
+    const church = match && match[2] ? match[2].trim() : undefined;
 
-    appendItemsToBlock(block.id, [newItem]);
-    setVisitorName('');
-    setVisitorChurch('');
-    setVisitorInvitedBy('');
-    showFeedback('Visitante enviado ao púlpito!');
+    const current = (block.content || []) as VisitorItem[];
+    const updated = current.map(item => 
+      item.id === id ? { ...item, name, church } : item
+    );
+
+    await updateBlock(block.id, updated);
+    setEditingVisitorId(null);
+    setEditingVisitorText('');
+    showFeedback('Visitante corrigido com sucesso!');
+  };
+
+  // Inicia correção de pedido de oração na linha pautada
+  const handleStartEditPrayer = (p: PrayerItem) => {
+    setEditingPrayerId(p.id);
+    setEditingPrayerText(p.description);
+  };
+
+  // Salva correção de pedido de oração e sincroniza imediatamente com o púlpito
+  const handleSaveEditPrayer = async (id: string) => {
+    if (!editingPrayerText.trim()) return;
+    const block = getBlock('prayer');
+    if (!block) return;
+
+    const current = (block.content || []) as PrayerItem[];
+    const updated = current.map(item => 
+      item.id === id ? { ...item, description: editingPrayerText.trim() } : item
+    );
+
+    await updateBlock(block.id, updated);
+    setEditingPrayerId(null);
+    setEditingPrayerText('');
+    showFeedback('Pedido de oração corrigido com sucesso!');
+  };
+
+  // Inicia correção de oportunidade na linha pautada
+  const handleStartEditOpp = (op: OpportunityItem) => {
+    setEditingOppId(op.id);
+    setEditingOppText(op.name);
+  };
+
+  // Salva correção de oportunidade e sincroniza imediatamente com o púlpito
+  const handleSaveEditOpp = async (id: string) => {
+    if (!editingOppText.trim()) return;
+    const block = getBlock('opportunities');
+    if (!block) return;
+
+    const current = (block.content || []) as OpportunityItem[];
+    const updated = current.map(item => 
+      item.id === id ? { ...item, name: editingOppText.trim() } : item
+    );
+
+    await updateBlock(block.id, updated);
+    setEditingOppId(null);
+    setEditingOppText('');
+    showFeedback('Oportunidade corrigida com sucesso!');
   };
 
   // Adiciona Visitantes em Lote (com blindagem atômica de concorrência e filtro de linhas vazias)
@@ -252,7 +367,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     appendItemsToBlock(block.id, newItems);
     handleClearVisitorBatch();
     // Mantém no modo de lote para que o irmão continue anotando os próximos
-    showFeedback(`${newItems.length} visitantes adicionados à folha!`);
+    showFeedback(`${newItems.length} visitante(s) adicionados ao púlpito! Se precisar corrigir algum nome, toque em Corrigir logo abaixo.`);
   };
 
   // Remove Visitante (atômico sem flicker)
@@ -260,26 +375,6 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     const block = getBlock('visitors');
     if (!block) return;
     removeItemFromBlock(block.id, id);
-  };
-
-  // Adiciona Pedido Presencial Único (com blindagem atômica de concorrência)
-  const handleAddPrayer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prayerDesc.trim()) return;
-
-    const block = getBlock('prayer');
-    if (!block) return;
-
-    const newItem: PrayerItem = {
-      id: Date.now().toString(),
-      description: prayerDesc.trim(),
-      urgent: prayerUrgent,
-    };
-
-    appendItemsToBlock(block.id, [newItem]);
-    setPrayerDesc('');
-    setPrayerUrgent(false);
-    showFeedback('Pedido de oração enviado ao púlpito!');
   };
 
   // Adiciona Lote de Pedidos Presenciais (com blindagem atômica de concorrência e filtro de linhas vazias)
@@ -304,7 +399,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     handleClearPrayerBatch();
     setPrayerUrgent(false);
     // Mantém no modo de lote para que o irmão continue anotando os próximos
-    showFeedback(`${newItems.length} pedidos de oração adicionados!`);
+    showFeedback(`${newItems.length} pedido(s) de oração adicionados ao púlpito! Se precisar corrigir algum motivo, toque em Corrigir logo abaixo.`);
   };
 
   // Remove Pedido Presencial (atômico sem flicker)
@@ -314,22 +409,26 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     removeItemFromBlock(block.id, id);
   };
 
-  // Adiciona Oportunidade (com blindagem atômica de concorrência)
-  const handleAddOpp = (e: React.FormEvent) => {
+  // Adiciona Lote de Oportunidades (Folha Pautada com 4 linhas) com blindagem atômica de concorrência
+  const handleAddBatchOpp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!oppName.trim()) return;
+    const linesToProcess = oppLines.some(l => l.trim().length > 0)
+      ? oppLines.map(l => l.trim()).filter(l => l.length > 0)
+      : oppBatchText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    if (linesToProcess.length === 0) return;
 
     const block = getBlock('opportunities');
     if (!block) return;
 
-    const newItem: OpportunityItem = {
-      id: Date.now().toString(),
-      name: oppName.trim(),
-    };
+    const newItems: OpportunityItem[] = linesToProcess.map((name, idx) => ({
+      id: `${Date.now()}_opp_${idx}`,
+      name,
+    }));
 
-    appendItemsToBlock(block.id, [newItem]);
-    setOppName('');
-    showFeedback('Oportunidade adicionada!');
+    appendItemsToBlock(block.id, newItems);
+    handleClearOppBatch();
+    showFeedback(`${newItems.length} oportunidade(s) adicionada(s) ao púlpito! Se precisar corrigir algum nome, toque em Corrigir logo abaixo.`);
   };
 
   // Remove Oportunidade
@@ -460,115 +559,40 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   <span>Copiar</span>
                 </button>
               )}
-
-              {/* Botão exclusivo da Direção/Controlador para limpar tudo */}
-              {role === 'controlador' && visitorsList.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal({ type: 'visitors', count: visitorsList.length })}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer"
-                  title="Apagar todos os visitantes cadastrados"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                  <span>Apagar Todos</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setVisitorBatchMode(!visitorBatchMode)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-all cursor-pointer"
-              >
-                {visitorBatchMode ? <FileText className="w-3.5 h-3.5" /> : <ListPlus className="w-3.5 h-3.5" />}
-                <span>{visitorBatchMode ? 'Digitar Um por Um' : '+ Digitar Vários Juntos'}</span>
-              </button>
             </div>
           </div>
 
-          {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (MUITO MAIS FÁCIL PARA ESCREVER) */}
-          {visitorBatchMode ? (
-            <form onSubmit={handleAddBatchVisitor} className="space-y-4">
-              <InteractiveLineSheet
-                lines={visitorLines}
-                onChange={handleVisitorLinesChange}
-                rawText={visitorBatchText}
-                onChangeRawText={handleVisitorBatchTextChange}
-                title="Folha para Digitar Vários Nomes"
-                helperText="Toque diretamente em qualquer linha para digitar o nome (sem precisar apertar Enter):"
-                hasDraft={Boolean(visitorBatchText.trim() || visitorLines.some(l => l.trim().length > 0))}
-              />
-              <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
+          {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (FOLHA PAUTADA CONTÍNUA) */}
+          <form onSubmit={handleAddBatchVisitor} className="space-y-4">
+            <InteractiveLineSheet
+              lines={visitorLines}
+              onChange={handleVisitorLinesChange}
+              rawText={visitorBatchText}
+              onChangeRawText={handleVisitorBatchTextChange}
+              firstEmptyPlaceholder="Toque aqui para digitar o próximo visitante..."
+              showModeToggle={false}
+              showHeader={false}
+              hasDraft={Boolean(visitorBatchText.trim() || visitorLines.some(l => l.trim().length > 0))}
+            />
+            <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
+              <button
+                type="submit"
+                disabled={!visitorLines.some(l => l.trim().length > 0) && !visitorBatchText.trim()}
+                className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
+              >
+                + Adicionar Todos à Lista
+              </button>
+              {(visitorBatchText.trim() || visitorLines.some(l => l.trim().length > 0)) && (
                 <button
-                  type="submit"
-                  disabled={!visitorLines.some(l => l.trim().length > 0) && !visitorBatchText.trim()}
-                  className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
+                  type="button"
+                  onClick={handleClearVisitorBatch}
+                  className="px-4 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                 >
-                  + Adicionar Todos à Lista
+                  Limpar Folha
                 </button>
-                {(visitorBatchText.trim() || visitorLines.some(l => l.trim().length > 0)) && (
-                  <button
-                    type="button"
-                    onClick={handleClearVisitorBatch}
-                    className="px-4 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
-                  >
-                    Limpar Folha
-                  </button>
-                )}
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleAddVisitor} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-charcoal mb-1">
-                  Nome do Visitante ou Família *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Irmão Carlos Eduardo e Família"
-                  value={visitorName}
-                  onChange={e => setVisitorName(e.target.value)}
-                  className="w-full text-sm font-sans p-3 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none transition-colors"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-muted mb-1">
-                    Igreja de Origem / Bairro (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Igreja Batista Central - Sto André"
-                    value={visitorChurch}
-                    onChange={e => setVisitorChurch(e.target.value)}
-                    className="w-full text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-muted mb-1">
-                    Quem Convidou (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Diác. Paulo"
-                    value={visitorInvitedBy}
-                    onChange={e => setVisitorInvitedBy(e.target.value)}
-                    className="w-full text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-start gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={!visitorName.trim()}
-                  className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
-                >
-                  + Adicionar Visitante
-                </button>
-              </div>
-            </form>
-          )}
+              )}
+            </div>
+          </form>
 
           {/* 2. LISTA DE VISITANTES JÁ CADASTRADOS (LOGO ABAIXO DA ÁREA DE DIGITAÇÃO) */}
           {visitorsList.length > 0 && (
@@ -582,23 +606,95 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 </span>
               </div>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {visitorsList.map(v => (
-                  <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand hover:bg-church-parchment transition-colors">
-                    <div className="text-sm font-sans">
-                      <span className="font-semibold text-church-charcoal">{v.name}</span>
-                      {v.church && <span className="text-church-muted text-xs"> ({v.church})</span>}
-                      {v.invited_by && <span className="text-church-muted text-xs block sm:inline sm:ml-2">Convidado por: {v.invited_by}</span>}
+                {visitorsList.map((v, idx) => {
+                  const isEditing = editingVisitorId === v.id;
+
+                  if (isEditing) {
+                    return (
+                      <div key={v.id} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
+                        <div className="flex items-center justify-between text-[11px] text-church-gold-dark font-title font-bold uppercase tracking-wider">
+                          <div className="flex items-center gap-1.5">
+                            <Pencil className="w-3.5 h-3.5 text-church-gold" />
+                            <span>Corrigindo Linha Nº {idx + 1}</span>
+                          </div>
+                          <span className="text-[10px] lowercase text-church-muted font-normal">
+                            (ajuste o nome na linha abaixo como faz na folha)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
+                          <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0">{idx + 1}.</span>
+                          <input
+                            type="text"
+                            value={editingVisitorText}
+                            onChange={e => setEditingVisitorText(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveEditVisitor(v.id);
+                              } else if (e.key === 'Escape') {
+                                setEditingVisitorId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none font-medium"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-church-sand/50">
+                          <button
+                            type="button"
+                            onClick={() => setEditingVisitorId(null)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-title font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer"
+                            title="Cancelar correção"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cancelar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditVisitor(v.id)}
+                            disabled={!editingVisitorText.trim()}
+                            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-title font-bold uppercase tracking-wider bg-church-gold text-white hover:bg-church-gold-dark shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>Salvar Alteração</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand hover:bg-church-parchment transition-colors">
+                      <div className="text-sm font-sans">
+                        <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{idx + 1}.</span>
+                        <span className="font-semibold text-church-charcoal">{v.name}</span>
+                        {v.church && <span className="text-church-muted text-xs"> ({v.church})</span>}
+                        {v.invited_by && <span className="text-church-muted text-xs block sm:inline sm:ml-2">Convidado por: {v.invited_by}</span>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditVisitor(v)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider text-church-gold-dark bg-church-gold/15 hover:bg-church-gold/25 border border-church-gold/30 transition-colors cursor-pointer"
+                          title="Corrigir este visitante"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Corrigir</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVisitor(v.id)}
+                          className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
+                          title="Excluir este visitante"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveVisitor(v.id)}
-                      className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
-                      title="Excluir este visitante"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -647,95 +743,52 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   <span>Apagar Todos</span>
                 </button>
               )}
-
-              <button
-                type="button"
-                onClick={() => setPrayerBatchMode(!prayerBatchMode)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-title font-semibold uppercase tracking-wider text-church-gold-dark bg-church-gold/10 hover:bg-church-gold/20 transition-all cursor-pointer"
-              >
-                {prayerBatchMode ? <FileText className="w-3.5 h-3.5" /> : <ListPlus className="w-3.5 h-3.5" />}
-                <span>{prayerBatchMode ? 'Digitar Um por Um' : '+ Digitar Vários Juntos'}</span>
-              </button>
             </div>
           </div>
 
-          {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (MUITO MAIS FÁCIL PARA ESCREVER) */}
-          {prayerBatchMode ? (
-            <form onSubmit={handleAddBatchPrayer} className="space-y-4">
-              <InteractiveLineSheet
-                lines={prayerLines}
-                onChange={handlePrayerLinesChange}
-                rawText={prayerBatchText}
-                onChangeRawText={handlePrayerBatchTextChange}
-                title="Folha para Digitar Vários Pedidos de Oração"
-                helperText="Toque diretamente em qualquer linha para digitar o motivo da oração (sem precisar apertar Enter):"
-                minLines={15}
-                hasDraft={Boolean(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0))}
-              />
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
-                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
-                  <input
-                    type="checkbox"
-                    checked={prayerUrgent}
-                    onChange={e => setPrayerUrgent(e.target.checked)}
-                    className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
-                  />
-                  Marcar todos deste grupo como Caso Urgente
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="submit"
-                    disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
-                    className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
-                  >
-                    + Adicionar Todos os Pedidos
-                  </button>
-                  {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
-                    <button
-                      type="button"
-                      onClick={handleClearPrayerBatch}
-                      className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
-                    >
-                      Limpar Folha
-                    </button>
-                  )}
-                </div>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleAddPrayer} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-charcoal mb-1">
-                  Motivo da Oração *
-                </label>
+          {/* 1. ÁREA DE DIGITAÇÃO LOGO NO TOPO (FOLHA PAUTADA CONTÍNUA) */}
+          <form onSubmit={handleAddBatchPrayer} className="space-y-4">
+            <InteractiveLineSheet
+              lines={prayerLines}
+              onChange={handlePrayerLinesChange}
+              rawText={prayerBatchText}
+              onChangeRawText={handlePrayerBatchTextChange}
+              firstEmptyPlaceholder="Toque aqui para digitar o próximo pedido de oração..."
+              showModeToggle={false}
+              showHeader={false}
+              minLines={15}
+              hasDraft={Boolean(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0))}
+            />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
                 <input
-                  type="text"
-                  placeholder="Ex: Irmão João Batista (UTI do Hospital Santa Marcelina)"
-                  value={prayerDesc}
-                  onChange={e => setPrayerDesc(e.target.value)}
-                  className="w-full text-sm font-sans p-3 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none transition-colors"
+                  type="checkbox"
+                  checked={prayerUrgent}
+                  onChange={e => setPrayerUrgent(e.target.checked)}
+                  className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
                 />
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-4 pt-2">
+                Marcar todos deste grupo como Caso Urgente
+              </label>
+              <div className="flex items-center gap-2">
                 <button
                   type="submit"
-                  disabled={!prayerDesc.trim()}
-                  className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer shrink-0"
+                  disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
+                  className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                 >
-                  + Adicionar Pedido
+                  + Adicionar Todos os Pedidos
                 </button>
-                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
-                  <input
-                    type="checkbox"
-                    checked={prayerUrgent}
-                    onChange={e => setPrayerUrgent(e.target.checked)}
-                    className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
-                  />
-                  Marcar como Caso Urgente (UTI, cirurgia iminente)
-                </label>
+                {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
+                  <button
+                    type="button"
+                    onClick={handleClearPrayerBatch}
+                    className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
+                  >
+                    Limpar Folha
+                  </button>
+                )}
               </div>
-            </form>
-          )}
+            </div>
+          </form>
 
           {/* 2. LISTA DE PEDIDOS JÁ CADASTRADOS (LOGO ABAIXO DA ÁREA DE DIGITAÇÃO) */}
           {prayersList.length > 0 && (
@@ -749,26 +802,98 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 </span>
               </div>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {prayersList.map(p => (
-                  <div key={p.id} className="flex items-start justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand gap-3 hover:bg-church-parchment transition-colors">
-                    <div className="text-sm font-sans flex-1">
-                      {p.urgent && (
-                        <span className="inline-block px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider mr-2">
-                          Urgente
-                        </span>
-                      )}
-                      <span className="text-church-charcoal font-medium">{p.description}</span>
+                {prayersList.map((p, idx) => {
+                  const isEditing = editingPrayerId === p.id;
+
+                  if (isEditing) {
+                    return (
+                      <div key={p.id} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
+                        <div className="flex items-center justify-between text-[11px] text-church-gold-dark font-title font-bold uppercase tracking-wider">
+                          <div className="flex items-center gap-1.5">
+                            <Pencil className="w-3.5 h-3.5 text-church-gold" />
+                            <span>Corrigindo Linha Nº {idx + 1}</span>
+                          </div>
+                          <span className="text-[10px] lowercase text-church-muted font-normal">
+                            (ajuste o pedido na linha abaixo como faz na folha)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
+                          <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0">{idx + 1}.</span>
+                          <input
+                            type="text"
+                            value={editingPrayerText}
+                            onChange={e => setEditingPrayerText(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveEditPrayer(p.id);
+                              } else if (e.key === 'Escape') {
+                                setEditingPrayerId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none font-medium"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-1 border-t border-church-sand/50">
+                          <button
+                            type="button"
+                            onClick={() => setEditingPrayerId(null)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-title font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer"
+                            title="Cancelar correção"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cancelar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditPrayer(p.id)}
+                            disabled={!editingPrayerText.trim()}
+                            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-title font-bold uppercase tracking-wider bg-church-gold text-white hover:bg-church-gold-dark shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>Salvar Alteração</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={p.id} className="flex items-start justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand gap-3 hover:bg-church-parchment transition-colors">
+                      <div className="text-sm font-sans flex-1">
+                        <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{idx + 1}.</span>
+                        {p.urgent && (
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider mr-2">
+                            Urgente
+                          </span>
+                        )}
+                        <span className="text-church-charcoal font-medium">{p.description}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditPrayer(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider text-church-gold-dark bg-church-gold/15 hover:bg-church-gold/25 border border-church-gold/30 transition-colors cursor-pointer"
+                          title="Corrigir este pedido"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Corrigir</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePrayer(p.id)}
+                          className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
+                          title="Excluir este pedido"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePrayer(p.id)}
-                      className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
-                      title="Excluir este pedido"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -972,47 +1097,137 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                 )}
               </div>
 
-              {/* Formulário de Adicionar no TOPO */}
-              <form onSubmit={handleAddOpp} className="space-y-2 mb-4 pb-4 border-b border-church-sand/40">
-                <label className="block text-[11px] font-title font-bold uppercase tracking-wider text-church-charcoal">
-                  Adicionar Cantor ou Grupo
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nome do cantor ou grupo"
-                    value={oppName}
-                    onChange={e => setOppName(e.target.value)}
-                    className="flex-1 min-w-0 text-xs font-sans p-2.5 rounded-xl border border-church-sand bg-church-parchment/40 focus:border-church-gold focus:bg-white outline-none"
-                  />
+              {/* 1. ÁREA DE DIGITAÇÃO (FOLHA PAUTADA CONTÍNUA COM 4 LINHAS) */}
+              <form onSubmit={handleAddBatchOpp} className="space-y-4 mb-4 pb-4 border-b border-church-sand/40">
+                <InteractiveLineSheet
+                  lines={oppLines}
+                  onChange={handleOppLinesChange}
+                  rawText={oppBatchText}
+                  onChangeRawText={handleOppBatchTextChange}
+                  firstEmptyPlaceholder="Toque aqui para digitar o próximo cantor ou grupo..."
+                  showModeToggle={false}
+                  showHeader={false}
+                  minLines={4}
+                  hasDraft={Boolean(oppBatchText.trim() || oppLines.some(l => l.trim().length > 0))}
+                />
+                <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
                   <button
                     type="submit"
-                    disabled={!oppName.trim()}
-                    className="px-3 sm:px-4 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 cursor-pointer whitespace-nowrap"
+                    disabled={!oppLines.some(l => l.trim().length > 0) && !oppBatchText.trim()}
+                    className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                   >
-                    + Adicionar
+                    + Adicionar Todos à Lista
                   </button>
+                  {(oppBatchText.trim() || oppLines.some(l => l.trim().length > 0)) && (
+                    <button
+                      type="button"
+                      onClick={handleClearOppBatch}
+                      className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
+                    >
+                      Limpar Folha
+                    </button>
+                  )}
                 </div>
               </form>
 
-              {/* Lista de Oportunidades Adicionadas Abaixo do Formulário */}
+              {/* 2. LISTA DE OPORTUNIDADES JÁ CADASTRADAS */}
               <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-church-muted font-title uppercase tracking-wider pb-1">
+                  <span>Cantores Cadastrados ({oppsList.length})</span>
+                  <span className="text-[10px] lowercase text-church-muted font-sans font-normal italic">
+                    Atualizado em tempo real no púlpito
+                  </span>
+                </div>
                 {oppsList.length === 0 ? (
                   <p className="font-serif italic text-church-muted text-xs p-2">Nenhuma oportunidade adicionada ainda.</p>
                 ) : (
-                  oppsList.map(op => (
-                    <div key={op.id} className="flex items-center justify-between p-2.5 rounded-xl bg-church-parchment/60 border border-church-sand">
-                      <span className="font-title text-sm font-semibold text-church-charcoal">{op.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOpp(op.id)}
-                        className="p-1.5 text-church-muted hover:text-red-600 transition-colors"
-                        title="Remover oportunidade"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))
+                  oppsList.map((op, idx) => {
+                    const isEditing = editingOppId === op.id;
+
+                    if (isEditing) {
+                      return (
+                        <div key={op.id} className="p-3.5 rounded-xl bg-amber-50/70 border-2 border-church-gold shadow-sm space-y-3 transition-all">
+                          <div className="flex items-center justify-between text-[11px] text-church-gold-dark font-title font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <Pencil className="w-3.5 h-3.5 text-church-gold" />
+                              <span>Corrigindo Linha Nº {idx + 1}</span>
+                            </div>
+                            <span className="text-[10px] lowercase text-church-muted font-normal">
+                              (ajuste o nome na linha abaixo como faz na folha)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
+                            <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0">{idx + 1}.</span>
+                            <input
+                              type="text"
+                              value={editingOppText}
+                              onChange={e => setEditingOppText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleSaveEditOpp(op.id);
+                                } else if (e.key === 'Escape') {
+                                  setEditingOppId(null);
+                                }
+                              }}
+                              autoFocus
+                              className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none font-medium"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-1 border-t border-church-sand/50">
+                            <button
+                              type="button"
+                              onClick={() => setEditingOppId(null)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-title font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer"
+                              title="Cancelar correção"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Cancelar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditOpp(op.id)}
+                              disabled={!editingOppText.trim()}
+                              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-title font-bold uppercase tracking-wider bg-church-gold text-white hover:bg-church-gold-dark shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <Check className="w-4 h-4" />
+                              <span>Salvar Alteração</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={op.id} className="flex items-center justify-between p-2.5 rounded-xl bg-church-parchment/60 border border-church-sand hover:bg-church-parchment transition-colors">
+                        <div className="text-sm font-sans flex-1">
+                          <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{idx + 1}.</span>
+                          <span className="font-title text-sm font-semibold text-church-charcoal">{op.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditOpp(op)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider text-church-gold-dark bg-church-gold/15 hover:bg-church-gold/25 border border-church-gold/30 transition-colors cursor-pointer"
+                            title="Corrigir esta oportunidade"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Corrigir</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOpp(op.id)}
+                            className="p-1.5 text-church-muted hover:text-red-600 transition-colors cursor-pointer"
+                            title="Remover oportunidade"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

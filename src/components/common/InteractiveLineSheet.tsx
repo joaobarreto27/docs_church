@@ -7,10 +7,14 @@ interface InteractiveLineSheetProps {
   rawText: string;
   onChangeRawText: (text: string) => void;
   placeholders?: string[];
-  title: string;
-  helperText: string;
+  title?: string;
+  helperText?: string;
   minLines?: number;
   hasDraft?: boolean;
+  onDiscardDraft?: () => void;
+  firstEmptyPlaceholder?: string;
+  showModeToggle?: boolean;
+  showHeader?: boolean;
 }
 
 export const InteractiveLineSheet: React.FC<InteractiveLineSheetProps> = ({
@@ -20,8 +24,11 @@ export const InteractiveLineSheet: React.FC<InteractiveLineSheetProps> = ({
   onChangeRawText,
   title,
   helperText,
-  minLines = 12,
+  minLines = 10,
   hasDraft = false,
+  firstEmptyPlaceholder,
+  showModeToggle = false,
+  showHeader,
 }) => {
   const [mode, setMode] = React.useState<'lines' | 'raw'>('lines');
   const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
@@ -148,74 +155,92 @@ export const InteractiveLineSheet: React.FC<InteractiveLineSheetProps> = ({
     setMode('lines');
   };
 
+  const shouldShowHeader = showHeader ?? Boolean(title || showModeToggle);
+
   return (
     <div className="bg-white rounded-2xl border-2 border-church-sand/80 shadow-xs overflow-hidden focus-within:border-church-gold transition-colors">
       {/* Cabeçalho do Card de Digitação */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-church-parchment/60 border-b border-church-sand">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-church-gold-dark shrink-0" />
-          <span className="font-title text-xs font-bold uppercase tracking-wider text-church-charcoal">
-            {title}
-          </span>
-        </div>
+      {shouldShowHeader && (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-church-parchment/60 border-b border-church-sand">
+          {title && (
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-church-gold-dark shrink-0" />
+              <span className="font-title text-xs font-bold uppercase tracking-wider text-church-charcoal">
+                {title}
+              </span>
+            </div>
+          )}
 
-        {/* Seletor Sutil: Linhas vs Texto Livre */}
-        <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-church-sand shadow-2xs">
-          <button
-            type="button"
-            onClick={mode === 'raw' ? handleSwitchToLines : undefined}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              mode === 'lines'
-                ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
-                : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
-            }`}
-            title="Modo Linhas: toque direto na linha sem precisar dar Enter"
-          >
-            <AlignLeft className="w-3 h-3 text-church-gold-dark" />
-            <span>Linhas</span>
-          </button>
-          <button
-            type="button"
-            onClick={mode === 'lines' ? handleSwitchToRaw : undefined}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              mode === 'raw'
-                ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
-                : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
-            }`}
-            title="Modo Texto Livre: bloco tradicional para colar listas prontas"
-          >
-            <FileText className="w-3 h-3 text-church-gold-dark" />
-            <span>Texto Livre</span>
-          </button>
+          {/* Seletor Sutil: Linhas vs Texto Livre (Oculto por padrão para manter a tela limpa) */}
+          {showModeToggle && (
+            <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-church-sand shadow-2xs">
+              <button
+                type="button"
+                onClick={mode === 'raw' ? handleSwitchToLines : undefined}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  mode === 'lines'
+                    ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
+                    : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
+                }`}
+                title="Modo Linhas: toque direto na linha sem precisar dar Enter"
+              >
+                <AlignLeft className="w-3 h-3 text-church-gold-dark" />
+                <span>Linhas</span>
+              </button>
+              <button
+                type="button"
+                onClick={mode === 'lines' ? handleSwitchToRaw : undefined}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  mode === 'raw'
+                    ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
+                    : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
+                }`}
+                title="Modo Texto Livre: bloco tradicional para colar listas prontas"
+              >
+                <FileText className="w-3 h-3 text-church-gold-dark" />
+                <span>Texto Livre</span>
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* 1. MODO LINHAS PAUTADAS (TOUCH-FRIENDLY PARA TABLET COM QUEBRA DE LINHA AUTO) */}
       {mode === 'lines' ? (
         <div className="p-2 sm:p-4 space-y-1 max-h-[460px] overflow-y-auto scrollbar-thin">
-          <p className="text-[11px] text-church-muted font-sans pb-1 px-1">
-            {helperText}
-          </p>
+          {helperText && (
+            <p className="text-[11px] text-church-muted font-sans pb-1 px-1">
+              {helperText}
+            </p>
+          )}
 
           <div className="space-y-1 divide-y divide-church-sand/30">
             {lines.map((line, idx) => {
               const isFilled = line.trim().length > 0;
+              const firstEmptyIndex = lines.findIndex(l => l.trim().length === 0);
+              const isNextActiveEmptyLine = idx === firstEmptyIndex;
 
               return (
                 <div 
                   key={idx} 
-                  className="flex items-start gap-2 py-1 px-1.5 rounded-lg hover:bg-church-parchment/30 focus-within:bg-church-gold/5 transition-colors group"
+                  className={`flex items-start gap-2 py-1 px-1.5 rounded-lg hover:bg-church-parchment/30 focus-within:bg-church-gold/5 transition-colors group ${
+                    isNextActiveEmptyLine ? 'bg-church-gold/[0.04]' : ''
+                  }`}
                 >
                   {/* Marcador / Número da Linha alinhado ao topo */}
                   <span 
                     className={`w-6 text-right pr-1 text-xs font-mono font-bold shrink-0 self-start pt-2 transition-colors ${
-                      isFilled ? 'text-church-gold-dark' : 'text-church-muted/40'
+                      isFilled 
+                        ? 'text-church-gold-dark' 
+                        : isNextActiveEmptyLine 
+                          ? 'text-church-gold' 
+                          : 'text-church-muted/40'
                     }`}
                   >
                     {idx + 1}.
                   </span>
 
-                  {/* Campo de Linha Pautada com Quebra de Linha Automática (Textarea auto-expansiva sem scroll horizontal) */}
+                  {/* Campo de Linha Pautada com Quebra de Linha Automática */}
                   <textarea
                     ref={el => (inputRefs.current[idx] = el)}
                     rows={1}
@@ -227,8 +252,10 @@ export const InteractiveLineSheet: React.FC<InteractiveLineSheetProps> = ({
                     }}
                     onKeyDown={e => handleKeyDown(idx, e)}
                     onPaste={e => handlePaste(idx, e)}
-                    placeholder=""
-                    className="flex-1 bg-transparent py-1.5 sm:py-2 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b border-church-sand/60 focus:border-church-gold outline-none resize-none overflow-hidden leading-relaxed break-words transition-colors"
+                    placeholder={isNextActiveEmptyLine ? (firstEmptyPlaceholder || '') : ''}
+                    className={`flex-1 bg-transparent py-1.5 sm:py-2 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b focus:border-church-gold outline-none resize-none overflow-hidden leading-relaxed break-words transition-colors placeholder:text-church-muted/70 placeholder:font-medium ${
+                      isNextActiveEmptyLine ? 'border-church-gold/60' : 'border-church-sand/60'
+                    }`}
                     style={{ minHeight: '36px' }}
                   />
 
