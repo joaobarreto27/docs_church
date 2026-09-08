@@ -35,15 +35,18 @@ function findChromePath() {
   return null;
 }
 
-function checkPortOpen(port, host = '127.0.0.1') {
-  return new Promise((resolve) => {
-    const req = http.get({ host, port, path: '/' }, () => resolve(true));
-    req.on('error', () => resolve(false));
-    req.setTimeout(1000, () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
+async function checkPortOpen(port) {
+  try {
+    const res = await fetch(`http://localhost:${port}/`, { signal: AbortSignal.timeout(1000) });
+    return res.ok || res.status < 500;
+  } catch (_) {
+    try {
+      const res2 = await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1000) });
+      return res2.ok || res2.status < 500;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 class CDPSession {
@@ -175,12 +178,45 @@ async function runMockup(options = {}) {
       'about:blank'
     ], { stdio: 'ignore' });
 
-    await new Promise(r => setTimeout(r, 2000));
+    // Polling ativo até o Chrome responder na porta de depuração
+    let versionInfo = null;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${debugPort}/json/version`);
+        if (res.ok) {
+          versionInfo = await res.json();
+          break;
+        }
+      } catch (_) {}
+      await new Promise(r => setTimeout(r, 150));
+    }
 
-    // 3. Obtém endpoint CDP
-    const listRes = await fetch(`http://127.0.0.1:${debugPort}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' });
-    const pageData = await listRes.json();
-    cdp = new CDPSession(pageData.webSocketDebuggerUrl);
+    if (!versionInfo) {
+      throw new Error(`Chrome Headless não respondeu na porta ${debugPort} a tempo.`);
+    }
+
+    // 3. Obtém endpoint CDP da página
+    let wsUrl = null;
+    try {
+      const newRes = await fetch(`http://127.0.0.1:${debugPort}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' });
+      if (newRes.ok) {
+        const pageData = await newRes.json();
+        wsUrl = pageData.webSocketDebuggerUrl;
+      }
+    } catch (_) {}
+
+    if (!wsUrl) {
+      const listRes = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
+      const pages = await listRes.json();
+      const targetPage = pages.find(p => p.type === 'page') || pages[0];
+      wsUrl = targetPage?.webSocketDebuggerUrl;
+    }
+
+    if (!wsUrl) {
+      throw new Error('Não foi possível obter a URL do WebSocket do Chrome.');
+    }
+
+    cdp = new CDPSession(wsUrl);
     await cdp.init();
 
     console.log(`[Mockup] Sessão CDP ativa! Executando ${scenes.length} cena(s)...`);
