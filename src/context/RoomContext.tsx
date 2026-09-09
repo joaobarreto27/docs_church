@@ -62,12 +62,20 @@ interface StoredSession {
 
 
 const PENDING_APPENDS_KEY = 'docs_church_pending_appends';
+const PENDING_BLOCK_UPDATES_KEY = 'docs_church_pending_block_updates';
 
 interface PendingAppend {
   id: string;
   blockId: string;
   roomId: string;
   newItems: any[];
+  timestamp: number;
+}
+
+interface PendingBlockUpdate {
+  blockId: string;
+  roomId: string;
+  content: any;
   timestamp: number;
 }
 
@@ -88,6 +96,52 @@ function savePendingAppends(items: PendingAppend[]) {
       localStorage.setItem(PENDING_APPENDS_KEY, JSON.stringify(items));
     }
   } catch {}
+}
+
+function getPendingBlockUpdates(): Record<string, PendingBlockUpdate> {
+  try {
+    const raw = localStorage.getItem(PENDING_BLOCK_UPDATES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePendingBlockUpdates(updates: Record<string, PendingBlockUpdate>) {
+  try {
+    if (Object.keys(updates).length === 0) {
+      localStorage.removeItem(PENDING_BLOCK_UPDATES_KEY);
+    } else {
+      localStorage.setItem(PENDING_BLOCK_UPDATES_KEY, JSON.stringify(updates));
+    }
+  } catch {}
+}
+
+function queuePendingBlockUpdate(blockId: string, roomId: string, content: any) {
+  const all = getPendingBlockUpdates();
+  all[blockId] = {
+    blockId,
+    roomId,
+    content,
+    timestamp: Date.now()
+  };
+  savePendingBlockUpdates(all);
+
+  // Como o bloco inteiro já está salvo com o estado mais recente (incluindo adições),
+  // remove appends pendentes deste mesmo bloco para evitar duplicação ao reconectar
+  const appends = getPendingAppends();
+  const filteredAppends = appends.filter(a => a.blockId !== blockId);
+  if (filteredAppends.length !== appends.length) {
+    savePendingAppends(filteredAppends);
+  }
+}
+
+function removePendingBlockUpdate(blockId: string) {
+  const all = getPendingBlockUpdates();
+  if (all[blockId]) {
+    delete all[blockId];
+    savePendingBlockUpdates(all);
+  }
 }
 
 function saveStoredSession(session: StoredSession) {
@@ -461,13 +515,14 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearStoredSession();
   }, []);
 
-  // Atualiza bloco de liturgia (substituição integral sequencial)
+  // Atualiza bloco de liturgia (substituição integral sequencial com contingência offline)
   const updateBlock = useCallback(async (blockId: string, newContent: any) => {
     if (!room) return;
     
     // Atualização otimista na UI imediata e no ref síncrono
     blocksRef.current = blocksRef.current.map(b => b.id === blockId ? { ...b, content: newContent } : b);
     setBlocks(blocksRef.current);
+    saveToCache(room, blocksRef.current);
     pendingMutationsCountRef.current += 1;
     lastMutationTimeRef.current = Date.now();
     
@@ -475,22 +530,25 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(async () => {
         const block = blocksRef.current.find(b => b.id === blockId);
         const payload = block ? block.content : newContent;
-        await updateBlockContent(blockId, payload, room.id, sessionToken);
-        setIsConnected(true);
-        broadcastLocalChange();
-      })
-      .catch(err => {
-        console.warn('Erro ao atualizar bloco no Neon:', err);
-        setIsConnected(false);
+        try {
+          await updateBlockContent(blockId, payload, room.id, sessionToken);
+          removePendingBlockUpdate(blockId);
+          setIsConnected(true);
+          broadcastLocalChange();
+        } catch (err) {
+          console.warn('Erro ao atualizar bloco no Neon (enfileirando offline):', err);
+          setIsConnected(false);
+          queuePendingBlockUpdate(blockId, room.id, payload);
+        }
       })
       .finally(() => {
         pendingMutationsCountRef.current = Math.max(0, pendingMutationsCountRef.current - 1);
       });
 
     await blockMutationQueueRef.current;
-  }, [room, sessionToken, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange, saveToCache]);
 
-  // Remoção atômica de item (blindagem absoluta contra cliques rápidos consecutivos e race conditions)
+  // Remoção atômica de item (blindagem absoluta contra cliques rápidos consecutivos e contingência offline)
   const removeItemFromBlock = useCallback(async (blockId: string, itemId: string) => {
     if (!room) return;
 
@@ -507,6 +565,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     blocksRef.current = nextBlocks;
     setBlocks(nextBlocks);
+    saveToCache(room, nextBlocks);
     pendingMutationsCountRef.current += 1;
     lastMutationTimeRef.current = Date.now();
 
@@ -515,20 +574,23 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Envia SEMPRE o estado mais fresco do bloco no momento da execução
         const block = blocksRef.current.find(b => b.id === blockId);
         const payload = block ? block.content : updatedContent;
-        await updateBlockContent(blockId, payload, room.id, sessionToken);
-        setIsConnected(true);
-        broadcastLocalChange();
-      })
-      .catch((err) => {
-        console.warn('Erro ao remover item no Neon:', err);
-        setIsConnected(false);
+        try {
+          await updateBlockContent(blockId, payload, room.id, sessionToken);
+          removePendingBlockUpdate(blockId);
+          setIsConnected(true);
+          broadcastLocalChange();
+        } catch (err) {
+          console.warn('Erro ao remover item no Neon (enfileirando offline):', err);
+          setIsConnected(false);
+          queuePendingBlockUpdate(blockId, room.id, payload);
+        }
       })
       .finally(() => {
         pendingMutationsCountRef.current = Math.max(0, pendingMutationsCountRef.current - 1);
       });
 
     await blockMutationQueueRef.current;
-  }, [room, sessionToken, broadcastLocalChange]);
+  }, [room, sessionToken, broadcastLocalChange, saveToCache]);
 
   // Concatenação atômica de itens a um bloco (blindagem total contra concorrência entre múltiplos obreiros e fila offline)
   const appendItemsToBlock = useCallback(async (blockId: string, newItems: any[]) => {
@@ -543,6 +605,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return b;
     });
     setBlocks(blocksRef.current);
+    saveToCache(room, blocksRef.current);
     pendingMutationsCountRef.current += 1;
     lastMutationTimeRef.current = Date.now();
 
@@ -571,7 +634,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
     await blockMutationQueueRef.current;
-  }, [room, broadcastLocalChange]);
+  }, [room, broadcastLocalChange, saveToCache]);
 
   // Dispara ou limpa alerta
   const sendAlert = useCallback(async (text: string | null) => {
@@ -741,7 +804,23 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isPollingRef.current = true;
 
       try {
-        // Se houver itens adicionados offline na fila local, descarrega primeiro no Neon
+        // 1. Se houver blocos corrigidos ou com itens excluídos offline, descarrega primeiro no Neon
+        const pendingUpdates = getPendingBlockUpdates();
+        const pendingUpdateKeys = Object.keys(pendingUpdates);
+        if (pendingUpdateKeys.length > 0) {
+          for (const bId of pendingUpdateKeys) {
+            const item = pendingUpdates[bId];
+            try {
+              await updateBlockContent(item.blockId, item.content, item.roomId, sessionToken);
+              removePendingBlockUpdate(bId);
+            } catch {
+              // Se ainda não conseguiu enviar todos por falta de sinal, adia o poll
+              return;
+            }
+          }
+        }
+
+        // 2. Se houver itens adicionados offline na fila local, descarrega no Neon
         const pending = getPendingAppends();
         if (pending.length > 0) {
           const remaining: PendingAppend[] = [];
@@ -780,8 +859,15 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (syncResult.hasChanged) {
-            // Se houver mutações locais em andamento ou muito recentes (exclusões consecutivas), não sobrescreve com snapshot antigo
-            if (pendingMutationsCountRef.current > 0 || (Date.now() - lastMutationTimeRef.current < 2500)) {
+            // Se houver mutações locais em andamento ou pendentes na fila offline, não sobrescreve com snapshot antigo
+            const hasPendingUpdates = Object.keys(getPendingBlockUpdates()).length > 0;
+            const hasPendingAppends = getPendingAppends().length > 0;
+            if (
+              pendingMutationsCountRef.current > 0 || 
+              (Date.now() - lastMutationTimeRef.current < 2500) ||
+              hasPendingUpdates ||
+              hasPendingAppends
+            ) {
               return;
             }
 
@@ -800,8 +886,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ...prev, 
               code: syncResult.code || prev.code,
               title: syncResult.title || prev.title,
-              version: syncResult.version,
-              active_alert: syncResult.active_alert,
+              version: syncResult.version, 
+              active_alert: syncResult.active_alert, 
               current_page: syncResult.current_page 
             } : null);
             saveToCache(
@@ -826,7 +912,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ...prev, 
               code: syncResult.code || prev.code,
               title: syncResult.title || prev.title,
-              active_alert: syncResult.active_alert,
+              active_alert: syncResult.active_alert, 
               current_page: syncResult.current_page 
             } : null);
             saveToCache(
@@ -866,8 +952,20 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    const handleOnline = () => {
+      setIsConnected(true);
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      poll(); // Sincronização imediata assim que o Wi-Fi/4G reconectar
+    };
+
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline);
     }
     scheduleNextPoll();
 
@@ -875,12 +973,15 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline);
+      }
       if (pollTimerRef.current) {
         clearTimeout(pollTimerRef.current);
         pollTimerRef.current = null;
       }
     };
-  }, [room, role, saveToCache, leaveRoom]);
+  }, [room, role, sessionToken, saveToCache, leaveRoom]);
 
   return (
     <RoomContext.Provider value={{
