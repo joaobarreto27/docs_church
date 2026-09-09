@@ -71,6 +71,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   });
 
   // Estados de Oração Presencial (Folha Pautada Contínua)
+  const [prayerUrgent, setPrayerUrgent] = useState(false);
   const [prayerBatchText, setPrayerBatchText] = useState(() => {
     try {
       if (!room) return '';
@@ -410,10 +411,12 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     const newItems: PrayerItem[] = linesToProcess.map((desc, idx) => ({
       id: `${Date.now()}_${idx}`,
       description: desc,
+      urgent: prayerUrgent,
     }));
 
     appendItemsToBlock(block.id, newItems);
     handleClearPrayerBatch();
+    setPrayerUrgent(false);
     // Mantém no modo de lote para que o irmão continue anotando os próximos
     showFeedback(`${newItems.length} pedido(s) de oração adicionados ao púlpito! Se precisar corrigir algum motivo, toque em Corrigir logo abaixo.`);
   };
@@ -783,23 +786,35 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               minLines={15}
               hasDraft={Boolean(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0))}
             />
-            <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
-              <button
-                type="submit"
-                disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
-                className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
-              >
-                + Adicionar Todos os Pedidos
-              </button>
-              {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div className="flex items-center gap-2">
                 <button
-                  type="button"
-                  onClick={handleClearPrayerBatch}
-                  className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
+                  type="submit"
+                  disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
+                  className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
                 >
-                  Limpar Folha
+                  + Adicionar Todos os Pedidos
                 </button>
-              )}
+                {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
+                  <button
+                    type="button"
+                    onClick={handleClearPrayerBatch}
+                    className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
+                  >
+                    Limpar Folha
+                  </button>
+                )}
+              </div>
+
+              <label className="inline-flex items-center gap-2 cursor-pointer text-[11px] font-serif italic text-church-muted hover:text-church-charcoal transition-colors select-none">
+                <input
+                  type="checkbox"
+                  checked={prayerUrgent}
+                  onChange={e => setPrayerUrgent(e.target.checked)}
+                  className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
+                />
+                <span>Marcar todos deste grupo como Caso Urgente</span>
+              </label>
             </div>
           </form>
 
@@ -886,6 +901,11 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     <div key={p.id} className="flex items-start justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand gap-3 hover:bg-church-parchment transition-colors">
                       <div className="text-sm font-sans flex-1">
                         <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{idx + 1}.</span>
+                        {p.urgent && (
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider mr-2">
+                            Urgente
+                          </span>
+                        )}
                         <span className="text-church-charcoal font-medium">{p.description}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
