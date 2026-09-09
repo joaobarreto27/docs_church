@@ -71,7 +71,6 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   });
 
   // Estados de Oração Presencial (Folha Pautada Contínua)
-  const [prayerUrgent, setPrayerUrgent] = useState(false);
   const [prayerBatchText, setPrayerBatchText] = useState(() => {
     try {
       if (!room) return '';
@@ -411,12 +410,10 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     const newItems: PrayerItem[] = linesToProcess.map((desc, idx) => ({
       id: `${Date.now()}_${idx}`,
       description: desc,
-      urgent: prayerUrgent,
     }));
 
     appendItemsToBlock(block.id, newItems);
     handleClearPrayerBatch();
-    setPrayerUrgent(false);
     // Mantém no modo de lote para que o irmão continue anotando os próximos
     showFeedback(`${newItems.length} pedido(s) de oração adicionados ao púlpito! Se precisar corrigir algum motivo, toque em Corrigir logo abaixo.`);
   };
@@ -636,27 +633,35 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                             <Pencil className="w-3.5 h-3.5 text-church-gold" />
                             <span>Corrigindo Linha Nº {idx + 1}</span>
                           </div>
-                          <span className="text-[10px] lowercase text-church-muted font-normal">
-                            (ajuste o nome na linha abaixo como faz na folha)
-                          </span>
                         </div>
 
-                        <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
-                          <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0">{idx + 1}.</span>
-                          <input
-                            type="text"
+                        <div className="flex items-start gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
+                          <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0 self-start pt-2">{idx + 1}.</span>
+                          <textarea
+                            rows={1}
                             value={editingVisitorText}
-                            onChange={e => setEditingVisitorText(e.target.value)}
+                            onChange={e => {
+                              e.target.style.height = 'auto';
+                              e.target.style.height = `${Math.max(36, e.target.scrollHeight)}px`;
+                              setEditingVisitorText(e.target.value);
+                            }}
                             onKeyDown={e => {
-                              if (e.key === 'Enter') {
+                              if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 handleSaveEditVisitor(v.id);
                               } else if (e.key === 'Escape') {
                                 setEditingVisitorId(null);
                               }
                             }}
+                            ref={el => {
+                              if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = `${Math.max(36, el.scrollHeight)}px`;
+                              }
+                            }}
                             autoFocus
-                            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none font-medium"
+                            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none resize-none overflow-hidden leading-relaxed break-words font-medium"
+                            style={{ minHeight: '36px' }}
                           />
                         </div>
 
@@ -778,34 +783,23 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               minLines={15}
               hasDraft={Boolean(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0))}
             />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
-              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-title font-semibold text-church-charcoal">
-                <input
-                  type="checkbox"
-                  checked={prayerUrgent}
-                  onChange={e => setPrayerUrgent(e.target.checked)}
-                  className="w-4 h-4 rounded text-church-gold focus:ring-church-gold"
-                />
-                Marcar todos deste grupo como Caso Urgente
-              </label>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-start gap-3 pt-1">
+              <button
+                type="submit"
+                disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
+                className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
+              >
+                + Adicionar Todos os Pedidos
+              </button>
+              {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
                 <button
-                  type="submit"
-                  disabled={!prayerLines.some(l => l.trim().length > 0) && !prayerBatchText.trim()}
-                  className="px-6 py-2.5 bg-church-gold text-white rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-all shadow-sm cursor-pointer"
+                  type="button"
+                  onClick={handleClearPrayerBatch}
+                  className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
                 >
-                  + Adicionar Todos os Pedidos
+                  Limpar Folha
                 </button>
-                {(prayerBatchText.trim() || prayerLines.some(l => l.trim().length > 0)) && (
-                  <button
-                    type="button"
-                    onClick={handleClearPrayerBatch}
-                    className="px-3 py-2 text-church-muted hover:text-church-charcoal text-xs font-sans font-medium transition-colors cursor-pointer"
-                  >
-                    Limpar Folha
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </form>
 
@@ -832,27 +826,35 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                             <Pencil className="w-3.5 h-3.5 text-church-gold" />
                             <span>Corrigindo Linha Nº {idx + 1}</span>
                           </div>
-                          <span className="text-[10px] lowercase text-church-muted font-normal">
-                            (ajuste o pedido na linha abaixo como faz na folha)
-                          </span>
                         </div>
 
-                        <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
-                          <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0">{idx + 1}.</span>
-                          <input
-                            type="text"
+                        <div className="flex items-start gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
+                          <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0 self-start pt-2">{idx + 1}.</span>
+                          <textarea
+                            rows={1}
                             value={editingPrayerText}
-                            onChange={e => setEditingPrayerText(e.target.value)}
+                            onChange={e => {
+                              e.target.style.height = 'auto';
+                              e.target.style.height = `${Math.max(36, e.target.scrollHeight)}px`;
+                              setEditingPrayerText(e.target.value);
+                            }}
                             onKeyDown={e => {
-                              if (e.key === 'Enter') {
+                              if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 handleSaveEditPrayer(p.id);
                               } else if (e.key === 'Escape') {
                                 setEditingPrayerId(null);
                               }
                             }}
+                            ref={el => {
+                              if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = `${Math.max(36, el.scrollHeight)}px`;
+                              }
+                            }}
                             autoFocus
-                            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none font-medium"
+                            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none resize-none overflow-hidden leading-relaxed break-words font-medium"
+                            style={{ minHeight: '36px' }}
                           />
                         </div>
 
@@ -884,11 +886,6 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                     <div key={p.id} className="flex items-start justify-between p-3 rounded-xl bg-church-parchment/60 border border-church-sand gap-3 hover:bg-church-parchment transition-colors">
                       <div className="text-sm font-sans flex-1">
                         <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{idx + 1}.</span>
-                        {p.urgent && (
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider mr-2">
-                            Urgente
-                          </span>
-                        )}
                         <span className="text-church-charcoal font-medium">{p.description}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1171,27 +1168,35 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                               <Pencil className="w-3.5 h-3.5 text-church-gold" />
                               <span>Corrigindo Linha Nº {idx + 1}</span>
                             </div>
-                            <span className="text-[10px] lowercase text-church-muted font-normal">
-                              (ajuste o nome na linha abaixo como faz na folha)
-                            </span>
                           </div>
 
-                          <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
-                            <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0">{idx + 1}.</span>
-                            <input
-                              type="text"
+                          <div className="flex items-start gap-2 py-1 px-2 rounded-lg bg-white border border-church-gold/40 focus-within:border-church-gold shadow-2xs">
+                            <span className="w-6 text-right pr-1 text-xs font-mono font-bold text-church-gold-dark shrink-0 self-start pt-2">{idx + 1}.</span>
+                            <textarea
+                              rows={1}
                               value={editingOppText}
-                              onChange={e => setEditingOppText(e.target.value)}
+                              onChange={e => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${Math.max(36, e.target.scrollHeight)}px`;
+                                setEditingOppText(e.target.value);
+                              }}
                               onKeyDown={e => {
-                                if (e.key === 'Enter') {
+                                if (e.key === 'Enter' && !e.shiftKey) {
                                   e.preventDefault();
                                   handleSaveEditOpp(op.id);
                                 } else if (e.key === 'Escape') {
                                   setEditingOppId(null);
                                 }
                               }}
+                              ref={el => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = `${Math.max(36, el.scrollHeight)}px`;
+                                }
+                              }}
                               autoFocus
-                              className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none font-medium"
+                              className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none resize-none overflow-hidden leading-relaxed break-words font-medium"
+                              style={{ minHeight: '36px' }}
                             />
                           </div>
 

@@ -275,7 +275,7 @@ export const InteractiveLineSheet: React.FC<InteractiveLineSheetProps> = ({
             })}
           </div>
 
-          <div className="pt-2 px-1 flex items-center justify-between">
+          <div className="pt-2 px-1 flex items-center justify-start">
             <button
               type="button"
               onClick={handleAddExtraLine}
@@ -284,9 +284,6 @@ export const InteractiveLineSheet: React.FC<InteractiveLineSheetProps> = ({
               <Plus className="w-3.5 h-3.5" />
               <span>+ Adicionar outra linha</span>
             </button>
-            <span className="text-[10px] text-church-muted font-mono">
-              Linhas em branco são ignoradas ao salvar
-            </span>
           </div>
         </div>
       ) : (
