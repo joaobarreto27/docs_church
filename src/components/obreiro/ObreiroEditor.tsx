@@ -1168,9 +1168,11 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
 
               {/* 2. LISTA DE OPORTUNIDADES JÁ CADASTRADAS */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-church-muted font-title uppercase tracking-wider pb-1">
-                  <span>Cantores Cadastrados ({oppsList.length})</span>
-                  <span className="text-[10px] lowercase text-church-muted font-sans font-normal italic">
+                <div className="flex items-center justify-between text-xs text-church-muted mb-2 font-sans">
+                  <span className="font-semibold text-church-charcoal flex items-center gap-1.5">
+                    Cantores Cadastrados ({oppsList.length})
+                  </span>
+                  <span className="text-[11px] font-serif italic text-church-muted hidden sm:inline">
                     Atualizado em tempo real no púlpito
                   </span>
                 </div>
