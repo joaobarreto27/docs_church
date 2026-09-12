@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import { 
   VisitorItem, 
@@ -21,7 +21,9 @@ import {
   X,
   Plus,
   Tablet,
-  ClipboardCopy
+  ClipboardCopy,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { 
   formatVisitorsList, 
@@ -37,15 +39,60 @@ interface ObreiroEditorProps {
 }
 
 export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
-  const { room, blocks, updateBlock, appendItemsToBlock, removeItemFromBlock, role } = useRoom();
+  const { room, blocks, updateBlock, appendItemsToBlock, removeItemFromBlock, role, setPulpitPreviewActive } = useRoom();
 
   const draftVisitorKey = room ? `docs_church_draft_visitors_${room.id}` : '';
   const draftPrayerKey = room ? `docs_church_draft_prayers_${room.id}` : '';
   const draftOppKey = room ? `docs_church_draft_opps_${room.id}` : '';
 
+  // Estados de Navegação Rápida entre Seções (com destaque ativo da sessão atual)
+  const [activeSection, setActiveSection] = useState<'visitors' | 'prayers' | 'opps' | 'choirs'>('visitors');
+
   // Estados de Prévia do Púlpito (Protegida contra toques acidentais para idosos)
   const [showPulpitConfirm, setShowPulpitConfirm] = useState(false);
   const [showPulpitPreview, setShowPulpitPreview] = useState(false);
+
+  // Garante que o polling de 8s volte aos 30s se o componente for desmontado
+  useEffect(() => {
+    return () => {
+      setPulpitPreviewActive(false);
+    };
+  }, [setPulpitPreviewActive]);
+
+  // Rastreia a seção visível na tela durante o scroll do operador
+  useEffect(() => {
+    const sectionIds = ['section-visitors', 'section-prayers', 'section-opportunities'];
+    if (role === 'controlador') sectionIds.push('section-choirs');
+
+    const handleScrollSpy = () => {
+      const scrollPos = window.scrollY + 140;
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPos >= top && scrollPos < top + height) {
+            if (id === 'section-visitors') setActiveSection('visitors');
+            else if (id === 'section-prayers') setActiveSection('prayers');
+            else if (id === 'section-opportunities') setActiveSection('opps');
+            else if (id === 'section-choirs') setActiveSection('choirs');
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollSpy, { passive: true });
+    return () => window.removeEventListener('scroll', handleScrollSpy);
+  }, [role]);
+
+  const scrollToSection = (id: string, sectionKey: 'visitors' | 'prayers' | 'opps' | 'choirs') => {
+    setActiveSection(sectionKey);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Estados de Visitantes (Folha Pautada Contínua)
   const [visitorBatchText, setVisitorBatchText] = useState(() => {
@@ -467,6 +514,46 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     updateBlock(block.id, updated);
   };
 
+  // Alterna Status de Louvor do Conjunto ('idle' | 'ready' | 'done')
+  const handleToggleChoirStatus = (id: string, status?: 'idle' | 'ready' | 'done') => {
+    const block = getBlock('choirs');
+    if (!block) return;
+
+    const current = (block.content || []) as ChoirItem[];
+    const updated = current.map(ch => {
+      if (ch.id !== id) return ch;
+      const nextStatus = status !== undefined 
+        ? status 
+        : ch.status === 'ready' 
+          ? 'done' 
+          : ch.status === 'done' 
+            ? 'idle' 
+            : 'ready';
+      return { ...ch, status: nextStatus, checked: true };
+    });
+    updateBlock(block.id, updated);
+  };
+
+  // Alterna Status de Louvor de Oportunidade Individual ('idle' | 'ready' | 'done')
+  const handleToggleOppStatus = (id: string, status?: 'idle' | 'ready' | 'done') => {
+    const block = getBlock('opportunities');
+    if (!block) return;
+
+    const current = (block.content || []) as OpportunityItem[];
+    const updated = current.map(op => {
+      if (op.id !== id) return op;
+      const nextStatus = status !== undefined 
+        ? status 
+        : op.status === 'ready' 
+          ? 'done' 
+          : op.status === 'done' 
+            ? 'idle' 
+            : 'ready';
+      return { ...op, status: nextStatus };
+    });
+    updateBlock(block.id, updated);
+  };
+
   // Adiciona novo departamento (Controlador) (com blindagem atômica de concorrência)
   const handleAddChoir = (e: React.FormEvent) => {
     e.preventDefault();
@@ -548,8 +635,106 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
       {/* Conteúdo Principal do Editor */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
         
+        {/* ================= BARRA DE NAVEGAÇÃO STICKY (ACESSO RÁPIDO SEM SCROLL FATIGUE) ================= */}
+        <nav 
+          aria-label="Navegação rápida do formulário"
+          className="sticky top-0 z-30 bg-church-parchment/95 backdrop-blur-md py-2 px-1 -mx-2 sm:-mx-4 border-b border-church-sand/80 shadow-2xs"
+        >
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 max-w-4xl mx-auto">
+            {/* 1. Visitantes */}
+            <button
+              type="button"
+              onClick={() => scrollToSection('section-visitors', 'visitors')}
+              className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+                activeSection === 'visitors'
+                  ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
+                  : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+              }`}
+            >
+              <UserPlus className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'visitors' ? 'text-white' : 'text-church-gold-dark'}`} />
+              <span className="truncate">Visitantes</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'visitors' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+              }`}>
+                {visitorsList.length}
+              </span>
+              {activeSection === 'visitors' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+              )}
+            </button>
+
+            {/* 2. Pedidos de Oração */}
+            <button
+              type="button"
+              onClick={() => scrollToSection('section-prayers', 'prayers')}
+              className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+                activeSection === 'prayers'
+                  ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
+                  : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+              }`}
+            >
+              <HeartHandshake className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'prayers' ? 'text-white' : 'text-church-gold-dark'}`} />
+              <span className="truncate">Orações</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'prayers' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+              }`}>
+                {prayersList.length}
+              </span>
+              {activeSection === 'prayers' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+              )}
+            </button>
+
+            {/* 3. Oportunidades */}
+            <button
+              type="button"
+              onClick={() => scrollToSection('section-opportunities', 'opps')}
+              className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+                activeSection === 'opps'
+                  ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
+                  : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+              }`}
+            >
+              <Mic2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'opps' ? 'text-white' : 'text-church-gold-dark'}`} />
+              <span className="truncate">Oportunidades</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'opps' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+              }`}>
+                {oppsList.length}
+              </span>
+              {activeSection === 'opps' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+              )}
+            </button>
+
+            {/* 4. Departamentos (se Controlador) */}
+            {role === 'controlador' && (
+              <button
+                type="button"
+                onClick={() => scrollToSection('section-choirs', 'choirs')}
+                className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+                  activeSection === 'choirs'
+                    ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
+                    : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+                }`}
+              >
+                <Users className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'choirs' ? 'text-white' : 'text-church-gold-dark'}`} />
+                <span className="truncate">Departamentos</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                  activeSection === 'choirs' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+                }`}>
+                  {choirsList.filter(c => c.checked).length}
+                </span>
+                {activeSection === 'choirs' && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+                )}
+              </button>
+            )}
+          </div>
+        </nav>
+        
         {/* ================= SEÇÃO VISITANTES ================= */}
-        <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
+        <section id="section-visitors" className="scroll-mt-16 bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
             <div className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-church-gold" />
@@ -728,7 +913,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
         </section>
 
         {/* ================= SEÇÃO PEDIDOS DE ORAÇÃO (PRESENCIAIS) ================= */}
-        <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
+        <section id="section-prayers" className="scroll-mt-16 bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
             <div className="flex items-center gap-2">
               <HeartHandshake className="w-5 h-5 text-church-gold" />
@@ -939,7 +1124,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
         <div className={`grid gap-6 ${role === 'controlador' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
           {/* Departamentos - VISÍVEL E EDITÁVEL EXCLUSIVAMENTE PELO CONTROLADOR */}
           {role === 'controlador' && (
-            <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
+            <section id="section-choirs" className="scroll-mt-16 bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
                   <div className="flex items-center gap-2">
@@ -1042,8 +1227,8 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                             </button>
                           </div>
                         ) : (
-                          // Visualização Normal com Botão de Confirmação e Nome
-                          <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
+                          // Visualização Normal com Botão de Confirmação, Nome e Status de Louvor
+                          <div className="flex items-center gap-2 flex-1 min-w-0 mr-2 flex-wrap sm:flex-nowrap">
                             <button
                               type="button"
                               onClick={() => handleToggleChoir(ch.id)}
@@ -1065,6 +1250,43 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                             >
                               {ch.name}
                             </span>
+
+                            {/* Controles de Status do Louvor do Departamento */}
+                            {ch.checked && (
+                              <div className="sm:ml-auto shrink-0 flex items-center gap-1">
+                                {ch.status === 'done' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleChoirStatus(ch.id, 'ready')}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-title font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all cursor-pointer"
+                                    title="Departamento já louvou com sucesso! Toque para reabrir"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <span>Já Louvou / OK</span>
+                                  </button>
+                                ) : ch.status === 'ready' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleChoirStatus(ch.id, 'done')}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-title font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs hover:bg-amber-600 transition-all cursor-pointer animate-pulse"
+                                    title="Escalado para louvar a seguir! Toque para marcar sucesso (Já Louvou)"
+                                  >
+                                    <Clock className="w-3 h-3 text-white" />
+                                    <span>Vai Cantar ➔ OK</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleChoirStatus(ch.id, 'ready')}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-title font-semibold uppercase tracking-wider bg-church-parchment text-church-charcoal/80 border border-church-sand hover:bg-amber-50 hover:text-amber-900 transition-all cursor-pointer"
+                                    title="Toque para colocar como próximo departamento a louvar (Vai Cantar)"
+                                  >
+                                    <Clock className="w-3 h-3 text-church-gold" />
+                                    <span>Escalar</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1104,7 +1326,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           )}
 
           {/* Oportunidades */}
-          <section className="bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
+          <section id="section-opportunities" className="scroll-mt-16 bg-white rounded-2xl border border-church-sand p-4 sm:p-6 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between gap-2 mb-4 border-b border-church-sand pb-3">
                 <div className="flex items-center gap-2">
@@ -1252,7 +1474,45 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                           <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{idx + 1}.</span>
                           <span className="font-title text-sm font-semibold text-church-charcoal">{op.name}</span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                          {/* Gestão de Status de Louvor: EXCLUSIVO DO CONTROLADOR (ao adicionar já entra escalado) */}
+                          {role === 'controlador' && (
+                            <>
+                              {op.status === 'done' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleOppStatus(op.id, 'idle')}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-colors cursor-pointer"
+                                  title="Já cantou no culto. Toque para reabrir se necessário"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span className="hidden xs:inline">Já Louvou / OK</span>
+                                  <span className="xs:hidden">OK</span>
+                                </button>
+                              ) : op.status === 'ready' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleOppStatus(op.id, 'done')}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs hover:bg-amber-600 transition-all cursor-pointer animate-pulse"
+                                  title="Cantando agora ou a seguir! Toque para marcar que já cantou"
+                                >
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>Vai Cantar ➔ OK</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleOppStatus(op.id, 'ready')}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-semibold uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer"
+                                  title="Toque para colocar como próximo cantor no púlpito (Vai Cantar)"
+                                >
+                                  <Clock className="w-3.5 h-3.5 text-church-gold" />
+                                  <span>Vai Cantar</span>
+                                </button>
+                              )}
+                            </>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => handleStartEditOpp(op)}
@@ -1260,7 +1520,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                             title="Corrigir esta oportunidade"
                           >
                             <Pencil className="w-3.5 h-3.5" />
-                            <span>Corrigir</span>
+                            <span className="hidden xs:inline">Corrigir</span>
                           </button>
                           <button
                             type="button"
@@ -1364,6 +1624,7 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
                   type="button"
                   onClick={() => {
                     setShowPulpitConfirm(false);
+                    setPulpitPreviewActive(true);
                     setShowPulpitPreview(true);
                   }}
                   className="px-4 py-2.5 rounded-xl bg-church-gold hover:bg-church-gold-dark text-church-charcoal border border-church-gold-dark/40 font-title text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
@@ -1396,7 +1657,10 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               {/* BOTÃO GRANDE E INCONFUNDÍVEL DE RETORNO EM VERMELHO */}
               <button
                 type="button"
-                onClick={() => setShowPulpitPreview(false)}
+                onClick={() => {
+                  setPulpitPreviewActive(false);
+                  setShowPulpitPreview(false);
+                }}
                 className="inline-flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs sm:text-sm font-title font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all cursor-pointer border-2 border-white ring-2 ring-red-500/50"
                 title="Fechar e voltar imediatamente para suas anotações de obreiro"
               >

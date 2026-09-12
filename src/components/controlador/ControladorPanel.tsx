@@ -39,7 +39,7 @@ import {
 } from '../../utils/liturgyExport';
 
 export const ControladorPanel: React.FC = () => {
-  const { room, blocks, isFastSync, appendItemsToBlock, removeItemFromBlock, sendAlert, resetCurrentService, updateTitle, updateCode } = useRoom();
+  const { room, blocks, isFastSync, appendItemsToBlock, removeItemFromBlock, sendAlert, resetCurrentService, updateTitle, updateCode, setPulpitPreviewActive } = useRoom();
 
   const [alertInput, setAlertInput] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
@@ -49,6 +49,13 @@ export const ControladorPanel: React.FC = () => {
   const [isListCopied, setIsListCopied] = useState(false);
   const [newTitleInput, setNewTitleInput] = useState('Culto de Celebração');
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Garante que o polling de 8s volte aos 30s se o componente for desmontado
+  React.useEffect(() => {
+    return () => {
+      setPulpitPreviewActive(false);
+    };
+  }, [setPulpitPreviewActive]);
 
   // Estados de edição inline do título do culto
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -426,7 +433,10 @@ export const ControladorPanel: React.FC = () => {
               {/* Botão de Prévia do Púlpito */}
               <button
                 type="button"
-                onClick={() => setShowPulpitPreview(true)}
+                onClick={() => {
+                  setPulpitPreviewActive(true);
+                  setShowPulpitPreview(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-200 transition-colors shadow-xs cursor-pointer"
                 title="Abrir simulação da tela do Púlpito em tempo real"
               >
@@ -708,7 +718,10 @@ export const ControladorPanel: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => setShowPulpitPreview(false)}
+              onClick={() => {
+                setPulpitPreviewActive(false);
+                setShowPulpitPreview(false);
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-title font-bold uppercase tracking-wider transition-colors cursor-pointer border border-white/40 shadow-xs"
             >
               <X className="w-4 h-4 stroke-[2.5]" />
