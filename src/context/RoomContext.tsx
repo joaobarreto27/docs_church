@@ -40,6 +40,8 @@ interface RoomContextType {
   refreshData: () => Promise<void>;
   updateTitle: (newTitle: string) => Promise<void>;
   updateCode: (newCode: string) => Promise<{ success: boolean; error?: string }>;
+  isPulpitPreviewActive: boolean;
+  setPulpitPreviewActive: (active: boolean) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -226,6 +228,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isFastSync, setIsFastSync] = useState<boolean>(false);
   const [hasFreshUpdates, setHasFreshUpdates] = useState<boolean>(false);
+  const [isPulpitPreviewActive, setIsPulpitPreviewActive] = useState<boolean>(false);
+  const isPulpitPreviewActiveRef = useRef<boolean>(false);
+  isPulpitPreviewActiveRef.current = isPulpitPreviewActive;
   const lastActivityTimeRef = useRef<number>(Date.now());
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isPollingRef = useRef<boolean>(false);
@@ -772,6 +777,9 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!room) return;
 
     const getDynamicPollingInterval = (): number => {
+      // Se a prévia do púlpito estiver ativa no obreiro/cabine, sincroniza a cada 8 segundos
+      // Totalmente seguro contra o Erro 99 da Vercel (7.5 req/min) no Android 4.4.4 KitKat
+      if (isPulpitPreviewActiveRef.current) return 8000;
       if (role === 'obreiro') return 30000;
       const timeSinceLast = Date.now() - lastActivityTimeRef.current;
       const isFast = timeSinceLast < FAST_SYNC_THRESHOLD_MS;
@@ -981,7 +989,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         pollTimerRef.current = null;
       }
     };
-  }, [room, role, sessionToken, saveToCache, leaveRoom]);
+  }, [room, role, sessionToken, saveToCache, leaveRoom, isPulpitPreviewActive]);
 
   return (
     <RoomContext.Provider value={{
@@ -1006,6 +1014,8 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshData,
       updateTitle,
       updateCode,
+      isPulpitPreviewActive,
+      setPulpitPreviewActive: setIsPulpitPreviewActive,
     }}>
       {children}
     </RoomContext.Provider>
