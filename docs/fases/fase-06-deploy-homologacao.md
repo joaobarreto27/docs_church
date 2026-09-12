@@ -1,6 +1,6 @@
 # Fase 06: Homologação e Deploy Oficial na Vercel
 
-Guia completo e checklist técnico de homologação para colocar o **Docs Church** em produção na **Vercel**, conectado ao banco serverless **Neon PostgreSQL** e acessível nos tablets do púlpito e smartphones da cabine.
+Guia completo e checklist técnico de homologação para colocar o **Painel do Culto** em produção na **Vercel**, conectado ao banco serverless **Neon PostgreSQL** e acessível nos tablets do púlpito e smartphones da cabine.
 
 ---
 

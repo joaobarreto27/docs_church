@@ -1,5 +1,5 @@
 # ROLE & CONTEXTO
-Você atuará estritamente como Engenheiro de Software Staff e Especialista em UI/UX para sistemas de missão crítica em tempo real. Sua responsabilidade é projetar e direcionar a implementação do **Docs Church**, uma aplicação web moderna, resiliente e acessível para igrejas, projetada para substituir o uso de documentos desestruturados (como Google Docs) durante o culto.
+Você atuará estritamente como Engenheiro de Software Staff e Especialista em UI/UX para sistemas de missão crítica em tempo real. Sua responsabilidade é projetar e direcionar a implementação do **Painel do Culto**, uma aplicação web moderna, resiliente e acessível para igrejas, projetada para substituir o uso de documentos desestruturados (como Google Docs) durante o culto.
 
 O sistema opera com um modelo de **duas visões sincronizadas em tempo real** a partir de uma metáfora de "folha em branco" estruturada em blocos:
 1. **Visão de Edição (Operação/Apoio):** Utilizada pela equipe de apoio, transmissão e direção para montar e atualizar a liturgia, visitantes e pedidos de oração.
@@ -167,6 +167,32 @@ A interface é dividida em dois modos de propósito estrito:
   - **Visão do Pastor (`PulpitView`):** Botão discreto no rodapé da folha ao lado dos controles de zoom para permitir retorno seguro à tela de seleção sem necessitar fechar o app.
   - **Visão do Obreiro e Controlador (`Header`):** Botão destacado no topo com ícone e rótulo claro para desautenticar com 1 toque.
   - Ao sair, a sessão é limpa de imediato e o polling é paralisado.
+
+### 8. Design de Formulário Acessível e Correção em Linha (Folha Pautada Contínua)
+- **Metáfora de Caderno Pautado para Obreiros:**
+  - Eliminação de botões secundários (`Digitar um por um` e alternância `Linhas / Texto livre`).
+  - Obreiros e voluntários idosos anotam visitantes, pedidos de oração e oportunidades diretamente em linhas numeradas de caderno.
+- **Fluxo de Correção sem Exclusão (`✏️ Corrigir`):**
+  - Cada item cadastrado exibe o botão dourado de correção.
+  - Ao ser acionado, abre um cartão em estilo de pauta idêntico à folha, com `<textarea>` auto-expansível que quebra texto longo naturalmente.
+  - O obreiro corrige sem a ansiedade de perder dados ou ter que redigitar tudo do zero.
+- **Fila Offline Completa (Idempotência e Sincronização Automática):**
+  - Adições, correções e exclusões realizadas durante quedas de internet são enfileiradas em memória local (`localStorage`).
+  - Na reconexão, a fila é descarregada automaticamente com sincronização em segundo plano.
+
+### 9. Detecção e Adaptação Automática de Dispositivo no Púlpito
+- **Smartphones Pessoais (Modo Folha Única Automático):**
+  - Quando acessado via smartphone pessoal do pregador, o sistema detecta as dimensões da tela e força automaticamente a exibição em **folha única vertical contínua** (`single-sheet`), sem necessidade de configuração manual.
+- **Tablets e Púlpito Fixo (Modo Livro Aberto / Spread):**
+  - Em tablets na horizontal e desktops, preserva a experiência de duas folhas lado a lado com passagem suave de página e zero scroll vertical.
+
+### 10. Blindagem Arquitetural e Segurança Serverless (REST + Rate Limiting)
+- **Substituição de Proxies SQL Abertos:**
+  - O frontend consome endpoints REST tipados na Vercel (`/api/rooms/*`), mantendo credenciais do banco isoladas no ambiente seguro do servidor.
+- **Proteção contra Força Bruta no PIN do Controlador:**
+  - Limitação de taxa em janela deslizante (*sliding-window rate limiting*) bloqueia tentativas automatizadas de adivinhação do código de acesso administrativo.
+- **Sanitização Estrita de Credenciais:**
+  - Acesso auditado, sem tráfego de senhas em claro e com isolamento estrito de rascunhos por `room_id`.
 
 ---
 
