@@ -24,15 +24,19 @@ export interface PrayerItem {
   created_at?: number;
 }
 
+export type PraiseStatus = 'idle' | 'ready' | 'done';
+
 export interface OpportunityItem {
   id: string;
   name: string;
+  status?: PraiseStatus; // 'idle': aguardando, 'ready': vai cantar, 'done': já cantou / sucesso
 }
 
 export interface ChoirItem {
   id: string;
   name: string;
   checked: boolean;
+  status?: PraiseStatus; // 'idle': não participa, 'ready': vai cantar, 'done': já louvou / sucesso
 }
 
 export interface CustomContent {

@@ -238,6 +238,7 @@ export async function setRoomAlert(roomId: string, alertText: string | null, tok
       action: 'send-alert',
       roomId,
       alert: alertText,
+      message: alertText,
       sessionToken: token,
     }, token);
   });

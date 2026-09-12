@@ -378,7 +378,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (action === 'send-alert') {
-      const message = String(body.message || '').trim().slice(0, 200);
+      const message = String(body.alert ?? body.message ?? '').trim().slice(0, 200);
       await sql`
         UPDATE rooms 
         SET active_alert = ${message || null}, version = version + 1, updated_at = NOW()
