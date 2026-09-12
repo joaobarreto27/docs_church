@@ -16,11 +16,11 @@
 
 ## 📌 Guia Expresso das 3 Funções
 
-| Função | Quem Usa? | Como Acessar? | O que faz no culto? |
-| :--- | :--- | :--- | :--- |
-| 📖 **PÚLPITO** | Pastor e Dirigentes | Escolher **PÚLPITO** | Lê a liturgia e orações em tela limpa sem rolagem. No tablet: 2 folhas. No celular: folha única automática. |
-| ✏️ **OBREIRO** | Diaconia e Secretaria | Escolher **OBREIRO** | Anota visitantes e orações na folha pautada. Corrige em linha com 1 toque no botão `✏️ Corrigir`. |
-| 🛡️ **DIREÇÃO** | Mídia e Direção de Culto | Escolher **DIREÇÃO** + PIN | Envia avisos na barra amarela do altar, cola prints do YouTube (`Ctrl + V`) e gera a ata completa. |
+| Função        | Quem Usa?                | Como Acessar?              | O que faz no culto?                                                                                         |
+| :------------ | :----------------------- | :------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| 📖 **PÚLPITO** | Pastor e Dirigentes      | Escolher **PÚLPITO**       | Lê a liturgia e orações em tela limpa sem rolagem. No tablet: 2 folhas. No celular: folha única automática. |
+| ✏️ **OBREIRO** | Diaconia e Secretaria    | Escolher **OBREIRO**       | Anota visitantes e orações na folha pautada. Corrige em linha com 1 toque no botão `✏️ Corrigir`.            |
+| 🛡️ **DIREÇÃO** | Mídia e Direção de Culto | Escolher **DIREÇÃO** + PIN | Envia avisos na barra amarela do altar, cola prints do YouTube (`Ctrl + V`) e gera a ata completa.          |
 
 ---
 

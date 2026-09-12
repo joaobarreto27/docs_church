@@ -49,9 +49,9 @@ Esta tela foi desenhada para dar **total paz e foco espiritual** para quem está
 
 ### 📱 Visualização Inteligente por Aparelho
 
-| No Tablet do Púlpito (Modo Livro Aberto) | No Smartphone do Pastor (Folha Única) |
-| :---: | :---: |
-| ![Púlpito no Tablet](assets/manual/02-pulpito-pastor.png) | ![Púlpito no Celular](assets/manual/02b-pulpito-celular.png) |
+|                      No Tablet do Púlpito (Modo Livro Aberto)                       |                   No Smartphone do Pastor (Folha Única)                    |
+| :---------------------------------------------------------------------------------: | :------------------------------------------------------------------------: |
+|              ![Púlpito no Tablet](assets/manual/02-pulpito-pastor.png)              |        ![Púlpito no Celular](assets/manual/02b-pulpito-celular.png)        |
 | *Duas folhas lado a lado, sem barra de rolagem, simulando uma pasta aberta solene.* | *Adaptação automática para leitura vertical contínua e nítida no celular.* |
 
 ### 4 Regras de Ouro do Púlpito:
