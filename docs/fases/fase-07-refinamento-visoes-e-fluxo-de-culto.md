@@ -151,6 +151,15 @@ Documento de Especificação Técnica e Fases de Implementação com padrão Sta
 
 ---
 
+### Subfase 7.11: Limpeza Visual em Departamentos — Remoção do Badge "Vai Louvar" [CONCLUÍDA]
+* **Arquivos:** [`src/components/pastor/PulpitView.tsx`](file:///Users/joaovitorbarreto/Projects/docs_church/src/components/pastor/PulpitView.tsx)
+* **Ações:**
+  1. **Remoção do Badge Textual "Vai Louvar":**
+     - Removido o elemento `<span className="text-[10px] font-title uppercase tracking-wider text-amber-900 bg-amber-200 px-1.5 py-0.5 rounded ml-1 font-black">Vai Louvar</span>` em todas as modalidades do púlpito (`four-views`, `two-sheets` e `single-sheet`).
+     - Alinhamento idêntico ao já aplicado em oportunidades individuais: o card do departamento já recebe realce tonal amarelo suave (`bg-amber-100 text-amber-950 border-church-gold ring-2 ring-church-gold/30`) e o ícone de relógio `<Clock />`, eliminando ruído visual desnecessário para o pregador.
+
+---
+
 ## 5. Critérios de Aceite e Verificação
 1. [x] No Púlpito, o rodapé exibe `[4 Visões]` em 1º lugar, seguido de `[Pasta Aberta]` e `[Folha Única]`.
 2. [x] As abas do modo 4 Visões seguem rigorosamente a ordem: 1. Orações, 2. Visitantes, 3. Oportunidades, 4. Avisos.
@@ -163,7 +172,7 @@ Documento de Especificação Técnica e Fases de Implementação com padrão Sta
 9. [x] Na tela do Obreiro, a barra de navegação superior permanece visível no topo durante o scroll e salta direto para a seção ao ser tocada, destacando a sessão ativa.
 10. [x] Oportunidades adicionadas pelo obreiro entram automaticamente escaladas.
 11. [x] Apenas o Controlador gerencia os botões de status de louvor (Vai Cantar / Já Louvou).
-12. [x] No púlpito, as oportunidades não exibem badges textuais agressivos, mantendo realce sutil em amarelo (vai cantar) e verde (já cantou).
+12. [x] No púlpito, as oportunidades e departamentos não exibem badges textuais agressivos como "Vai Cantar" / "Vai Louvar", mantendo realce sutil em amarelo (vai cantar) e verde (já cantou).
 13. [x] O envio de avisos pelo Controlador é gravado e refletido imediatamente na tela do Pastor.
 14. [x] Abertura da prévia do púlpito ajusta o polling para 8s e o fechamento restaura para 30s.
 15. [x] Build de produção (`npm run build`) concluído com 0 erros de TypeScript e bundle legado do KitKat gerado com sucesso.
