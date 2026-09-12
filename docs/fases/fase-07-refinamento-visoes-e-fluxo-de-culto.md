@@ -137,10 +137,24 @@ Documento de Especificação Técnica e Fases de Implementação com padrão Sta
 
 ---
 
+### Subfase 7.10: Preenchimento Integral da Folha da Esquerda Antes do Transbordo [CONCLUÍDA]
+* **Arquivos:** [`src/components/pastor/PulpitView.tsx`](file:///Users/joaovitorbarreto/Projects/docs_church/src/components/pastor/PulpitView.tsx)
+* **Ações:**
+  1. **Eliminação da Divisão Prematura 2x2:**
+     - Criada a função de partição sequencial `partitionSequentialColumns<T>(items, capacity = 10)`.
+     - Quando há poucos itens (ex: 2 a 10 orações ou visitantes), todos são acomodados verticalmente na folha/coluna da esquerda, sem dividir metade para cada lado (`2x2`).
+     - A coluna da direita só é ativada quando a coluna da esquerda atinge sua capacidade confortável (10 itens).
+     - Quando ultrapassa 10 itens, os excedentes (11..20) transbordam para a coluna da direita sequencialmente. Acima de 20 itens, o balanceamento se torna meio a meio.
+  2. **Refinamento da Pasta Aberta (Folha 1 e 2):**
+     - Na Folha 1 (esquerda), visitantes agora mantêm lista contínua em 1 coluna quando há até 4 visitantes (evitando criar 2x2 com poucos nomes).
+     - O cálculo de capacidade `maxSheet1Prayers` preenche integralmente a Folha 1 com orações (até 12 linhas úteis) antes de direcionar qualquer oração para a Folha 2 (direita).
+
+---
+
 ## 5. Critérios de Aceite e Verificação
 1. [x] No Púlpito, o rodapé exibe `[4 Visões]` em 1º lugar, seguido de `[Pasta Aberta]` e `[Folha Única]`.
 2. [x] As abas do modo 4 Visões seguem rigorosamente a ordem: 1. Orações, 2. Visitantes, 3. Oportunidades, 4. Avisos.
-3. [x] Em Orações e Visitantes, a numeração sequencial preenche primeiro de cima para baixo a coluna da esquerda antes de passar para a coluna da direita.
+3. [x] Em Orações e Visitantes, a numeração sequencial preenche primeiro toda a coluna da esquerda (até 10 itens) antes de ativar a coluna da direita, eliminando o padrão prematuro 2x2.
 4. [x] A folha de leitura do modo 4 Visões foi expandida para `max-w-6xl 2xl:max-w-7xl`, aproveitando toda a largura do tablet widescreen conectado via SpaceDesk.
 5. [x] O zoom do app (`+` e `-` no rodapé) escala a folha e os textos de forma imediata e perceptível em passos de 10% (via `zoom: fontScale`).
 6. [x] O nome do culto no rodapé possui tamanho ampliado e tipografia nobre `font-serif italic` com alto refinamento visual.
@@ -153,3 +167,4 @@ Documento de Especificação Técnica e Fases de Implementação com padrão Sta
 13. [x] O envio de avisos pelo Controlador é gravado e refletido imediatamente na tela do Pastor.
 14. [x] Abertura da prévia do púlpito ajusta o polling para 8s e o fechamento restaura para 30s.
 15. [x] Build de produção (`npm run build`) concluído com 0 erros de TypeScript e bundle legado do KitKat gerado com sucesso.
+
