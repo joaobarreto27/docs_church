@@ -53,6 +53,30 @@ const isSmartphoneDevice = (): boolean => {
   return isAndroidPhone || isIPhone || minDim < 480;
 };
 
+/**
+ * Particiona uma lista para exibição em colunas no púlpito:
+ * Popula toda a coluna da esquerda primeiro (até a capacidade de 10 itens).
+ * Somente quando ultrapassar a capacidade da esquerda, passa a preencher a coluna da direita.
+ * Se a lista for superior a 20 itens, distribui equilibradamente entre as duas colunas.
+ */
+function partitionSequentialColumns<T>(items: T[], capacity: number = 10) {
+  if (!items || items.length === 0) {
+    return { left: [] as T[], right: [] as T[], splitIdx: 0 };
+  }
+  if (items.length <= capacity) {
+    return { left: items, right: [] as T[], splitIdx: items.length };
+  }
+  const splitIdx = items.length <= capacity * 2 
+    ? capacity 
+    : Math.ceil(items.length / 2);
+
+  return {
+    left: items.slice(0, splitIdx),
+    right: items.slice(splitIdx),
+    splitIdx
+  };
+}
+
 export const PulpitView: React.FC = () => {
   const { room, blocks, isConnected, isFastSync, hasFreshUpdates, leaveRoom } = useRoom();
 
@@ -149,32 +173,17 @@ export const PulpitView: React.FC = () => {
   const opps = (oppBlock?.content || []) as OpportunityItem[];
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
-  // Divisão sequencial vertical para o modo 4 Visões (coluna da esquerda preenchida primeiro):
-  const halfPrayers = Math.ceil(prayers.length / 2);
-  const fourViewsPrayersLeft = prayers.slice(0, halfPrayers);
-  const fourViewsPrayersRight = prayers.slice(halfPrayers);
+  // Divisão sequencial vertical para o modo 4 Visões:
+  // Popula toda a coluna da esquerda primeiro (até 10 itens) antes de ir para a coluna da direita (evita o 2x2 prematuro)
+  const { left: fourViewsPrayersLeft, right: fourViewsPrayersRight, splitIdx: prayersSplitIdx } = partitionSequentialColumns(prayers, 10);
+  const { left: fourViewsYoutubeLeft, right: fourViewsYoutubeRight, splitIdx: youtubeSplitIdx } = partitionSequentialColumns(youtube, 10);
+  const { left: fourViewsVisitorsLeft, right: fourViewsVisitorsRight, splitIdx: visitorsSplitIdx } = partitionSequentialColumns(visitors, 10);
 
-  const halfYoutube = Math.ceil(youtube.length / 2);
-  const fourViewsYoutubeLeft = youtube.slice(0, halfYoutube);
-  const fourViewsYoutubeRight = youtube.slice(halfYoutube);
-
-  const halfVisitors = Math.ceil(visitors.length / 2);
-  const fourViewsVisitorsLeft = visitors.slice(0, halfVisitors);
-  const fourViewsVisitorsRight = visitors.slice(halfVisitors);
-  // BALANCEAMENTO DINÂMICO INTELIGENTE ENTRE AS DUAS FOLHAS:
-  // - 0 visitantes: Folha 1 puxa até 10 orações para não ficar com espaço vazio.
-  // - 1 a 4 visitantes: Folha 1 puxa até 5 orações.
-  // - 5 a 8 visitantes: Graças às sub-colunas em 2 lados (grid-cols-2), 8 visitantes ocupam
-  //   apenas 4 linhas de altura! Isso deixa espaço de sobra para colocar até 4 orações na Folha 1.
-  // - Mais de 8 visitantes (ex: 12 ou 16 visitantes): a Folha 1 é 100% dedicada aos visitantes (0 orações),
-  //   garantindo zero scroll no Galaxy Tab E (SM-T560), Tab A9 e notebooks de 15".
-  const maxSheet1Prayers = visitors.length === 0
-    ? 10
-    : visitors.length <= 4 
-      ? 5 
-      : visitors.length <= 8 
-        ? 4 
-        : 0;
+  // BALANCEAMENTO DINÂMICO INTELIGENTE ENTRE AS DUAS FOLHAS (PASTA ABERTA):
+  // Popula toda a Folha 1 (esquerda) primeiro antes de mandar itens para a Folha 2 (direita).
+  // A Folha 1 cabe em média 12 a 14 linhas. Visitantes ocupam metade das linhas no grid-cols-2 quando > 4.
+  const visitorRows = visitors.length > 4 ? Math.ceil(visitors.length / 2) : visitors.length;
+  const maxSheet1Prayers = Math.max(0, 12 - visitorRows);
   const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
   const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const sheet2Items: PrayerItem[] = [...overflowPresencial, ...youtube];
@@ -456,7 +465,7 @@ export const PulpitView: React.FC = () => {
                                 >
                                   <span className="text-church-gold font-bold mr-0.5">•</span>
                                   <span className="font-mono text-xs font-bold text-church-gold-dark shrink-0 mt-0.5">
-                                    {halfPrayers + idx + 1}.
+                                    {prayersSplitIdx + idx + 1}.
                                   </span>
                                   <div className="flex-1 min-w-0">
                                     {p.urgent && (
@@ -522,7 +531,7 @@ export const PulpitView: React.FC = () => {
                                   <div className="flex items-start gap-1.5">
                                     <span className="text-red-500 font-bold mr-0.5">•</span>
                                     <span className="font-mono text-xs font-bold text-red-600 shrink-0 mt-0.5">
-                                      {halfYoutube + idx + 1}.
+                                      {youtubeSplitIdx + idx + 1}.
                                     </span>
                                     <div className="flex-1 min-w-0">
                                       <span className="text-church-charcoal">
@@ -604,7 +613,7 @@ export const PulpitView: React.FC = () => {
                               >
                                 <span className="text-church-gold font-bold mr-0.5">•</span>
                                 <span className="font-mono text-xs font-bold text-church-gold-dark shrink-0 mt-0.5">
-                                  {halfVisitors + idx + 1}.
+                                  {visitorsSplitIdx + idx + 1}.
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <span className="text-church-charcoal font-bold text-base sm:text-lg">{v.name}</span>
@@ -1032,13 +1041,13 @@ export const PulpitView: React.FC = () => {
                     <p className="font-serif italic text-church-muted/70 text-sm">Nenhum visitante registrado ainda.</p>
                   ) : (
                     <ul className={`gap-x-4 gap-y-1 sm:gap-y-1.5 ${
-                      visitors.length > 1 
+                      visitors.length > 4 
                         ? 'grid grid-cols-1 sm:grid-cols-2' 
                         : 'space-y-1 sm:space-y-1.5 list-disc list-inside'
                     }`}>
                       {visitors.map((v, i) => (
                         <li key={v.id || i} className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid">
-                          {visitors.length > 1 && <span className="text-church-gold font-bold mr-1">•</span>}
+                          {visitors.length > 4 && <span className="text-church-gold font-bold mr-1">•</span>}
                           <span>{v.name}</span>
                           {v.church && <span className="font-semibold text-church-muted text-xs sm:text-sm"> ({v.church})</span>}
                           {v.invited_by && <span className="font-semibold text-church-muted text-xs sm:text-sm"> — Por: {v.invited_by}</span>}
