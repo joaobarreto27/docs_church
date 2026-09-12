@@ -17,7 +17,14 @@ import {
   Youtube,
   X,
   BookOpen,
-  FileText
+  FileText,
+  LayoutList,
+  Heart,
+  Mic2,
+  Users,
+  Bell,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { LoadingScreen } from '../common/LoadingScreen';
 
@@ -49,21 +56,21 @@ const isSmartphoneDevice = (): boolean => {
 export const PulpitView: React.FC = () => {
   const { room, blocks, isConnected, isFastSync, hasFreshUpdates, leaveRoom } = useRoom();
 
-  // Escala de fonte para pregadores idosos (padrão solicitado: 96% ~ 0.96)
+  // Escala de fonte e zoom para pregadores idosos (padrão: 100% ~ 1.0)
   const [fontScale, setFontScale] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('pulpit_font_scale_v2');
       if (saved) {
         const val = parseFloat(saved);
-        if (!isNaN(val) && val >= 0.8 && val <= 1.6) return val;
+        if (!isNaN(val) && val >= 0.7 && val <= 1.8) return val;
       }
     } catch (e) {}
-    return 0.96;
+    return 1.0;
   });
 
   const handleFontChange = (delta: number) => {
     setFontScale(prev => {
-      const next = Math.max(0.8, Math.min(1.6, Number((prev + delta).toFixed(2))));
+      const next = Math.max(0.7, Math.min(1.8, Number((prev + delta).toFixed(2))));
       try {
         localStorage.setItem('pulpit_font_scale_v2', next.toString());
       } catch (e) {}
@@ -87,36 +94,33 @@ export const PulpitView: React.FC = () => {
     };
   }, []);
 
-  // Modo de visualização de folhas: 'two-sheets' (pasta aberta) vs 'single-sheet' (folha única contínua)
-  const [sheetLayout, setSheetLayout] = useState<'two-sheets' | 'single-sheet'>(() => {
-    // Se for smartphone, sempre abre em folha única automática
-    if (isSmartphoneDevice()) {
-      return 'single-sheet';
-    }
-
+  // Modo de visualização de folhas: 'four-views' (4 visões focadas com abas) vs 'two-sheets' (pasta aberta) vs 'single-sheet' (folha única)
+  const [sheetLayout, setSheetLayout] = useState<'four-views' | 'two-sheets' | 'single-sheet'>(() => {
     try {
       const saved = localStorage.getItem('pulpit_sheet_layout');
-      if (saved === 'two-sheets' || saved === 'single-sheet') return saved;
-      // Detecção automática inteligente para tablets: orientação retrato inicia em folha única
+      if (saved === 'four-views' || saved === 'two-sheets' || saved === 'single-sheet') return saved as any;
+      // Detecção automática para telas em pé/verticais: inicia em 4 visões focadas
       if (typeof window !== 'undefined') {
         if (window.innerHeight > window.innerWidth) {
-          return 'single-sheet';
+          return 'four-views';
         }
       }
     } catch (e) {}
-    return 'two-sheets';
+    return 'four-views';
   });
 
-  const handleToggleSheetLayout = (mode: 'two-sheets' | 'single-sheet') => {
+  // Aba ativa dentro do modo 'four-views': 1. orações, 2. oportunidades, 3. visitantes, 4. avisos
+  const [activeTab, setActiveTab] = useState<'prayers' | 'opps' | 'visitors' | 'alerts'>('prayers');
+
+  const handleToggleSheetLayout = (mode: 'four-views' | 'two-sheets' | 'single-sheet') => {
     setSheetLayout(mode);
     try {
       localStorage.setItem('pulpit_sheet_layout', mode);
     } catch (e) {}
   };
 
-  // Em smartphones, força SEMPRE folha única (single-sheet) automática.
-  // Em tablets e desktops, respeita fielmente a preferência do pregador.
-  const effectiveLayout = isMobilePhone ? 'single-sheet' : sheetLayout;
+  // Em smartphones pequenos, se for two-sheets faz fallback para four-views, permitindo que o idoso use 4 visões ou folha única
+  const effectiveLayout = (isMobilePhone && sheetLayout === 'two-sheets') ? 'four-views' : sheetLayout;
 
   // Estados de detecção de overflow e rolagem fácil para idosos
   const [hasMoreSheet1, setHasMoreSheet1] = useState(false);
@@ -145,6 +149,18 @@ export const PulpitView: React.FC = () => {
   const opps = (oppBlock?.content || []) as OpportunityItem[];
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
+  // Divisão sequencial vertical para o modo 4 Visões (coluna da esquerda preenchida primeiro):
+  const halfPrayers = Math.ceil(prayers.length / 2);
+  const fourViewsPrayersLeft = prayers.slice(0, halfPrayers);
+  const fourViewsPrayersRight = prayers.slice(halfPrayers);
+
+  const halfYoutube = Math.ceil(youtube.length / 2);
+  const fourViewsYoutubeLeft = youtube.slice(0, halfYoutube);
+  const fourViewsYoutubeRight = youtube.slice(halfYoutube);
+
+  const halfVisitors = Math.ceil(visitors.length / 2);
+  const fourViewsVisitorsLeft = visitors.slice(0, halfVisitors);
+  const fourViewsVisitorsRight = visitors.slice(halfVisitors);
   // BALANCEAMENTO DINÂMICO INTELIGENTE ENTRE AS DUAS FOLHAS:
   // - 0 visitantes: Folha 1 puxa até 10 orações para não ficar com espaço vazio.
   // - 1 a 4 visitantes: Folha 1 puxa até 5 orações.
@@ -255,15 +271,527 @@ export const PulpitView: React.FC = () => {
         className="flex-1 overflow-hidden h-full max-h-full min-h-0 flex flex-col"
         style={{ fontSize: `${fontScale}rem` }}
       >
+        {/* ================= 0. VISUALIZAÇÃO EM 4 VISÕES FOCADAS (FAIXA NO TOPO - ADAPTADA PARA IDOSOS) ================= */}
+        {effectiveLayout === 'four-views' && (
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
+            {/* FAIXA NO TOPO: 4 ABAS MODERNAS E CLARAS COM ALTO CONTRASTE */}
+            <header className="bg-white border-b-2 border-church-sand px-2 sm:px-4 py-2 sm:py-2.5 shrink-0 shadow-xs">
+              <div className="max-w-6xl 2xl:max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
+                {/* Título da Visão no Canto Superior Esquerdo */}
+                <div className="hidden lg:flex flex-col pr-3 border-r border-church-sand/80 shrink-0">
+                  <span className="text-[9px] sm:text-[10px] font-title font-bold uppercase tracking-widest text-church-gold">
+                    Púlpito do Pastor
+                  </span>
+                  <span className="text-xs font-title font-extrabold text-church-charcoal uppercase truncate max-w-[150px]">
+                    {activeTab === 'prayers' && '1. Pedidos de Oração'}
+                    {activeTab === 'visitors' && '2. Visitantes'}
+                    {activeTab === 'opps' && '3. Oportunidades'}
+                    {activeTab === 'alerts' && '4. Avisos da Cabine'}
+                  </span>
+                </div>
+
+                {/* 4 Botões da Faixa Superior com Altura Tátil Confortável (≥50px) e Destaque Evidente */}
+                <nav className="flex items-center gap-1.5 sm:gap-2.5 flex-1 justify-center sm:justify-start" aria-label="Abas do Púlpito">
+                  {/* 1. Pedidos de Oração */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('prayers')}
+                    className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[46px] sm:min-h-[50px] select-none ${
+                      activeTab === 'prayers'
+                        ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/40 scale-[1.02]'
+                        : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'prayers' ? 'text-white' : 'text-church-gold-dark'}`} />
+                    <span>Orações</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-bold ${
+                      activeTab === 'prayers' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+                    }`}>
+                      {prayers.length + youtube.length}
+                    </span>
+                    {activeTab === 'prayers' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+                    )}
+                  </button>
+
+                  {/* 2. Visitantes (Agora em 2ª posição a pedido do pastor) */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('visitors')}
+                    className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[46px] sm:min-h-[50px] select-none ${
+                      activeTab === 'visitors'
+                        ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/40 scale-[1.02]'
+                        : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+                    }`}
+                  >
+                    <Users className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'visitors' ? 'text-white' : 'text-church-gold-dark'}`} />
+                    <span>Visitantes</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-bold ${
+                      activeTab === 'visitors' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+                    }`}>
+                      {visitors.length}
+                    </span>
+                    {activeTab === 'visitors' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+                    )}
+                  </button>
+
+                  {/* 3. Oportunidades & Louvores */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('opps')}
+                    className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[46px] sm:min-h-[50px] select-none ${
+                      activeTab === 'opps'
+                        ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/40 scale-[1.02]'
+                        : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+                    }`}
+                  >
+                    <Mic2 className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'opps' ? 'text-white' : 'text-church-gold-dark'}`} />
+                    <span>Oportunidades</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-bold ${
+                      activeTab === 'opps' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
+                    }`}>
+                      {opps.length + choirs.filter(c => c.checked).length}
+                    </span>
+                    {activeTab === 'opps' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+                    )}
+                  </button>
+
+                  {/* 4. Avisos */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('alerts')}
+                    className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[46px] sm:min-h-[50px] relative select-none ${
+                      activeTab === 'alerts'
+                        ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/40 scale-[1.02]'
+                        : room.active_alert
+                          ? 'bg-amber-100 text-amber-950 border-2 border-amber-400 font-extrabold animate-pulse'
+                          : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
+                    }`}
+                  >
+                    <Bell className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${activeTab === 'alerts' ? 'text-white' : room.active_alert ? 'text-amber-700' : 'text-church-gold-dark'}`} />
+                    <span>Avisos</span>
+                    {activeTab === 'alerts' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 hidden sm:inline-block" />
+                    )}
+                    {room.active_alert && activeTab !== 'alerts' && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping absolute top-2 right-2" />
+                    )}
+                  </button>
+                </nav>
+
+                <img 
+                  src="/assets/logo-adutinga-horizontal.png" 
+                  alt="A.D. Utinga" 
+                  className="h-6 sm:h-7 w-auto object-contain hidden md:block shrink-0"
+                />
+              </div>
+            </header>
+
+            {/* CORPO DA SESSÃO SELECIONADA */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 min-h-0 scrollbar-thin" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div 
+                className="max-w-6xl 2xl:max-w-7xl w-full mx-auto paper-sheet rounded-2xl p-4 sm:p-7 border border-church-sand shadow-sheet space-y-4 transition-[zoom] duration-150"
+                style={{ zoom: fontScale }}
+              >
+                
+                {/* 1. VISÃO DE ORAÇÕES */}
+                {activeTab === 'prayers' && (
+                  <div className="space-y-5">
+                    <div className="border-b border-church-sand pb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-title font-bold uppercase tracking-widest text-church-gold">Tema do Culto</span>
+                        <h2 className="text-base sm:text-xl font-title font-extrabold text-church-charcoal uppercase">
+                          Pedidos de Oração do Culto
+                        </h2>
+                      </div>
+                      <span className="text-xs font-title font-bold px-2.5 py-1 rounded-full bg-church-gold/15 text-church-gold-dark">
+                        Total: {prayers.length + youtube.length}
+                      </span>
+                    </div>
+
+                    {/* Presenciais */}
+                    <div>
+                      <h3 className="font-title text-xs sm:text-sm font-extrabold uppercase tracking-wider text-church-gold-dark mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-church-gold" />
+                        Pedidos Presenciais da Igreja ({prayers.length})
+                      </h3>
+                      {prayers.length === 0 ? (
+                        <p className="font-serif italic text-church-muted text-sm p-2">Nenhum pedido presencial registrado ainda.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 sm:gap-y-2">
+                          {/* Coluna 1: Começando primeiro na esquerda */}
+                          <ul className="space-y-1.5 sm:space-y-2">
+                            {fourViewsPrayersLeft.map((p, idx) => (
+                              <li 
+                                key={p.id || idx}
+                                className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid flex items-start gap-1.5"
+                              >
+                                <span className="text-church-gold font-bold mr-0.5">•</span>
+                                <span className="font-mono text-xs font-bold text-church-gold-dark shrink-0 mt-0.5">
+                                  {idx + 1}.
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  {p.urgent && (
+                                    <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] sm:text-xs font-black uppercase tracking-wider border border-red-200">
+                                      Urgente
+                                    </span>
+                                  )}
+                                  <span className={p.urgent ? 'text-red-950 font-black' : 'text-church-charcoal'}>
+                                    {p.description}
+                                  </span>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+
+                          {/* Coluna 2: Continuação sequencial na direita */}
+                          {fourViewsPrayersRight.length > 0 && (
+                            <ul className="space-y-1.5 sm:space-y-2">
+                              {fourViewsPrayersRight.map((p, idx) => (
+                                <li 
+                                  key={p.id || idx}
+                                  className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid flex items-start gap-1.5"
+                                >
+                                  <span className="text-church-gold font-bold mr-0.5">•</span>
+                                  <span className="font-mono text-xs font-bold text-church-gold-dark shrink-0 mt-0.5">
+                                    {halfPrayers + idx + 1}.
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    {p.urgent && (
+                                      <span className="inline-block px-1.5 py-0.2 mr-1 rounded bg-red-100 text-red-700 text-[10px] sm:text-xs font-black uppercase tracking-wider border border-red-200">
+                                        Urgente
+                                      </span>
+                                    )}
+                                    <span className={p.urgent ? 'text-red-950 font-black' : 'text-church-charcoal'}>
+                                      {p.description}
+                                    </span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Transmissão / YouTube */}
+                    <div className="pt-3 border-t border-church-sand/60">
+                      <h3 className="font-title text-xs sm:text-sm font-extrabold uppercase tracking-wider text-red-700 mb-2 flex items-center gap-2">
+                        <Youtube className="w-4 h-4 text-red-600" />
+                        Pedidos do Chat ao Vivo / YouTube ({youtube.length})
+                      </h3>
+                      {youtube.length === 0 ? (
+                        <p className="font-serif italic text-church-muted text-sm p-2">Nenhum pedido do YouTube recebido.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 sm:gap-y-2">
+                          {/* Coluna 1 YouTube */}
+                          <ul className="space-y-1.5 sm:space-y-2">
+                            {fourViewsYoutubeLeft.map((p, idx) => (
+                              <li key={p.id || idx} className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid flex flex-col gap-1">
+                                <div className="flex items-start gap-1.5">
+                                  <span className="text-red-500 font-bold mr-0.5">•</span>
+                                  <span className="font-mono text-xs font-bold text-red-600 shrink-0 mt-0.5">
+                                    {idx + 1}.
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-church-charcoal">
+                                      {p.description}
+                                    </span>
+                                  </div>
+                                </div>
+                                {p.image_data && (
+                                  <div className="ml-5 rounded-lg overflow-hidden border border-red-200 bg-white max-w-xs">
+                                    <img 
+                                      src={p.image_data} 
+                                      alt="Print YouTube" 
+                                      className="w-full h-auto max-h-36 object-contain"
+                                    />
+                                  </div>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+
+                          {/* Coluna 2 YouTube */}
+                          {fourViewsYoutubeRight.length > 0 && (
+                            <ul className="space-y-1.5 sm:space-y-2">
+                              {fourViewsYoutubeRight.map((p, idx) => (
+                                <li key={p.id || idx} className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid flex flex-col gap-1">
+                                  <div className="flex items-start gap-1.5">
+                                    <span className="text-red-500 font-bold mr-0.5">•</span>
+                                    <span className="font-mono text-xs font-bold text-red-600 shrink-0 mt-0.5">
+                                      {halfYoutube + idx + 1}.
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-church-charcoal">
+                                        {p.description}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {p.image_data && (
+                                    <div className="ml-5 rounded-lg overflow-hidden border border-red-200 bg-white max-w-xs">
+                                      <img 
+                                        src={p.image_data} 
+                                        alt="Print YouTube" 
+                                        className="w-full h-auto max-h-36 object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. VISÃO DE VISITANTES (Agora 2ª posição) */}
+                {activeTab === 'visitors' && (
+                  <div className="space-y-4">
+                    <div className="border-b border-church-sand pb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-title font-bold uppercase tracking-widest text-church-gold">Tema do Culto</span>
+                        <h2 className="text-base sm:text-xl font-title font-extrabold text-church-charcoal uppercase">
+                          Visitantes do Culto
+                        </h2>
+                      </div>
+                      <span className="text-xs font-title font-bold px-2.5 py-1 rounded-full bg-church-gold/15 text-church-gold-dark">
+                        Total: {visitors.length}
+                      </span>
+                    </div>
+
+                    {visitors.length === 0 ? (
+                      <p className="font-serif italic text-church-muted text-base p-4 text-center">
+                        Nenhum visitante registrado para o culto de hoje ainda.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 sm:gap-y-2.5">
+                        {/* Coluna 1: Começando primeiro na esquerda */}
+                        <ul className="space-y-2 sm:space-y-2.5">
+                          {fourViewsVisitorsLeft.map((v, idx) => (
+                            <li 
+                              key={v.id || idx}
+                              className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid flex items-start gap-1.5"
+                            >
+                              <span className="text-church-gold font-bold mr-0.5">•</span>
+                              <span className="font-mono text-xs font-bold text-church-gold-dark shrink-0 mt-0.5">
+                                {idx + 1}.
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-church-charcoal font-bold text-base sm:text-lg">{v.name}</span>
+                                {v.church && (
+                                  <span className="font-semibold text-church-muted text-xs sm:text-sm"> ({v.church})</span>
+                                )}
+                                {v.invited_by && (
+                                  <span className="font-semibold text-church-muted text-xs sm:text-sm"> — Por: {v.invited_by}</span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {/* Coluna 2: Continuação sequencial na direita */}
+                        {fourViewsVisitorsRight.length > 0 && (
+                          <ul className="space-y-2 sm:space-y-2.5">
+                            {fourViewsVisitorsRight.map((v, idx) => (
+                              <li 
+                                key={v.id || idx}
+                                className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid flex items-start gap-1.5"
+                              >
+                                <span className="text-church-gold font-bold mr-0.5">•</span>
+                                <span className="font-mono text-xs font-bold text-church-gold-dark shrink-0 mt-0.5">
+                                  {halfVisitors + idx + 1}.
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-church-charcoal font-bold text-base sm:text-lg">{v.name}</span>
+                                  {v.church && (
+                                    <span className="font-semibold text-church-muted text-xs sm:text-sm"> ({v.church})</span>
+                                  )}
+                                  {v.invited_by && (
+                                    <span className="font-semibold text-church-muted text-xs sm:text-sm"> — Por: {v.invited_by}</span>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. VISÃO DE OPORTUNIDADES & DEPARTAMENTOS */}
+                {activeTab === 'opps' && (
+                  <div className="space-y-6">
+                    <div className="border-b border-church-sand pb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-title font-bold uppercase tracking-widest text-church-gold">Tema do Culto</span>
+                        <h2 className="text-base sm:text-xl font-title font-extrabold text-church-charcoal uppercase">
+                          Oportunidades & Louvores
+                        </h2>
+                      </div>
+                    </div>
+
+                    {/* Cantores / Oportunidades Cadastradas */}
+                    <div>
+                      <h3 className="font-title text-xs sm:text-sm font-extrabold uppercase tracking-wider text-church-gold-dark mb-2.5 flex items-center gap-2">
+                        <Mic2 className="w-4 h-4 text-church-gold" />
+                        Oportunidades Individuais / Cantores ({opps.length})
+                      </h3>
+                      {opps.length === 0 ? (
+                        <p className="font-serif italic text-church-muted text-sm p-2">Nenhuma oportunidade escalada ainda.</p>
+                      ) : (
+                        <ul className="space-y-1.5 sm:space-y-2">
+                          {opps.map((op, i) => {
+                            const isReady = op.status === 'ready';
+                            const isDone = op.status === 'done';
+                            return (
+                              <li 
+                                key={op.id || i}
+                                className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${
+                                  isReady 
+                                    ? 'bg-amber-100/90 border-2 border-amber-400 text-amber-950 font-bold shadow-xs' 
+                                    : isDone 
+                                      ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 opacity-85' 
+                                      : 'bg-white border-church-sand text-church-charcoal'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span className={`font-mono text-xs sm:text-sm font-bold ${isReady ? 'text-amber-700' : isDone ? 'text-emerald-700' : 'text-church-gold-dark'}`}>
+                                    {i + 1}.
+                                  </span>
+                                  <span className={`font-sans text-base sm:text-lg font-bold truncate ${isReady ? 'text-amber-950 font-black' : isDone ? 'line-through text-emerald-900' : 'text-church-charcoal'}`}>
+                                    {op.name}
+                                  </span>
+                                </div>
+                                <div className="shrink-0 flex items-center">
+                                  {isReady && (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" title="Vai Cantar" />
+                                  )}
+                                  {isDone && (
+                                    <span title="Já cantou">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    </span>
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Departamentos da Igreja */}
+                    <div className="pt-4 border-t border-church-sand/60">
+                      <h3 className="font-title text-xs sm:text-sm font-extrabold uppercase tracking-wider text-church-gold-dark mb-2.5 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-church-gold" />
+                        Departamentos Escalados ({choirs.filter(c => c.checked).length})
+                      </h3>
+                      {choirs.filter(c => c.checked).length === 0 ? (
+                        <p className="font-serif italic text-church-muted text-sm p-2">Nenhum departamento escalado no momento.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2.5">
+                          {choirs.filter(c => c.checked).map((ch, i) => {
+                            const isReady = ch.status === 'ready';
+                            const isDone = ch.status === 'done';
+                            return (
+                              <div 
+                                key={ch.id || i}
+                                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm sm:text-base font-extrabold border-2 shadow-xs transition-all ${
+                                  isReady 
+                                    ? 'bg-amber-100 text-amber-950 border-church-gold ring-2 ring-church-gold/30 scale-[1.02]' 
+                                    : isDone 
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 line-through opacity-85' 
+                                      : 'bg-church-gold/20 text-church-charcoal border-church-gold/40'
+                                }`}
+                              >
+                                {isDone ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                                ) : isReady ? (
+                                  <Clock className="w-4 h-4 text-amber-700 stroke-[2.5]" />
+                                ) : (
+                                  <CheckSquare className="w-4 h-4 text-church-gold-dark stroke-[2.5]" />
+                                )}
+                                <span>{ch.name}</span>
+                                {isDone && (
+                                  <span className="text-[10px] font-title uppercase tracking-wider text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded ml-1">
+                                    Já Louvou
+                                  </span>
+                                )}
+                                {isReady && (
+                                  <span className="text-[10px] font-title uppercase tracking-wider text-amber-900 bg-amber-200 px-1.5 py-0.5 rounded ml-1 font-black">
+                                    Vai Louvar
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. VISÃO DE AVISOS */}
+                {activeTab === 'alerts' && (
+                  <div className="space-y-4">
+                    <div className="border-b border-church-sand pb-3">
+                      <span className="text-[10px] font-title font-bold uppercase tracking-widest text-church-gold">Tema do Culto</span>
+                      <h2 className="text-base sm:text-xl font-title font-extrabold text-church-charcoal uppercase">
+                        Avisos da Direção & Cabine
+                      </h2>
+                    </div>
+
+                    {room.active_alert ? (
+                      <div className="p-6 sm:p-8 rounded-2xl bg-alert-bg border-3 border-alert-border text-alert-text shadow-md space-y-4 animate-fadeIn text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <AlertCircle className="w-8 h-8 text-alert-text animate-bounce" />
+                          <span className="text-xs font-title font-extrabold uppercase tracking-widest bg-amber-200/80 px-3 py-1 rounded-full">
+                            Aviso Urgente Ativo
+                          </span>
+                        </div>
+                        <p className="font-title text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-wide leading-relaxed">
+                          "{room.active_alert}"
+                        </p>
+                        <p className="text-xs font-serif italic text-amber-900/80">
+                          Transmitido pela equipe da cabine de som e apoio.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-8 rounded-2xl bg-white border border-church-sand text-center space-y-2">
+                        <Bell className="w-10 h-10 text-church-muted/50 mx-auto" />
+                        <h4 className="font-title text-base font-bold text-church-charcoal uppercase">
+                          Nenhum Aviso no Momento
+                        </h4>
+                        <p className="font-serif italic text-sm text-church-muted max-w-md mx-auto">
+                          Quando a cabine de som ou o obreiro transmitir um aviso de emergência ou orientação, ele aparecerá aqui com destaque para leitura no púlpito.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ================= 1. VISUALIZAÇÃO EM FOLHA ÚNICA (PÁGINA CONTÍNUA ESTILO GOOGLE DOCS) ================= */}
         {effectiveLayout === 'single-sheet' && (
           <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 min-h-0 scrollbar-thin" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="max-w-3xl w-full mx-auto paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 border border-church-sand shadow-sheet">
+            <div 
+              className="max-w-4xl 2xl:max-w-5xl w-full mx-auto paper-sheet rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 border border-church-sand shadow-sheet transition-[zoom] duration-150"
+              style={{ zoom: fontScale }}
+            >
               {/* Cabeçalho Oficial da Página */}
               <div className="border-b border-church-sand pb-2.5 flex items-center justify-between gap-3">
                 <div className="flex flex-col">
                   <span className="font-title text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
-                    Liturgia do Culto
+                    Tema do Culto
                   </span>
                   <h2 className="font-title text-base sm:text-lg font-extrabold uppercase text-church-charcoal tracking-tight">
                     {room.title}
@@ -381,12 +909,30 @@ export const PulpitView: React.FC = () => {
                       ? 'grid grid-cols-1 sm:grid-cols-2' 
                       : 'space-y-1 sm:space-y-1.5 list-disc list-inside'
                   }`}>
-                    {opps.map((op, i) => (
-                      <li key={op.id || i} className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid">
-                        {opps.length > 2 && <span className="text-church-gold font-bold mr-1">•</span>}
-                        <span>{op.name}</span>
-                      </li>
-                    ))}
+                    {opps.map((op, i) => {
+                      const isReady = op.status === 'ready';
+                      const isDone = op.status === 'done';
+                      return (
+                        <li key={op.id || i} className={`font-bold text-sm sm:text-base font-sans leading-snug break-inside-avoid flex items-center justify-between gap-2 px-2 py-1 rounded-lg ${
+                          isReady 
+                            ? 'bg-amber-100/90 text-amber-950 border border-amber-300' 
+                            : isDone 
+                              ? 'bg-emerald-50/70 text-emerald-900 line-through border border-emerald-200 opacity-80' 
+                              : 'text-church-charcoal'
+                        }`}>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={isReady ? 'text-amber-600 font-bold mr-1' : isDone ? 'text-emerald-600 font-bold mr-1' : 'text-church-gold font-bold mr-1'}>•</span>
+                            <span className="truncate">{op.name}</span>
+                          </div>
+                          {isReady && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" title="Vai Cantar" />}
+                          {isDone && (
+                            <span title="Já Cantou">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </article>
@@ -400,15 +946,33 @@ export const PulpitView: React.FC = () => {
                   </h3>
                 </header>
                 <div className="flex flex-wrap gap-2">
-                  {choirs.filter(ch => ch.checked).map((ch, i) => (
-                    <span 
-                      key={ch.id || i}
-                      className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-church-gold/20 text-church-charcoal font-black text-xs sm:text-sm border-2 border-church-gold/40 shadow-xs tracking-wide"
-                    >
-                      <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-church-gold-dark shrink-0 stroke-[2.5]" />
-                      <span>{ch.name}</span>
-                    </span>
-                  ))}
+                  {choirs.filter(ch => ch.checked).map((ch, i) => {
+                    const isReady = ch.status === 'ready';
+                    const isDone = ch.status === 'done';
+                    return (
+                      <span 
+                        key={ch.id || i}
+                        className={`inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-black text-xs sm:text-sm border-2 shadow-xs tracking-wide transition-all ${
+                          isReady 
+                            ? 'bg-amber-100 text-amber-950 border-church-gold ring-2 ring-church-gold/30' 
+                            : isDone 
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 line-through opacity-85' 
+                              : 'bg-church-gold/20 text-church-charcoal border-church-gold/40'
+                        }`}
+                      >
+                        {isDone ? (
+                          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                        ) : isReady ? (
+                          <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 shrink-0 stroke-[2.5]" />
+                        ) : (
+                          <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-church-gold-dark shrink-0 stroke-[2.5]" />
+                        )}
+                        <span>{ch.name}</span>
+                        {isDone && <span className="text-[10px] font-title uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1 rounded ml-1">OK</span>}
+                        {isReady && <span className="text-[10px] font-title uppercase tracking-wider bg-amber-200 text-amber-900 px-1 rounded ml-1 font-black">Vai Louvar</span>}
+                      </span>
+                    );
+                  })}
                   {choirs.filter(ch => ch.checked).length === 0 && (
                     <span className="font-serif italic text-church-muted text-sm">Nenhum departamento escalado</span>
                   )}
@@ -426,14 +990,17 @@ export const PulpitView: React.FC = () => {
 
         {/* ================= 2. VISUALIZAÇÃO TABLET / DESKTOP (PASTA ABERTA EM 2 COLUNAS) ================= */}
         {effectiveLayout === 'two-sheets' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 flex-1 p-2 sm:p-3 md:p-3.5 overflow-hidden h-full max-h-full min-h-0">
+          <div 
+            className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 flex-1 p-2 sm:p-3 md:p-3.5 overflow-hidden h-full max-h-full min-h-0 transition-[zoom] duration-150"
+            style={{ zoom: fontScale }}
+          >
             {/* ================= FOLHA 1 (ESQUERDA) - ZERO SCROLL ================= */}
             <section className="paper-sheet rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-4 flex flex-col h-full overflow-hidden border border-church-sand shadow-sheet">
               {/* Cabeçalho Compacto da Folha 1 */}
               <div className="border-b border-church-sand pb-1.5 mb-1.5 sm:pb-2 sm:mb-2 flex items-center justify-between gap-3 shrink-0">
                 <div className="flex flex-col">
                   <span className="font-title text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-church-gold">
-                    Liturgia & Recepção
+                    Tema do Culto
                   </span>
                   <h2 className="font-title text-sm sm:text-base md:text-lg font-extrabold uppercase text-church-charcoal tracking-tight">
                     {room.title}
@@ -552,7 +1119,7 @@ export const PulpitView: React.FC = () => {
 
               {/* Rodapé da Folha 1 */}
               <div className="pt-1.5 border-t border-church-sand/50 text-[10px] text-church-muted flex justify-between items-center shrink-0">
-                <span className="font-serif italic">Folha 1 (Recepção & Visitantes)</span>
+                <span className="font-serif italic">Folha 1 (Visitantes)</span>
                 <span className="font-mono">Página 1</span>
               </div>
             </section>
@@ -671,12 +1238,30 @@ export const PulpitView: React.FC = () => {
                         ? 'grid grid-cols-1 sm:grid-cols-2' 
                         : 'space-y-1 sm:space-y-1.5 list-disc list-inside'
                     }`}>
-                      {opps.map((op, i) => (
-                        <li key={op.id || i} className="font-bold text-sm sm:text-base font-sans text-church-charcoal leading-snug break-inside-avoid">
-                          {opps.length > 2 && <span className="text-church-gold font-bold mr-1">•</span>}
-                          <span>{op.name}</span>
-                        </li>
-                      ))}
+                      {opps.map((op, i) => {
+                        const isReady = op.status === 'ready';
+                        const isDone = op.status === 'done';
+                        return (
+                          <li key={op.id || i} className={`font-bold text-sm sm:text-base font-sans leading-snug break-inside-avoid flex items-center justify-between gap-2 px-2 py-1 rounded-lg ${
+                            isReady 
+                              ? 'bg-amber-100/90 text-amber-950 border border-amber-300' 
+                              : isDone 
+                                ? 'bg-emerald-50/70 text-emerald-900 line-through border border-emerald-200 opacity-80' 
+                                : 'text-church-charcoal'
+                          }`}>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className={isReady ? 'text-amber-600 font-bold mr-1' : isDone ? 'text-emerald-600 font-bold mr-1' : 'text-church-gold font-bold mr-1'}>•</span>
+                              <span className="truncate">{op.name}</span>
+                            </div>
+                            {isReady && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" title="Vai Cantar" />}
+                            {isDone && (
+                              <span title="Já Cantou">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </article>
@@ -690,15 +1275,33 @@ export const PulpitView: React.FC = () => {
                     </h3>
                   </header>
                   <div className="flex flex-wrap gap-2">
-                    {choirs.filter(ch => ch.checked).map((ch, i) => (
-                      <span 
-                        key={ch.id || i}
-                        className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-church-gold/20 text-church-charcoal font-black text-xs sm:text-sm border-2 border-church-gold/40 shadow-xs tracking-wide"
-                      >
-                        <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-church-gold-dark shrink-0 stroke-[2.5]" />
-                        <span>{ch.name}</span>
-                      </span>
-                    ))}
+                    {choirs.filter(ch => ch.checked).map((ch, i) => {
+                      const isReady = ch.status === 'ready';
+                      const isDone = ch.status === 'done';
+                      return (
+                        <span 
+                          key={ch.id || i}
+                          className={`inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-black text-xs sm:text-sm border-2 shadow-xs tracking-wide transition-all ${
+                            isReady 
+                              ? 'bg-amber-100 text-amber-950 border-church-gold ring-2 ring-church-gold/30' 
+                              : isDone 
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 line-through opacity-85' 
+                                : 'bg-church-gold/20 text-church-charcoal border-church-gold/40'
+                          }`}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 stroke-[2.5]" />
+                          ) : isReady ? (
+                            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 stroke-[2.5]" />
+                          ) : (
+                            <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-church-gold-dark shrink-0 stroke-[2.5]" />
+                          )}
+                          <span>{ch.name}</span>
+                          {isDone && <span className="text-[10px] font-title uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1 rounded ml-1">OK</span>}
+                          {isReady && <span className="text-[10px] font-title uppercase tracking-wider bg-amber-200 text-amber-900 px-1 rounded ml-1 font-black">Vai Louvar</span>}
+                        </span>
+                      );
+                    })}
                     {choirs.filter(ch => ch.checked).length === 0 && (
                       <span className="font-serif italic text-church-muted text-sm">Nenhum departamento escalado</span>
                     )}
@@ -772,62 +1375,92 @@ export const PulpitView: React.FC = () => {
           </span>
         </div>
 
-        {/* Centro: Seletor Sutil e Discreto de Visualização (Exibido apenas em Tablets e Desktops) */}
-        {!isMobilePhone && (
-          <div className="flex items-center gap-1 bg-white/90 p-0.5 rounded-lg border border-church-sand shadow-2xs">
+        {/* Centro: Seletor de Visualização com '4 Visões' em 1º com destaque forte */}
+        <div className="flex items-center gap-1 bg-white/95 p-1 rounded-xl border border-church-sand shadow-2xs">
+          {/* 1º BOTÃO: 4 VISÕES (Novo modo, agora em primeiro) */}
+          <button
+            type="button"
+            onClick={() => handleToggleSheetLayout('four-views')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-title font-black uppercase tracking-wider transition-all cursor-pointer select-none ${
+              effectiveLayout === 'four-views'
+                ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30'
+                : 'text-church-charcoal/70 hover:text-church-charcoal hover:bg-church-parchment border border-transparent'
+            }`}
+            title="Visualização em 4 Visões Focadas com Abas (Orações, Oportunidades, Visitantes, Avisos)"
+          >
+            <LayoutList className={`w-3.5 h-3.5 shrink-0 ${effectiveLayout === 'four-views' ? 'text-white' : 'text-church-gold-dark'}`} />
+            <span>4 Visões</span>
+            {effectiveLayout === 'four-views' && (
+              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/20 text-white border border-white/30 ml-0.5">
+                {activeTab === 'prayers' ? 'Orações' : activeTab === 'visitors' ? 'Visitantes' : activeTab === 'opps' ? 'Oportunidades' : 'Avisos'}
+              </span>
+            )}
+          </button>
+
+          {/* 2º BOTÃO: PASTA ABERTA (2 folhas lado a lado) */}
+          {!isMobilePhone && (
             <button
               type="button"
               onClick={() => handleToggleSheetLayout('two-sheets')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-title font-black uppercase tracking-wider transition-all cursor-pointer select-none ${
                 effectiveLayout === 'two-sheets'
-                  ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
-                  : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
+                  ? 'bg-church-gold text-white shadow-xs border-2 border-church-gold-dark ring-2 ring-church-gold/20'
+                  : 'text-church-charcoal/70 hover:text-church-charcoal hover:bg-church-parchment border border-transparent'
               }`}
               title="Visualização em Pasta Aberta (2 folhas lado a lado, estilo pasta de couro do púlpito)"
             >
-              <BookOpen className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
+              <BookOpen className={`w-3.5 h-3.5 shrink-0 ${effectiveLayout === 'two-sheets' ? 'text-white' : 'text-church-gold-dark'}`} />
               <span className="hidden xs:inline">Pasta Aberta</span>
             </button>
-            <button
-              type="button"
-              onClick={() => handleToggleSheetLayout('single-sheet')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-title font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                effectiveLayout === 'single-sheet'
-                  ? 'bg-church-gold/20 text-church-charcoal border border-church-gold/40 shadow-2xs'
-                  : 'text-church-muted hover:text-church-charcoal hover:bg-church-parchment/60'
-              }`}
-              title="Visualização em Folha Única (leitura contínua vertical, ideal para tablet em pé)"
-            >
-              <FileText className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
-              <span className="hidden xs:inline">Folha Única</span>
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* Direita: Controles de zoom e Botão Sair do Púlpito */}
+          {/* 3º BOTÃO: FOLHA ÚNICA (contínua) */}
+          <button
+            type="button"
+            onClick={() => handleToggleSheetLayout('single-sheet')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-title font-black uppercase tracking-wider transition-all cursor-pointer select-none ${
+              effectiveLayout === 'single-sheet'
+                ? 'bg-church-gold text-white shadow-xs border-2 border-church-gold-dark ring-2 ring-church-gold/20'
+                : 'text-church-charcoal/70 hover:text-church-charcoal hover:bg-church-parchment border border-transparent'
+            }`}
+            title="Visualização em Folha Única (leitura contínua vertical, ideal para tablet em pé)"
+          >
+            <FileText className={`w-3.5 h-3.5 shrink-0 ${effectiveLayout === 'single-sheet' ? 'text-white' : 'text-church-gold-dark'}`} />
+            <span className="hidden xs:inline">Folha Única</span>
+          </button>
+        </div>
+
+        {/* Direita: Controles de zoom, Nome do Culto e Botão Sair do Púlpito */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Ajuste de Tamanho da Letra para Pregadores Idosos */}
+          {/* Nome do Culto com Destaque e Elegância Clássica (font-serif italic) */}
+          <span 
+            className="text-xs sm:text-sm md:text-base font-serif italic font-semibold text-church-charcoal bg-white/95 px-3 py-1 rounded-lg border border-church-sand shadow-2xs truncate max-w-[170px] sm:max-w-[320px] md:max-w-[440px]"
+            title={room.title}
+          >
+            {room.title}
+          </span>
+          {/* Ajuste de Tamanho da Letra para Pregadores Idosos (Zoom em passos de 10%) */}
           <div className="flex items-center gap-1 bg-white rounded-lg border border-church-sand px-1.5 sm:px-2 py-0.5 shadow-2xs">
             <button
               type="button"
-              onClick={() => handleFontChange(-0.04)}
-              className="p-1 hover:text-church-charcoal active:scale-90 cursor-pointer"
-              title="Diminuir tamanho da letra"
+              onClick={() => handleFontChange(-0.1)}
+              className="p-1 sm:p-1.5 hover:text-church-charcoal active:scale-90 cursor-pointer"
+              title="Diminuir tamanho da letra (Zoom -10%)"
               aria-label="Diminuir tamanho da letra"
             >
-              <ZoomOut className="w-3.5 h-3.5" />
+              <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
-            <span className="text-[10px] font-title font-bold px-1 text-church-charcoal tabular-nums">
+            <span className="text-[10px] sm:text-xs font-title font-bold px-1 text-church-charcoal tabular-nums min-w-[36px] text-center">
               {Math.round(fontScale * 100)}%
             </span>
             <button
               type="button"
-              onClick={() => handleFontChange(0.04)}
-              className="p-1 hover:text-church-charcoal active:scale-90 cursor-pointer"
-              title="Aumentar tamanho da letra"
+              onClick={() => handleFontChange(0.1)}
+              className="p-1 sm:p-1.5 hover:text-church-charcoal active:scale-90 cursor-pointer"
+              title="Aumentar tamanho da letra (Zoom +10%)"
               aria-label="Aumentar tamanho da letra"
             >
-              <ZoomIn className="w-3.5 h-3.5" />
+              <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
 
