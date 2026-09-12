@@ -731,11 +731,6 @@ export const PulpitView: React.FC = () => {
                                     Já Louvou
                                   </span>
                                 )}
-                                {isReady && (
-                                  <span className="text-[10px] font-title uppercase tracking-wider text-amber-900 bg-amber-200 px-1.5 py-0.5 rounded ml-1 font-black">
-                                    Vai Louvar
-                                  </span>
-                                )}
                               </div>
                             );
                           })}
@@ -978,7 +973,6 @@ export const PulpitView: React.FC = () => {
                         )}
                         <span>{ch.name}</span>
                         {isDone && <span className="text-[10px] font-title uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1 rounded ml-1">OK</span>}
-                        {isReady && <span className="text-[10px] font-title uppercase tracking-wider bg-amber-200 text-amber-900 px-1 rounded ml-1 font-black">Vai Louvar</span>}
                       </span>
                     );
                   })}
@@ -1307,7 +1301,6 @@ export const PulpitView: React.FC = () => {
                           )}
                           <span>{ch.name}</span>
                           {isDone && <span className="text-[10px] font-title uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1 rounded ml-1">OK</span>}
-                          {isReady && <span className="text-[10px] font-title uppercase tracking-wider bg-amber-200 text-amber-900 px-1 rounded ml-1 font-black">Vai Louvar</span>}
                         </span>
                       );
                     })}
