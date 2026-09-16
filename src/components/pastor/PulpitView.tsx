@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useRoom } from '../../context/RoomContext';
 import { 
   VisitorItem, 
@@ -27,133 +27,21 @@ import {
   Clock
 } from 'lucide-react';
 import { LoadingScreen } from '../common/LoadingScreen';
-
-// Detecção precisa e estrita de smartphone vs tablet/desktop.
-// Totalmente segura para Android 4.4.4 (KitKat - SM-T560), Galaxy Tab A9, iPads e navegadores legados.
-const isSmartphoneDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
-
-  const w = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
-  const h = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
-  const minDim = Math.min(w, h);
-
-  // Tablets como o Samsung Galaxy Tab E SM-T560 (Android 4.4.4) e Galaxy Tab A9 têm lado menor >= 534px a 800px.
-  // Se a menor dimensão for >= 520px, é com certeza um Tablet ou Desktop.
-  if (minDim >= 520) {
-    return false;
-  }
-
-  // Se a menor dimensão for < 520px, diferencia smartphone de tablet:
-  // - No Android: celulares trazem 'Android' E 'Mobile'. Tablets Android (SM-T560, Tab A9) NÃO trazem 'Mobile'.
-  // - No iOS: iPhones trazem 'iPhone' ou 'iPod'. iPads trazem 'iPad'.
-  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
-  const isAndroidPhone = /Android/i.test(ua) && /Mobile/i.test(ua);
-  const isIPhone = /iPhone|iPod/i.test(ua);
-
-  return isAndroidPhone || isIPhone || minDim < 480;
-};
-
-/**
- * Particiona uma lista para exibição em colunas no púlpito:
- * Popula toda a coluna da esquerda primeiro (até a capacidade de 10 itens).
- * Somente quando ultrapassar a capacidade da esquerda, passa a preencher a coluna da direita.
- * Se a lista for superior a 20 itens, distribui equilibradamente entre as duas colunas.
- */
-function partitionSequentialColumns<T>(items: T[], capacity: number = 10) {
-  if (!items || items.length === 0) {
-    return { left: [] as T[], right: [] as T[], splitIdx: 0 };
-  }
-  if (items.length <= capacity) {
-    return { left: items, right: [] as T[], splitIdx: items.length };
-  }
-  const splitIdx = items.length <= capacity * 2 
-    ? capacity 
-    : Math.ceil(items.length / 2);
-
-  return {
-    left: items.slice(0, splitIdx),
-    right: items.slice(splitIdx),
-    splitIdx
-  };
-}
+import { partitionSequentialColumns } from './utils';
+import { usePulpitLayout, usePulpitScroll } from './hooks';
 
 export const PulpitView: React.FC = () => {
   const { room, blocks, isConnected, isFastSync, hasFreshUpdates, leaveRoom } = useRoom();
 
-  // Escala de fonte e zoom para pregadores idosos (padrão: 100% ~ 1.0)
-  const [fontScale, setFontScale] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('pulpit_font_scale_v2');
-      if (saved) {
-        const val = parseFloat(saved);
-        if (!isNaN(val) && val >= 0.7 && val <= 1.8) return val;
-      }
-    } catch (e) {}
-    return 1.0;
-  });
-
-  const handleFontChange = (delta: number) => {
-    setFontScale(prev => {
-      const next = Math.max(0.7, Math.min(1.8, Number((prev + delta).toFixed(2))));
-      try {
-        localStorage.setItem('pulpit_font_scale_v2', next.toString());
-      } catch (e) {}
-      return next;
-    });
-  };
-
-  // Detecção reativa de smartphone (atualiza ao rotacionar a tela ou redimensionar)
-  const [isMobilePhone, setIsMobilePhone] = useState<boolean>(isSmartphoneDevice);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobilePhone(isSmartphoneDevice());
-    };
-
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
-  }, []);
-
-  // Modo de visualização de folhas: 'four-views' (4 visões focadas com abas) vs 'two-sheets' (pasta aberta) vs 'single-sheet' (folha única)
-  const [sheetLayout, setSheetLayout] = useState<'four-views' | 'two-sheets' | 'single-sheet'>(() => {
-    try {
-      const saved = localStorage.getItem('pulpit_sheet_layout');
-      if (saved === 'four-views' || saved === 'two-sheets' || saved === 'single-sheet') return saved as any;
-      // Detecção automática para telas em pé/verticais: inicia em 4 visões focadas
-      if (typeof window !== 'undefined') {
-        if (window.innerHeight > window.innerWidth) {
-          return 'four-views';
-        }
-      }
-    } catch (e) {}
-    return 'four-views';
-  });
-
-  // Aba ativa dentro do modo 'four-views': 1. orações, 2. oportunidades, 3. visitantes, 4. avisos
-  const [activeTab, setActiveTab] = useState<'prayers' | 'opps' | 'visitors' | 'alerts'>('prayers');
-
-  const handleToggleSheetLayout = (mode: 'four-views' | 'two-sheets' | 'single-sheet') => {
-    setSheetLayout(mode);
-    try {
-      localStorage.setItem('pulpit_sheet_layout', mode);
-    } catch (e) {}
-  };
-
-  // Em smartphones pequenos, se for two-sheets faz fallback para four-views, permitindo que o idoso use 4 visões ou folha única
-  const effectiveLayout = (isMobilePhone && sheetLayout === 'two-sheets') ? 'four-views' : sheetLayout;
-
-  // Estados de detecção de overflow e rolagem fácil para idosos
-  const [hasMoreSheet1, setHasMoreSheet1] = useState(false);
-  const [isSheet1Scrolled, setIsSheet1Scrolled] = useState(false);
-  const sheet1ScrollRef = useRef<HTMLDivElement>(null);
-
-  const [hasMoreSheet2, setHasMoreSheet2] = useState(false);
-  const [isSheet2Scrolled, setIsSheet2Scrolled] = useState(false);
-  const sheet2ScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    fontScale,
+    handleFontChange,
+    isMobilePhone,
+    effectiveLayout,
+    activeTab,
+    setActiveTab,
+    handleToggleSheetLayout,
+  } = usePulpitLayout();
 
   // Confirmação para evitar que idosos saiam do púlpito por engano
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -161,11 +49,11 @@ export const PulpitView: React.FC = () => {
   if (!room) return <LoadingScreen />;
 
   // Extração de dados estruturados
-  const visitorsBlock = blocks.find(b => b.block_type === 'visitors');
-  const prayerBlock = blocks.find(b => b.block_type === 'prayer');
-  const youtubeBlock = blocks.find(b => b.block_type === 'youtube');
-  const oppBlock = blocks.find(b => b.block_type === 'opportunities');
-  const choirsBlock = blocks.find(b => b.block_type === 'choirs');
+  const visitorsBlock = blocks.find((b) => b.block_type === 'visitors');
+  const prayerBlock = blocks.find((b) => b.block_type === 'prayer');
+  const youtubeBlock = blocks.find((b) => b.block_type === 'youtube');
+  const oppBlock = blocks.find((b) => b.block_type === 'opportunities');
+  const choirsBlock = blocks.find((b) => b.block_type === 'choirs');
 
   const visitors = (visitorsBlock?.content || []) as VisitorItem[];
   const prayers = (prayerBlock?.content || []) as PrayerItem[];
@@ -173,90 +61,34 @@ export const PulpitView: React.FC = () => {
   const opps = (oppBlock?.content || []) as OpportunityItem[];
   const choirs = (choirsBlock?.content || []) as ChoirItem[];
 
-  // Divisão sequencial vertical para o modo 4 Visões:
-  // Popula toda a coluna da esquerda primeiro (até 10 itens) antes de ir para a coluna da direita (evita o 2x2 prematuro)
-  const { left: fourViewsPrayersLeft, right: fourViewsPrayersRight, splitIdx: prayersSplitIdx } = partitionSequentialColumns(prayers, 10);
-  const { left: fourViewsYoutubeLeft, right: fourViewsYoutubeRight, splitIdx: youtubeSplitIdx } = partitionSequentialColumns(youtube, 10);
-  const { left: fourViewsVisitorsLeft, right: fourViewsVisitorsRight, splitIdx: visitorsSplitIdx } = partitionSequentialColumns(visitors, 10);
+  // Divisão sequencial vertical para o modo 4 Visões
+  const { left: fourViewsPrayersLeft, right: fourViewsPrayersRight, splitIdx: prayersSplitIdx } =
+    partitionSequentialColumns(prayers, 10);
+  const { left: fourViewsYoutubeLeft, right: fourViewsYoutubeRight, splitIdx: youtubeSplitIdx } =
+    partitionSequentialColumns(youtube, 10);
+  const { left: fourViewsVisitorsLeft, right: fourViewsVisitorsRight, splitIdx: visitorsSplitIdx } =
+    partitionSequentialColumns(visitors, 10);
 
-  // BALANCEAMENTO DINÂMICO INTELIGENTE ENTRE AS DUAS FOLHAS (PASTA ABERTA):
-  // Popula toda a Folha 1 (esquerda) primeiro antes de mandar itens para a Folha 2 (direita).
-  // A Folha 1 cabe em média 12 a 14 linhas. Visitantes ocupam metade das linhas no grid-cols-2 quando > 4.
+  // BALANCEAMENTO DINÂMICO INTELIGENTE ENTRE AS DUAS FOLHAS (PASTA ABERTA)
   const visitorRows = visitors.length > 4 ? Math.ceil(visitors.length / 2) : visitors.length;
   const maxSheet1Prayers = Math.max(0, 12 - visitorRows);
   const sheet1Prayers = prayers.slice(0, maxSheet1Prayers);
   const overflowPresencial = prayers.slice(maxSheet1Prayers);
   const sheet2Items: PrayerItem[] = [...overflowPresencial, ...youtube];
 
-  // Monitora se há conteúdo oculto que requer rolagem em cada folha
-  const checkScrollState = () => {
-    if (sheet1ScrollRef.current) {
-      const el = sheet1ScrollRef.current;
-      const hasOverflow = el.scrollHeight > el.clientHeight + 25;
-      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 25;
-      setHasMoreSheet1(hasOverflow && !isAtBottom);
-      setIsSheet1Scrolled(el.scrollTop > 30);
-    }
-    if (sheet2ScrollRef.current) {
-      const el = sheet2ScrollRef.current;
-      const hasOverflow = el.scrollHeight > el.clientHeight + 25;
-      const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 25;
-      setHasMoreSheet2(hasOverflow && !isAtBottom);
-      setIsSheet2Scrolled(el.scrollTop > 30);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(checkScrollState, 200);
-    window.addEventListener('resize', checkScrollState);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', checkScrollState);
-    };
-  }, [visitors, prayers, youtube, fontScale, opps, choirs, effectiveLayout]);
-
-  // Funções de rolagem seguras com fallback para navegadores antigos (Android 4.4 / KitKat)
-  const safeScrollBy = (el: HTMLElement | null, deltaY: number) => {
-    if (!el) return;
-    try {
-      if (typeof el.scrollBy === 'function') {
-        el.scrollBy({ top: deltaY, behavior: 'smooth' });
-      } else {
-        el.scrollTop += deltaY;
-      }
-    } catch {
-      el.scrollTop += deltaY;
-    }
-  };
-
-  const safeScrollToTop = (el: HTMLElement | null) => {
-    if (!el) return;
-    try {
-      if (typeof el.scrollTo === 'function') {
-        el.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        el.scrollTop = 0;
-      }
-    } catch {
-      el.scrollTop = 0;
-    }
-  };
-
-  const handleScrollSheet1Down = () => {
-    safeScrollBy(sheet1ScrollRef.current, 220);
-  };
-
-  const handleScrollSheet1Up = () => {
-    safeScrollToTop(sheet1ScrollRef.current);
-  };
-
-  const handleScrollSheet2Down = () => {
-    safeScrollBy(sheet2ScrollRef.current, 220);
-  };
-
-  const handleScrollSheet2Up = () => {
-    safeScrollToTop(sheet2ScrollRef.current);
-  };
+  const {
+    sheet1ScrollRef,
+    sheet2ScrollRef,
+    hasMoreSheet1,
+    isSheet1Scrolled,
+    hasMoreSheet2,
+    isSheet2Scrolled,
+    checkScrollState,
+    handleScrollSheet1Down,
+    handleScrollSheet1Up,
+    handleScrollSheet2Down,
+    handleScrollSheet2Up,
+  } = usePulpitScroll([visitors, prayers, youtube, fontScale, opps, choirs, effectiveLayout]);
 
   return (
     <div className="h-full w-full flex flex-col bg-church-parchment select-none overflow-hidden relative min-h-0">
