@@ -33,6 +33,7 @@ import {
   copyTextToClipboard 
 } from '../../utils/liturgyExport';
 import { InteractiveLineSheet } from '../common/InteractiveLineSheet';
+import { useDraftBatch } from './hooks';
 
 interface ObreiroEditorProps {
   showHeader?: boolean;
@@ -42,8 +43,11 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
   const { room, blocks, updateBlock, appendItemsToBlock, removeItemFromBlock, role, setPulpitPreviewActive } = useRoom();
 
   const draftVisitorKey = room ? `docs_church_draft_visitors_${room.id}` : '';
+  const draftVisitorFallbackKey = room ? `docs_church_draft_visitors_${room.code}` : '';
   const draftPrayerKey = room ? `docs_church_draft_prayers_${room.id}` : '';
+  const draftPrayerFallbackKey = room ? `docs_church_draft_prayers_${room.code}` : '';
   const draftOppKey = room ? `docs_church_draft_opps_${room.id}` : '';
+  const draftOppFallbackKey = room ? `docs_church_draft_opps_${room.code}` : '';
 
   // Estados de Navegação Rápida entre Seções (com destaque ativo da sessão atual)
   const [activeSection, setActiveSection] = useState<'visitors' | 'prayers' | 'opps' | 'choirs'>('visitors');
@@ -94,192 +98,44 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
     }
   };
 
-  // Estados de Visitantes (Folha Pautada Contínua)
-  const [visitorBatchText, setVisitorBatchText] = useState(() => {
-    try {
-      if (!room) return '';
-      return localStorage.getItem(`docs_church_draft_visitors_${room.id}`) ||
-             localStorage.getItem(`docs_church_draft_visitors_${room.code}`) || '';
-    } catch {
-      return '';
-    }
-  });
-  const [visitorLines, setVisitorLines] = useState<string[]>(() => {
-    try {
-      if (!room) return Array(12).fill('');
-      const saved = localStorage.getItem(`docs_church_draft_visitors_${room.id}`) ||
-                    localStorage.getItem(`docs_church_draft_visitors_${room.code}`);
-      if (saved) {
-        const arr = saved.split('\n');
-        if (arr.length > 0) return arr;
-      }
-    } catch {}
-    return Array(12).fill('');
+  // Subfase 4.1: Gerenciamento unificado de rascunhos em lote via useDraftBatch
+  const {
+    rawText: visitorBatchText,
+    lines: visitorLines,
+    handleRawTextChange: handleVisitorBatchTextChange,
+    handleLinesChange: handleVisitorLinesChange,
+    handleClearBatch: handleClearVisitorBatch,
+  } = useDraftBatch({
+    storageKey: draftVisitorKey,
+    fallbackKey: draftVisitorFallbackKey,
+    defaultLineCount: 12,
   });
 
-  // Estados de Oração Presencial (Folha Pautada Contínua)
-  const [prayerUrgent, setPrayerUrgent] = useState(false);
-  const [prayerBatchText, setPrayerBatchText] = useState(() => {
-    try {
-      if (!room) return '';
-      return localStorage.getItem(`docs_church_draft_prayers_${room.id}`) ||
-             localStorage.getItem(`docs_church_draft_prayers_${room.code}`) || '';
-    } catch {
-      return '';
-    }
-  });
-  const [prayerLines, setPrayerLines] = useState<string[]>(() => {
-    try {
-      if (!room) return Array(15).fill('');
-      const saved = localStorage.getItem(`docs_church_draft_prayers_${room.id}`) ||
-                    localStorage.getItem(`docs_church_draft_prayers_${room.code}`);
-      if (saved) {
-        const arr = saved.split('\n');
-        if (arr.length > 0) return arr;
-      }
-    } catch {}
-    return Array(15).fill('');
+  const {
+    rawText: prayerBatchText,
+    lines: prayerLines,
+    isUrgent: prayerUrgent,
+    setIsUrgent: setPrayerUrgent,
+    handleRawTextChange: handlePrayerBatchTextChange,
+    handleLinesChange: handlePrayerLinesChange,
+    handleClearBatch: handleClearPrayerBatch,
+  } = useDraftBatch({
+    storageKey: draftPrayerKey,
+    fallbackKey: draftPrayerFallbackKey,
+    defaultLineCount: 15,
   });
 
-  // Salva rascunho de visitantes no localStorage do tablet sem fazer requisições à Vercel
-  const handleVisitorBatchTextChange = (text: string) => {
-    setVisitorBatchText(text);
-    const split = text.split('\n');
-    setVisitorLines(split.length > 0 ? split : Array(12).fill(''));
-    if (draftVisitorKey) {
-      try {
-        if (text.trim()) {
-          localStorage.setItem(draftVisitorKey, text);
-        } else {
-          localStorage.removeItem(draftVisitorKey);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handleVisitorLinesChange = (newLines: string[]) => {
-    setVisitorLines(newLines);
-    const nonBlank = newLines.map(l => l.trim()).filter(Boolean).join('\n');
-    setVisitorBatchText(nonBlank);
-    if (draftVisitorKey) {
-      try {
-        if (nonBlank) {
-          localStorage.setItem(draftVisitorKey, nonBlank);
-        } else {
-          localStorage.removeItem(draftVisitorKey);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handleClearVisitorBatch = () => {
-    setVisitorBatchText('');
-    setVisitorLines(Array(12).fill(''));
-    if (draftVisitorKey) {
-      try { localStorage.removeItem(draftVisitorKey); } catch (e) {}
-    }
-  };
-
-  // Salva rascunho de oração no localStorage do tablet sem fazer requisições à Vercel
-  const handlePrayerBatchTextChange = (text: string) => {
-    setPrayerBatchText(text);
-    const split = text.split('\n');
-    setPrayerLines(split.length > 0 ? split : Array(15).fill(''));
-    if (draftPrayerKey) {
-      try {
-        if (text.trim()) {
-          localStorage.setItem(draftPrayerKey, text);
-        } else {
-          localStorage.removeItem(draftPrayerKey);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handlePrayerLinesChange = (newLines: string[]) => {
-    setPrayerLines(newLines);
-    const nonBlank = newLines.map(l => l.trim()).filter(Boolean).join('\n');
-    setPrayerBatchText(nonBlank);
-    if (draftPrayerKey) {
-      try {
-        if (nonBlank) {
-          localStorage.setItem(draftPrayerKey, nonBlank);
-        } else {
-          localStorage.removeItem(draftPrayerKey);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handleClearPrayerBatch = () => {
-    setPrayerBatchText('');
-    setPrayerLines(Array(15).fill(''));
-    if (draftPrayerKey) {
-      try { localStorage.removeItem(draftPrayerKey); } catch (e) {}
-    }
-  };
-
-  // Estados de Oportunidades (Folha Pautada com 4 linhas)
-  const [oppBatchText, setOppBatchText] = useState(() => {
-    try {
-      if (!room) return '';
-      return localStorage.getItem(`docs_church_draft_opps_${room.id}`) ||
-             localStorage.getItem(`docs_church_draft_opps_${room.code}`) || '';
-    } catch {
-      return '';
-    }
+  const {
+    rawText: oppBatchText,
+    lines: oppLines,
+    handleRawTextChange: handleOppBatchTextChange,
+    handleLinesChange: handleOppLinesChange,
+    handleClearBatch: handleClearOppBatch,
+  } = useDraftBatch({
+    storageKey: draftOppKey,
+    fallbackKey: draftOppFallbackKey,
+    defaultLineCount: 4,
   });
-  const [oppLines, setOppLines] = useState<string[]>(() => {
-    try {
-      if (!room) return Array(4).fill('');
-      const saved = localStorage.getItem(`docs_church_draft_opps_${room.id}`) ||
-                    localStorage.getItem(`docs_church_draft_opps_${room.code}`);
-      if (saved) {
-        const arr = saved.split('\n');
-        if (arr.length > 0) return arr;
-      }
-    } catch {}
-    return Array(4).fill('');
-  });
-
-  // Salva rascunho de oportunidades no localStorage do tablet sem fazer requisições à Vercel
-  const handleOppBatchTextChange = (text: string) => {
-    setOppBatchText(text);
-    const split = text.split('\n');
-    setOppLines(split.length > 0 ? split : Array(4).fill(''));
-    if (draftOppKey) {
-      try {
-        if (text.trim()) {
-          localStorage.setItem(draftOppKey, text);
-        } else {
-          localStorage.removeItem(draftOppKey);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handleOppLinesChange = (newLines: string[]) => {
-    setOppLines(newLines);
-    const nonBlank = newLines.map(l => l.trim()).filter(Boolean).join('\n');
-    setOppBatchText(nonBlank);
-    if (draftOppKey) {
-      try {
-        if (nonBlank) {
-          localStorage.setItem(draftOppKey, nonBlank);
-        } else {
-          localStorage.removeItem(draftOppKey);
-        }
-      } catch (e) {}
-    }
-  };
-
-  const handleClearOppBatch = () => {
-    setOppBatchText('');
-    setOppLines(Array(4).fill(''));
-    if (draftOppKey) {
-      try { localStorage.removeItem(draftOppKey); } catch (e) {}
-    }
-  };
 
   // Estados para Correção em Linha Pautada (Oportunidades)
   const [editingOppId, setEditingOppId] = useState<string | null>(null);
@@ -640,20 +496,20 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
           aria-label="Navegação rápida do formulário"
           className="sticky top-0 z-30 bg-church-parchment/95 backdrop-blur-md py-2 px-1 -mx-2 sm:-mx-4 border-b border-church-sand/80 shadow-2xs"
         >
-          <div className="flex items-center justify-between gap-1.5 sm:gap-2 max-w-4xl mx-auto">
+          <div className="flex items-center justify-between gap-1 sm:gap-2 max-w-4xl mx-auto w-full">
             {/* 1. Visitantes */}
             <button
               type="button"
               onClick={() => scrollToSection('section-visitors', 'visitors')}
-              className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+              className={`flex-1 inline-flex items-center justify-center gap-0.5 xs:gap-1 sm:gap-2 px-1 xs:px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] xs:text-[11px] sm:text-xs md:text-sm font-title font-black uppercase tracking-tighter xs:tracking-tight sm:tracking-wider transition-all cursor-pointer min-h-[42px] sm:min-h-[44px] select-none ${
                 activeSection === 'visitors'
                   ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
                   : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
               }`}
             >
-              <UserPlus className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'visitors' ? 'text-white' : 'text-church-gold-dark'}`} />
+              <UserPlus className={`w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'visitors' ? 'text-white' : 'text-church-gold-dark'}`} />
               <span className="truncate">Visitantes</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+              <span className={`px-1 py-0.2 rounded-full text-[9px] xs:text-[10px] font-mono font-bold leading-none ${
                 activeSection === 'visitors' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
               }`}>
                 {visitorsList.length}
@@ -667,15 +523,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
             <button
               type="button"
               onClick={() => scrollToSection('section-prayers', 'prayers')}
-              className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+              className={`flex-1 inline-flex items-center justify-center gap-0.5 xs:gap-1 sm:gap-2 px-1 xs:px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] xs:text-[11px] sm:text-xs md:text-sm font-title font-black uppercase tracking-tighter xs:tracking-tight sm:tracking-wider transition-all cursor-pointer min-h-[42px] sm:min-h-[44px] select-none ${
                 activeSection === 'prayers'
                   ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
                   : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
               }`}
             >
-              <HeartHandshake className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'prayers' ? 'text-white' : 'text-church-gold-dark'}`} />
+              <HeartHandshake className={`w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'prayers' ? 'text-white' : 'text-church-gold-dark'}`} />
               <span className="truncate">Orações</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+              <span className={`px-1 py-0.2 rounded-full text-[9px] xs:text-[10px] font-mono font-bold leading-none ${
                 activeSection === 'prayers' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
               }`}>
                 {prayersList.length}
@@ -689,15 +545,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
             <button
               type="button"
               onClick={() => scrollToSection('section-opportunities', 'opps')}
-              className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+              className={`flex-1 inline-flex items-center justify-center gap-0.5 xs:gap-1 sm:gap-2 px-1 xs:px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] xs:text-[11px] sm:text-xs md:text-sm font-title font-black uppercase tracking-tighter xs:tracking-tight sm:tracking-wider transition-all cursor-pointer min-h-[42px] sm:min-h-[44px] select-none ${
                 activeSection === 'opps'
                   ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
                   : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
               }`}
             >
-              <Mic2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'opps' ? 'text-white' : 'text-church-gold-dark'}`} />
+              <Mic2 className={`w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'opps' ? 'text-white' : 'text-church-gold-dark'}`} />
               <span className="truncate">Oportunidades</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+              <span className={`px-1 py-0.2 rounded-full text-[9px] xs:text-[10px] font-mono font-bold leading-none ${
                 activeSection === 'opps' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
               }`}>
                 {oppsList.length}
@@ -712,15 +568,15 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
               <button
                 type="button"
                 onClick={() => scrollToSection('section-choirs', 'choirs')}
-                className={`flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-title font-black uppercase tracking-wider transition-all cursor-pointer min-h-[44px] select-none ${
+                className={`flex-1 inline-flex items-center justify-center gap-0.5 xs:gap-1 sm:gap-2 px-1 xs:px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] xs:text-[11px] sm:text-xs md:text-sm font-title font-black uppercase tracking-tighter xs:tracking-tight sm:tracking-wider transition-all cursor-pointer min-h-[42px] sm:min-h-[44px] select-none ${
                   activeSection === 'choirs'
                     ? 'bg-church-gold text-white shadow-md border-2 border-church-gold-dark ring-2 ring-church-gold/30 scale-[1.02]'
                     : 'bg-white text-church-charcoal hover:bg-church-sand/40 border border-church-sand'
                 }`}
               >
-                <Users className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'choirs' ? 'text-white' : 'text-church-gold-dark'}`} />
+                <Users className={`w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSection === 'choirs' ? 'text-white' : 'text-church-gold-dark'}`} />
                 <span className="truncate">Departamentos</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                <span className={`px-1 py-0.2 rounded-full text-[9px] xs:text-[10px] font-mono font-bold leading-none ${
                   activeSection === 'choirs' ? 'bg-white/25 text-white' : 'bg-church-sand/80 text-church-charcoal'
                 }`}>
                   {choirsList.filter(c => c.checked).length}
