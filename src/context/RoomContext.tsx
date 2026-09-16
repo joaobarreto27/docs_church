@@ -46,172 +46,24 @@ interface RoomContextType {
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
 
-const CACHE_PREFIX = 'docs_church_cache_';
-const SESSION_KEY = 'docs_church_session';
-const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+import {
+  StoredSession,
+  PendingAppend,
+  THREE_HOURS_MS,
+  getStoredSession,
+  saveStoredSession,
+  clearStoredSession,
+  getStoredCache,
+  saveRoomCache,
+  getPendingAppends,
+  savePendingAppends,
+  getPendingBlockUpdates,
+  queuePendingBlockUpdate,
+  removePendingBlockUpdate
+} from './storage';
+
 const FAST_SYNC_THRESHOLD_MS = 2.5 * 60 * 1000; // 150.000 ms = 2,5 minutos de modo rápido
 const BROADCAST_SYNC_KEY = 'docs_church_intertab_sync';
-
-interface StoredSession {
-  code: string;
-  roomId?: string;
-  role: UserRole;
-  pin?: string;
-  sessionToken?: string;
-  expiresAt: number;
-}
-
-
-
-const PENDING_APPENDS_KEY = 'docs_church_pending_appends';
-const PENDING_BLOCK_UPDATES_KEY = 'docs_church_pending_block_updates';
-
-interface PendingAppend {
-  id: string;
-  blockId: string;
-  roomId: string;
-  newItems: any[];
-  timestamp: number;
-}
-
-interface PendingBlockUpdate {
-  blockId: string;
-  roomId: string;
-  content: any;
-  timestamp: number;
-}
-
-function getPendingAppends(): PendingAppend[] {
-  try {
-    const raw = localStorage.getItem(PENDING_APPENDS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function savePendingAppends(items: PendingAppend[]) {
-  try {
-    if (items.length === 0) {
-      localStorage.removeItem(PENDING_APPENDS_KEY);
-    } else {
-      localStorage.setItem(PENDING_APPENDS_KEY, JSON.stringify(items));
-    }
-  } catch {}
-}
-
-function getPendingBlockUpdates(): Record<string, PendingBlockUpdate> {
-  try {
-    const raw = localStorage.getItem(PENDING_BLOCK_UPDATES_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function savePendingBlockUpdates(updates: Record<string, PendingBlockUpdate>) {
-  try {
-    if (Object.keys(updates).length === 0) {
-      localStorage.removeItem(PENDING_BLOCK_UPDATES_KEY);
-    } else {
-      localStorage.setItem(PENDING_BLOCK_UPDATES_KEY, JSON.stringify(updates));
-    }
-  } catch {}
-}
-
-function queuePendingBlockUpdate(blockId: string, roomId: string, content: any) {
-  const all = getPendingBlockUpdates();
-  all[blockId] = {
-    blockId,
-    roomId,
-    content,
-    timestamp: Date.now()
-  };
-  savePendingBlockUpdates(all);
-
-  // Como o bloco inteiro já está salvo com o estado mais recente (incluindo adições),
-  // remove appends pendentes deste mesmo bloco para evitar duplicação ao reconectar
-  const appends = getPendingAppends();
-  const filteredAppends = appends.filter(a => a.blockId !== blockId);
-  if (filteredAppends.length !== appends.length) {
-    savePendingAppends(filteredAppends);
-  }
-}
-
-function removePendingBlockUpdate(blockId: string) {
-  const all = getPendingBlockUpdates();
-  if (all[blockId]) {
-    delete all[blockId];
-    savePendingBlockUpdates(all);
-  }
-}
-
-function saveStoredSession(session: StoredSession) {
-  try {
-    const raw = JSON.stringify(session);
-    sessionStorage.setItem(SESSION_KEY, raw);
-    localStorage.setItem(SESSION_KEY, raw);
-    localStorage.setItem('docs_church_last_code', session.code);
-    localStorage.setItem('docs_church_last_role', session.role);
-  } catch (e) {}
-}
-
-function clearStoredSession() {
-  try {
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SESSION_KEY);
-  } catch (e) {}
-}
-
-function getStoredSession(): StoredSession | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed: StoredSession = JSON.parse(raw);
-    const now = Date.now();
-    // Se a sessão expirou (mais de 3 horas), remove imediatamente
-    if (parsed.expiresAt && now > parsed.expiresAt) {
-      clearStoredSession();
-      return null;
-    }
-    if (parsed.code && parsed.role) {
-      return parsed;
-    }
-  } catch (e) {
-    console.warn('Erro ao ler sessionStorage/localStorage:', e);
-  }
-  return null;
-}
-
-function getStoredCache(codeOrId: string): { room: Room; blocks: LiturgicalBlock[] } | null {
-  try {
-    const cached = localStorage.getItem(`${CACHE_PREFIX}${codeOrId}`);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed.room && parsed.blocks) {
-        return { room: parsed.room, blocks: parsed.blocks };
-      }
-    }
-    // Fallback resiliente: se a chave da sala mudou, busca por room.id ou room.code
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith(CACHE_PREFIX)) {
-        try {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed.room && (parsed.room.id === codeOrId || parsed.room.code === codeOrId)) {
-              return { room: parsed.room, blocks: parsed.blocks };
-            }
-          }
-        } catch {}
-      }
-    }
-  } catch (e) {
-    console.warn('Erro ao ler cache local:', e);
-  }
-  return null;
-}
 
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Inicialização síncrona imediata para evitar qualquer piscada de tela ao dar refresh
@@ -264,15 +116,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Salva no localStorage sempre que receber novos dados
   const saveToCache = useCallback((roomData: Room, blocksData: LiturgicalBlock[]) => {
-    try {
-      localStorage.setItem(`${CACHE_PREFIX}${roomData.code}`, JSON.stringify({
-        room: roomData,
-        blocks: blocksData,
-        timestamp: Date.now()
-      }));
-    } catch (e) {
-      console.warn('Erro ao gravar cache local:', e);
-    }
+    saveRoomCache(roomData, blocksData);
   }, []);
 
   // Carrega do cache se a rede falhar
