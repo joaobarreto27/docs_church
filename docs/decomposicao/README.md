@@ -51,7 +51,7 @@ docs/decomposicao/
 | **5.1** | `src/components/controlador/ControladorPanel.tsx` (Fatia Mídia) | ~250 (de 932) | Leitor de arquivos, canvas compressor inline e captura de clipboard | ✅ **Concluído** (Módulos isolados em `src/components/controlador/media/` com 5 arquivos ≤ 163L) | Custom Hook + Strategy | ~90 |
 | **5.2** | `src/components/controlador/ControladorPanel.tsx` (Fatia Alertas) | ~220 (de 932) | Painel de alerta pastoral em tempo real e formulários de edição de metadados | ✅ **Concluído** (Módulos em `src/components/controlador/alerts/`: `PastoralAlertBar`, `ServiceMetadataBar`, `ServiceTitleEditor`, `RoomCodeEditor`, `ResetServiceModal` ≤ 108L) | Composition Pattern | ~85 |
 | **5.3** | `src/utils/liturgyExport.ts` + `ControladorPanel.tsx` (Modal) | ~280 | Geração de texto para Holyrics, WhatsApp e clipboard acoplados à tela | ✅ **Concluído** (Módulos em `src/services/export/` com Strategy Pattern, `exportFactory` e `LiturgyExportModal.tsx` modular ≤ 137L) | Strategy + Factory Pattern | ~80 |
-| **5.4** | `src/components/controlador/ControladorPanel.tsx` (Orquestrador) | 932 | Painel master com múltiplos formulários e modais embutidos | Orquestrador enxuto agregando as barras de controle e modais modulares | Composition Pattern | ~140 |
+| **5.4** | `src/components/controlador/ControladorPanel.tsx` (Orquestrador) | 932 | Painel master com múltiplos formulários e modais embutidos | ✅ **Concluído** (`ControladorPanel.tsx` reduzido de 932L para 148L com modais desacoplados) | Composition Pattern | ~140 |
 
 ---
 
