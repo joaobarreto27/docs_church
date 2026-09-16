@@ -62,8 +62,12 @@ import {
   removePendingBlockUpdate
 } from './storage';
 
-const FAST_SYNC_THRESHOLD_MS = 2.5 * 60 * 1000; // 150.000 ms = 2,5 minutos de modo rápido
-const BROADCAST_SYNC_KEY = 'docs_church_intertab_sync';
+import {
+  broadcastLocalChange as triggerIntertabBroadcast,
+  subscribeToIntertabChanges,
+  calculatePollingInterval,
+  getBackoffInterval
+} from './sync';
 
 export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Inicialização síncrona imediata para evitar qualquer piscada de tela ao dar refresh
@@ -103,15 +107,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const broadcastLocalChange = useCallback(() => {
     lastActivityTimeRef.current = Date.now();
     setIsFastSync(true);
-    try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const channel = new BroadcastChannel(BROADCAST_SYNC_KEY);
-        channel.postMessage({ type: 'CHANGE_OCCURRED', timestamp: Date.now() });
-        channel.close();
-      } else if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(BROADCAST_SYNC_KEY, String(Date.now()));
-      }
-    } catch (e) {}
+    triggerIntertabBroadcast();
   }, []);
 
   // Salva no localStorage sempre que receber novos dados
@@ -582,35 +578,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Escuta avisos imediatos de outras abas na mesma máquina (0ms via BroadcastChannel ou storage)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleSyncNotice = () => {
+    return subscribeToIntertabChanges(() => {
       lastActivityTimeRef.current = Date.now();
       setIsFastSync(true);
       if (pollRef.current) {
         pollRef.current();
       }
-    };
-
-    if ('BroadcastChannel' in window) {
-      try {
-        const channel = new BroadcastChannel(BROADCAST_SYNC_KEY);
-        channel.onmessage = handleSyncNotice;
-        return () => {
-          try { channel.close(); } catch (e) {}
-        };
-      } catch (e) {}
-    }
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === BROADCAST_SYNC_KEY) {
-        handleSyncNotice();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
+    });
   }, []);
 
   // Loop de Smart-Polling Adaptativo (2,5 minutos de Modo Rápido + 0-waterfall sync)
@@ -621,17 +595,13 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!room) return;
 
     const getDynamicPollingInterval = (): number => {
-      // Se a prévia do púlpito estiver ativa no obreiro/cabine, sincroniza a cada 8 segundos
-      // Totalmente seguro contra o Erro 99 da Vercel (7.5 req/min) no Android 4.4.4 KitKat
-      if (isPulpitPreviewActiveRef.current) return 8000;
-      if (role === 'obreiro') return 30000;
-      const timeSinceLast = Date.now() - lastActivityTimeRef.current;
-      const isFast = timeSinceLast < FAST_SYNC_THRESHOLD_MS;
-      setIsFastSync(isFast);
-      if (isFast) {
-        return role === 'pastor' ? 2000 : 2500;
-      }
-      return 6000;
+      const result = calculatePollingInterval({
+        role,
+        isPulpitPreviewActive: isPulpitPreviewActiveRef.current,
+        lastActivityTime: lastActivityTimeRef.current
+      });
+      setIsFastSync(result.isFast);
+      return result.interval;
     };
 
     const scheduleNextPoll = (customDelayMs?: number) => {
@@ -782,7 +752,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         // Falha silenciosa de rede: continua exibindo a tela sem erros bloqueantes
         setIsConnected(false);
-        const backoffInterval = role === 'obreiro' ? 45000 : 7000;
+        const backoffInterval = getBackoffInterval(role);
         scheduleNextPoll(backoffInterval);
         return;
       } finally {
