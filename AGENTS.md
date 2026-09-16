@@ -39,11 +39,11 @@ As seguintes regras de negócio do **Painel do Culto** são **IMUTÁVEIS E INVIO
 
 Os 6 arquivos monolíticos identificados no plano mestre [`docs/decomposicao/README.md`](docs/decomposicao/README.md) estão em quarentena temporária até sua respectiva decomposição:
 
-1. `src/context/RoomContext.tsx` (1.031 linhas) → Mapeado nas **Subfases 1.1, 1.2 e 2.2**
-2. `src/services/neon.ts` (319 linhas) → Mapeado na **Subfase 1.3**
-3. `src/components/room/JoinRoomModal.tsx` (401 linhas) → Mapeado na **Subfase 2.1**
-4. `src/components/pastor/PulpitView.tsx` (1.535 linhas) → Mapeado nas **Subfases 3.1, 3.2 e 3.3**
-5. `src/components/obreiro/ObreiroEditor.tsx` (1.682 linhas) → Mapeado nas **Subfases 4.1, 4.2 e 4.3**
+1. `src/context/RoomContext.tsx` (1.031 linhas) → Mapeado nas **Subfases 1.1, 1.2 e 2.2** [✅ Concluído]
+2. `src/services/neon.ts` (319 linhas) → Mapeado na **Subfase 1.3** [✅ Concluído]
+3. `src/components/room/JoinRoomModal.tsx` (401 linhas) → Mapeado na **Subfase 2.1** [✅ Concluído]
+4. `src/components/pastor/PulpitView.tsx` (1.535 linhas) → Mapeado nas **Subfases 3.1, 3.2 e 3.3** [✅ Concluído]
+5. `src/components/obreiro/ObreiroEditor.tsx` (1.682 linhas) → Mapeado nas **Subfases 4.1, 4.2 e 4.3** [✅ Concluído]
 6. `src/components/controlador/ControladorPanel.tsx` (932 linhas) → Mapeado nas **Subfases 5.1, 5.2, 5.3 e 5.4**
 
 > ⚠️ **REGRA INVIOLÁVEL DE EXECUÇÃO DE SUBFASE:**  
