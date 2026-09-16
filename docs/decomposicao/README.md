@@ -37,7 +37,7 @@ docs/decomposicao/
 
 | # | Arquivo Alvo Original | Linhas Originais | Responsabilidade Monolítica Atual | Estratégia de Decomposição | Patterns & Salvaguardas | Meta Linhas |
 |---|----------------------|-----------------|-----------------------------------|----------------------------|-------------------------|-------------|
-| **1.1** | `src/context/RoomContext.tsx` (Fatia Cache & Fila) | ~350 (de 1.031) | Persistência mista de sessão, cache de blocos e fila de appends offline | Extrair módulos dedicados em `src/context/storage/`: `useRoomStorage`, `offlineQueue` e serializadores | Storage Service + Single Responsibility | ~90 |
+| **1.1** | `src/context/RoomContext.tsx` (Fatia Cache & Fila) | ~350 (de 1.031) | Persistência mista de sessão, cache de blocos e fila de appends offline | ✅ **Concluído** (Módulos isolados em `src/context/storage/` com 4 arquivos ≤ 69L) | Storage Service + Single Responsibility | ~90 |
 | **1.2** | `src/context/RoomContext.tsx` (Fatia Polling) | ~300 (de 1.031) | Polling adaptativo, timers de cold start e sincronização inter-abas | Extrair motor reativo em `src/context/sync/`: `useAdaptiveSync` e `intertabBroadcast` | Observer + Custom Hook | ~80 |
 | **1.3** | `src/services/neon.ts` | 319 | Chamadas HTTP acopladas, helpers de retry e tokens soltos | Encapsular em `src/services/api/liturgicalRepository.ts` com tipagem estrita e headers protegidos | Repository Pattern | ~100 |
 | **2.1** | `src/components/room/JoinRoomModal.tsx` | 401 | Modal duplo com lógica de entrada, criação de sala e diálogo de conflito | Extrair subcomponentes em `src/components/room/`: `JoinForm`, `CreateServiceForm` e `ConflictResolutionModal` | Composition Pattern | ~95 |
