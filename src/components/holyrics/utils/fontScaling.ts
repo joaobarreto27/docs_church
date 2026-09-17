@@ -48,3 +48,28 @@ export function getSlideTypographyClasses(text: string): SlideTypographyClasses 
     containerClass: 'max-w-6xl columns-1 sm:columns-2 gap-8 text-justify'
   };
 }
+
+/**
+ * Classe de fonte para o header (referência bíblica / título do louvor)
+ * centralizado no overlay. ~85% do tamanho do texto principal para
+ * manter legibilidade sem competir visualmente com o versículo.
+ */
+export function getHeaderTypographyClass(text: string): string {
+  const charCount = String(text || '').trim().length;
+  const lineCount = String(text || '').trim().split('\n').length;
+
+  // Textos curtos → header pode ser bem grande
+  if (charCount < 120 && lineCount <= 3) {
+    return 'text-2xl sm:text-3xl md:text-4xl';
+  }
+  // Estrofes padrão
+  if (charCount <= 280 && lineCount <= 6) {
+    return 'text-xl sm:text-2xl md:text-3xl';
+  }
+  // Textos extensos → header reduz proporcionalmente
+  if (charCount <= 600) {
+    return 'text-base sm:text-lg md:text-xl';
+  }
+  // Leituras extremas
+  return 'text-sm sm:text-base md:text-lg';
+}
