@@ -7,7 +7,7 @@ import { LoadingScreen } from '../common/LoadingScreen';
 import { Check } from 'lucide-react';
 import { YoutubeSection } from './media';
 import { PastoralAlertBar, ServiceMetadataBar, ResetServiceModal } from './alerts';
-import { LiturgyExportModal, PulpitPreviewModal } from './modals';
+import { LiturgyExportModal, PulpitPreviewModal, ControladorHolyricsModal } from './modals';
 import { ExportSection } from '../../services/export';
 
 export const ControladorPanel: React.FC = () => {
@@ -21,11 +21,13 @@ export const ControladorPanel: React.FC = () => {
     resetCurrentService, 
     updateTitle, 
     updateCode, 
+    updateHolyricsUrl,
     setPulpitPreviewActive 
   } = useRoom();
 
   const [showResetModal, setShowResetModal] = useState(false);
   const [showPulpitPreview, setShowPulpitPreview] = useState(false);
+  const [showHolyricsModal, setShowHolyricsModal] = useState(false);
   const [showFullListModal, setShowFullListModal] = useState(false);
   const [fullListTab, setFullListTab] = useState<ExportSection>('all');
   const [newTitleInput, setNewTitleInput] = useState('Culto de Celebração');
@@ -91,6 +93,7 @@ export const ControladorPanel: React.FC = () => {
               setShowPulpitPreview(true);
             }}
             onOpenResetModal={() => setShowResetModal(true)}
+            onOpenHolyricsModal={() => setShowHolyricsModal(true)}
             triggerFeedback={triggerFeedback}
           />
 
@@ -115,6 +118,23 @@ export const ControladorPanel: React.FC = () => {
       <div className="flex-1">
         <ObreiroEditor showHeader={false} />
       </div>
+
+      {/* MODAL DE CONFIGURAÇÃO DO HOLYRICS (TELÃO) */}
+      <ControladorHolyricsModal
+        isOpen={showHolyricsModal}
+        currentUrl={room.holyrics_url || ''}
+        onClose={() => setShowHolyricsModal(false)}
+        onSave={async (url) => {
+          const res = await updateHolyricsUrl(url);
+          if (res.success) {
+            triggerFeedback(url ? 'Configuração do Holyrics salva na sala!' : 'Integração do Holyrics desativada.');
+            return true;
+          } else {
+            triggerFeedback(res.error || 'Erro ao salvar configuração.');
+            return false;
+          }
+        }}
+      />
 
       {/* MODAL DE CONFIRMAÇÃO DE NOVO CULTO */}
       <ResetServiceModal

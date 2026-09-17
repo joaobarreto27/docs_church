@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, ClipboardCopy, Tablet, RotateCcw } from 'lucide-react';
+import { Layers, ClipboardCopy, Tablet, RotateCcw, Tv } from 'lucide-react';
 import { ServiceTitleEditor } from './ServiceTitleEditor';
 import { RoomCodeEditor } from './RoomCodeEditor';
 
@@ -12,6 +12,7 @@ interface ServiceMetadataBarProps {
   onOpenFullList: () => void;
   onOpenPulpitPreview: () => void;
   onOpenResetModal: () => void;
+  onOpenHolyricsModal: () => void;
   triggerFeedback: (msg: string) => void;
 }
 
@@ -24,6 +25,7 @@ export const ServiceMetadataBar: React.FC<ServiceMetadataBarProps> = ({
   onOpenFullList,
   onOpenPulpitPreview,
   onOpenResetModal,
+  onOpenHolyricsModal,
   triggerFeedback,
 }) => {
   return (
@@ -80,6 +82,17 @@ export const ServiceMetadataBar: React.FC<ServiceMetadataBarProps> = ({
         >
           <ClipboardCopy className="w-3.5 h-3.5" />
           <span>Ver Lista Completa</span>
+        </button>
+
+        {/* Botão de Integração Holyrics */}
+        <button
+          type="button"
+          onClick={onOpenHolyricsModal}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 border border-purple-300 text-purple-900 text-xs font-title font-bold uppercase tracking-wider hover:bg-purple-100 transition-colors shadow-xs cursor-pointer active:scale-95"
+          title="Configurar integração do Holyrics / Telão"
+        >
+          <Tv className="w-3.5 h-3.5 text-purple-700" />
+          <span>Holyrics</span>
         </button>
 
         {/* Botão de Prévia do Púlpito */}
