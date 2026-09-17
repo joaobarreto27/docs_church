@@ -24,3 +24,4 @@ export const updateRoomTitle = liturgicalRepository.updateRoomTitle;
 export const updateRoomCode = liturgicalRepository.updateRoomCode;
 export const archiveAndResetRoom = liturgicalRepository.archiveAndResetRoom;
 export const overwriteExistingRoom = liturgicalRepository.overwriteExistingRoom;
+export const updateRoomHolyricsUrl = liturgicalRepository.updateRoomHolyricsUrl;

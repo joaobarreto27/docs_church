@@ -5,11 +5,10 @@ import {
   setRoomCurrentPage,
   archiveAndResetRoom,
   updateRoomTitle,
-  updateRoomCode,
-  formatRoomCodeMask,
+  updateRoomHolyricsUrl,
 } from '../../services/neon';
-import { getStoredSession, saveStoredSession } from '../storage';
 import { fetchRoomWithCache } from './fetchRoomService';
+import { executeRoomCodeUpdate } from './roomCodeHelper';
 
 export interface UseRoomControlProps {
   room: Room | null;
@@ -126,35 +125,35 @@ export function useRoomControl({
 
   const updateCode = useCallback(
     async (newCode: string): Promise<{ success: boolean; error?: string }> => {
-      if (!room) return { success: false, error: 'Nenhuma sala ativa.' };
-      const formatted = formatRoomCodeMask(newCode);
-      const withoutHyphen = formatted.replace(/-/g, '');
-      if (withoutHyphen.length < 6) {
-        return { success: false, error: 'O código deve conter 6 caracteres no formato XXX-XXX.' };
-      }
-      try {
-        const res = await updateRoomCode(room.id, formatted, sessionToken);
-        if (res.success) {
-          setRoom((prev) => (prev ? { ...prev, code: formatted } : null));
-          const active = getStoredSession();
-          if (active) {
-            saveStoredSession({
-              ...active,
-              code: formatted,
-              roomId: room.id,
-              sessionToken,
-            });
-          }
-          saveToCache({ ...room, code: formatted }, blocksRef.current);
-          broadcastLocalChange();
-        }
-        return res;
-      } catch (err: any) {
-        console.warn('Erro ao atualizar código da sala:', err);
-        return { success: false, error: 'Falha ao atualizar o código no banco.' };
-      }
+      return executeRoomCodeUpdate(
+        room,
+        newCode,
+        sessionToken,
+        blocksRef,
+        setRoom,
+        saveToCache,
+        broadcastLocalChange
+      );
     },
     [room, sessionToken, blocksRef, saveToCache, broadcastLocalChange, setRoom]
+  );
+
+  const updateHolyricsUrl = useCallback(
+    async (newUrl: string | null): Promise<{ success: boolean; error?: string }> => {
+      if (!room) return { success: false, error: 'Nenhuma sala ativa.' };
+      try {
+        const res = await updateRoomHolyricsUrl(room.id, newUrl, sessionToken);
+        if (res.success) {
+          setRoom((prev) => (prev ? { ...prev, holyrics_url: res.holyrics_url ?? null } : null));
+          broadcastLocalChange();
+          return { success: true };
+        }
+        return { success: false, error: res.error || 'Falha ao salvar URL.' };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Erro de conexão.' };
+      }
+    },
+    [room, sessionToken, broadcastLocalChange, setRoom]
   );
 
   return {
@@ -165,5 +164,6 @@ export function useRoomControl({
     refreshData,
     updateTitle,
     updateCode,
+    updateHolyricsUrl,
   };
 }

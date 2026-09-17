@@ -60,5 +60,18 @@ export const controlRepository = {
         sessionToken: token,
       }, token);
     });
+  },
+
+  async updateRoomHolyricsUrl(roomId: string, url: string | null, token?: string): Promise<{ success: boolean; holyrics_url?: string | null; error?: string }> {
+    try {
+      return await postApi<{ success: boolean; holyrics_url?: string | null; error?: string }>('/api/room', {
+        action: 'update-holyrics-url',
+        roomId,
+        url,
+        sessionToken: token,
+      }, token);
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Falha ao atualizar URL do Holyrics.' };
+    }
   }
 };

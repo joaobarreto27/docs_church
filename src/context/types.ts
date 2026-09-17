@@ -22,6 +22,7 @@ export interface RoomContextType {
   refreshData: () => Promise<void>;
   updateTitle: (newTitle: string) => Promise<void>;
   updateCode: (newCode: string) => Promise<{ success: boolean; error?: string }>;
+  updateHolyricsUrl: (newUrl: string | null) => Promise<{ success: boolean; error?: string }>;
   isPulpitPreviewActive: boolean;
   setPulpitPreviewActive: (active: boolean) => void;
 }

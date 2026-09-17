@@ -88,6 +88,7 @@ export const RoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshData: control.refreshData,
         updateTitle: control.updateTitle,
         updateCode: control.updateCode,
+        updateHolyricsUrl: control.updateHolyricsUrl,
         isPulpitPreviewActive,
         setPulpitPreviewActive: setIsPulpitPreviewActive,
       }}
