@@ -51,8 +51,7 @@ export function useHolyricsSync(holyricsUrl?: string | null): UseHolyricsSyncRet
       return;
     }
 
-    const separator = cleanBase.includes('?') ? '&' : '?';
-    const fetchUrl = `${cleanBase}/view/text.json${separator}ngrok-skip-browser-warning=true`;
+    const fetchUrl = `/api/holyrics?url=${encodeURIComponent(cleanBase)}`;
 
     const poll = async () => {
       if (!isMountedRef.current || isFetchingRef.current) return;

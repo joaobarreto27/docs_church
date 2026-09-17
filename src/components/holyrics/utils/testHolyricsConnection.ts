@@ -12,14 +12,11 @@ export async function testHolyricsEndpoint(rawUrl: string): Promise<ConnectionTe
   }
 
   try {
-    const separator = base.includes('?') ? '&' : '?';
-    const testEndpoint = `${base}/view/text.json${separator}ngrok-skip-browser-warning=true`;
+    const testEndpoint = `/api/holyrics?url=${encodeURIComponent(base)}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-    const res = await fetch(testEndpoint, {
-      signal: controller.signal
-    });
+    const res = await fetch(testEndpoint, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
@@ -28,11 +25,12 @@ export async function testHolyricsEndpoint(rawUrl: string): Promise<ConnectionTe
         message: 'Conexão confirmada com sucesso! Holyrics respondendo perfeitamente.'
       };
     }
+    const errData = await res.json().catch(() => ({}));
     return {
       success: false,
-      message: `Servidor retornou status HTTP ${res.status}. Verifique se o Holyrics está ativo.`
+      message: errData.error || `Servidor retornou status HTTP ${res.status}. Verifique se o Holyrics está ativo.`
     };
-  } catch (_) {
+  } catch (err: any) {
     return {
       success: false,
       message: 'Não foi possível conectar. Verifique se o ngrok e o Holyrics estão abertos.'
