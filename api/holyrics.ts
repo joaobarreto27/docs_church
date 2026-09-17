@@ -1,3 +1,29 @@
+/**
+ * Proxy serverless para buscar dados do Holyrics via ngrok.
+ * Contorna CORS (Holyrics não responde OPTIONS) e restringe
+ * domínios de destino para evitar abuso como proxy SSRF aberto.
+ */
+
+const ALLOWED_HOSTNAME_PATTERNS = [
+  /^localhost$/,
+  /^127\.0\.0\.1$/,
+  /^192\.168\.\d{1,3}\.\d{1,3}$/,
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/,
+  /\.ngrok-free\.dev$/,
+  /\.ngrok\.io$/,
+  /\.ngrok\.app$/,
+];
+
+function isAllowedUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    return ALLOWED_HOSTNAME_PATTERNS.some((re) => re.test(parsed.hostname));
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -18,6 +44,12 @@ export default async function handler(req: any, res: any) {
   cleanBase = cleanBase.replace(/\/view$/, '');
 
   const endpoint = `${cleanBase}/view/text.json`;
+
+  if (!isAllowedUrl(endpoint)) {
+    return res.status(403).json({
+      error: 'Domínio não permitido. Apenas localhost, rede local e ngrok são aceitos.'
+    });
+  }
 
   try {
     const controller = new AbortController();
