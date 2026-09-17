@@ -25,7 +25,7 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
                 {slide.title || 'Projeção Ativa'}
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-title font-bold bg-[#C59B4B]/20 text-[#D4AF37] border border-[#C59B4B]/30">
-                TELÃO OFICIAL
+                {slide.type === 'bible' ? 'BÍBLIA SAGRADA' : slide.type === 'music' ? 'LOUVOR' : 'TELÃO OFICIAL'}
               </span>
             </div>
             <p className="text-xs text-stone-400 font-sans">
