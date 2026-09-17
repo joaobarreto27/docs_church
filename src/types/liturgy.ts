@@ -65,6 +65,7 @@ export interface Room {
   current_page: number;
   version: number;
   status: 'active' | 'archived';
+  holyrics_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }

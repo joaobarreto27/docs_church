@@ -181,7 +181,7 @@ export default async function handler(req: any, res: any) {
       const withoutHyphen = normalized.replace(/-/g, '');
 
       const roomRows = await sql`
-        SELECT id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at 
+        SELECT id, code, title, service_date, active_alert, current_page, version, status, holyrics_url, created_at, updated_at 
         FROM rooms 
         WHERE (id::text = ${codeOrId} OR UPPER(code) = ${normalized} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
           AND status = 'active'
@@ -207,7 +207,7 @@ export default async function handler(req: any, res: any) {
 
       const withoutHyphen = code.replace(/-/g, '');
       const roomRows = await sql`
-        SELECT id, code, title, service_date, active_alert, current_page, version, status, controller_pin, created_at, updated_at 
+        SELECT id, code, title, service_date, active_alert, current_page, version, status, controller_pin, holyrics_url, created_at, updated_at 
         FROM rooms 
         WHERE (id::text = ${code} OR UPPER(code) = ${code} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
           AND status = 'active'
@@ -273,7 +273,7 @@ export default async function handler(req: any, res: any) {
         VALUES (${code}, ${title}, ${pin}, 1, 'active')
         ON CONFLICT (code) DO UPDATE 
         SET title = ${title}, controller_pin = ${pin}, status = 'active', updated_at = NOW()
-        RETURNING id, code, title, service_date, active_alert, current_page, version, status, created_at, updated_at
+        RETURNING id, code, title, service_date, active_alert, current_page, version, status, holyrics_url, created_at, updated_at
       `;
       const room = roomRows[0];
 
@@ -375,6 +375,27 @@ export default async function handler(req: any, res: any) {
         WHERE id::text = ${roomId}
       `;
       return res.status(200).json({ success: true });
+    }
+
+    if (action === 'update-holyrics-url') {
+      const isAuthorized = await authorizeController(roomId, token, pin);
+      if (!isAuthorized) {
+        return res.status(401).json({ success: false, error: 'Acesso não autorizado ao controlador.' });
+      }
+
+      const rawUrl = String(body.url ?? '').trim();
+      const holyricsUrl = rawUrl ? rawUrl.slice(0, 255) : null;
+
+      if (holyricsUrl && !holyricsUrl.startsWith('http://') && !holyricsUrl.startsWith('https://')) {
+        return res.status(400).json({ success: false, error: 'URL do Holyrics inválida (deve iniciar com http:// ou https://).' });
+      }
+
+      await sql`
+        UPDATE rooms 
+        SET holyrics_url = ${holyricsUrl}, version = version + 1, updated_at = NOW()
+        WHERE id::text = ${roomId}
+      `;
+      return res.status(200).json({ success: true, holyrics_url: holyricsUrl });
     }
 
     if (action === 'send-alert') {
