@@ -1,7 +1,7 @@
 import React from 'react';
 import { Minimize2 } from 'lucide-react';
 import { HolyricsSlide } from '../../types/holyrics';
-import { getSlideTypographyClasses, getHeaderTypographyClass } from './utils/fontScaling';
+import { getSlideTypographyClasses } from './utils/fontScaling';
 
 export interface HolyricsOverlayProps {
   slide: HolyricsSlide;
@@ -10,7 +10,6 @@ export interface HolyricsOverlayProps {
 
 export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinimize }) => {
   const { fontSizeClass, lineHeightClass, containerClass } = getSlideTypographyClasses(slide.text);
-  const headerFontClass = getHeaderTypographyClass(slide.text);
 
   const badgeLabel = slide.type === 'bible' ? 'BÍBLIA SAGRADA' : slide.type === 'music' ? 'LOUVOR' : 'TELÃO OFICIAL';
   const subtitle = slide.author
@@ -19,12 +18,34 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
 
   return (
     <div className="absolute inset-0 z-40 bg-[#0B0D13] text-[#F8FAFC] flex flex-col justify-between p-6 sm:p-10 select-none animate-fadeIn">
-      {/* Botão Minimizar (canto superior direito, discreto) */}
-      <header className="flex items-center justify-end pb-2">
+      {/* Topo: Referência centralizada (fonte fixa) + botão Ver Roteiro */}
+      <header className="flex items-start justify-between pb-4 border-b border-stone-800/80">
+        {/* Referência + Badge + Autor — centralizado */}
+        <div className="flex-1 flex flex-col items-center text-center">
+          {slide.title && (
+            <>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <h2 className="font-title text-2xl sm:text-3xl md:text-4xl font-bold text-[#D4AF37] tracking-tight drop-shadow-sm">
+                  {slide.title}
+                </h2>
+                <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-title font-bold bg-[#C59B4B]/20 text-[#D4AF37] border border-[#C59B4B]/30">
+                  {badgeLabel}
+                </span>
+              </div>
+              {subtitle && (
+                <p className="text-sm sm:text-base text-stone-400 font-sans mt-1">
+                  {subtitle}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Botão Ver Roteiro (canto direito) */}
         <button
           type="button"
           onClick={onMinimize}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-800/90 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700/80 transition-colors active:scale-95 cursor-pointer shadow-lg"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-800/90 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700/80 transition-colors active:scale-95 cursor-pointer shadow-lg shrink-0 ml-4"
           title="Ver o roteiro do culto"
           aria-label="Minimizar projeção e ver roteiro do culto"
         >
@@ -35,32 +56,12 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
         </button>
       </header>
 
-      {/* Área Central: Referência + Texto (tudo centralizado e grande) */}
+      {/* Área Central: Texto do versículo */}
       <main
         onClick={onMinimize}
-        className={`flex-1 flex flex-col items-center justify-center text-center px-4 mx-auto w-full cursor-pointer gap-4 sm:gap-6 ${containerClass}`}
+        className={`flex-1 flex flex-col items-center justify-center text-center px-4 mx-auto w-full cursor-pointer ${containerClass}`}
         title="Toque para alternar para o roteiro"
       >
-        {/* Referência / Título em fonte grande e centralizada */}
-        {slide.title && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <h2 className={`font-title ${headerFontClass} font-bold text-[#D4AF37] tracking-tight drop-shadow-sm`}>
-                {slide.title}
-              </h2>
-              <span className="px-3 py-1 rounded-full text-xs sm:text-sm font-title font-bold bg-[#C59B4B]/20 text-[#D4AF37] border border-[#C59B4B]/30">
-                {badgeLabel}
-              </span>
-            </div>
-            {subtitle && (
-              <p className="text-sm sm:text-base text-stone-400 font-sans">
-                {subtitle}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Versículo / Texto principal */}
         <p className={`font-serif ${fontSizeClass} ${lineHeightClass} text-white whitespace-pre-line tracking-wide drop-shadow-sm`}>
           {slide.text}
         </p>
