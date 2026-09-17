@@ -73,7 +73,7 @@ export default async function handler(req: any, res: any) {
 
     const rows = await sql`
       WITH room_meta AS (
-        SELECT id, code, title, version, active_alert, current_page 
+        SELECT id, code, title, version, active_alert, current_page, holyrics_url 
         FROM rooms 
         WHERE (id::text = ${roomId || normalizedCode} OR UPPER(code) = ${normalizedCode} OR REPLACE(UPPER(code), '-', '') = ${withoutHyphen})
           AND status = 'active'
@@ -87,6 +87,7 @@ export default async function handler(req: any, res: any) {
         r.version, 
         r.active_alert, 
         r.current_page,
+        r.holyrics_url,
         CASE 
           WHEN r.version != ${currentVersion} THEN (
             SELECT json_agg(b.*) FROM (
@@ -123,6 +124,7 @@ export default async function handler(req: any, res: any) {
       version,
       active_alert: row.active_alert ?? null,
       current_page: Number(row.current_page ?? 1),
+      holyrics_url: row.holyrics_url ?? null,
       blocks,
       hasChanged,
     });
