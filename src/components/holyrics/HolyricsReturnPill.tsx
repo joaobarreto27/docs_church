@@ -9,7 +9,7 @@ export interface HolyricsReturnPillProps {
 
 export const HolyricsReturnPill: React.FC<HolyricsReturnPillProps> = ({ slide, onRestore }) => {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-fadeIn select-none shadow-2xl">
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 animate-fadeIn select-none shadow-2xl">
       <div className="bg-[#111319] text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-full border border-[#C59B4B] flex items-center gap-3 sm:gap-4 shadow-soft-gold">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>

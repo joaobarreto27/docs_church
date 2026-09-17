@@ -12,7 +12,7 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
   const { fontSizeClass, lineHeightClass, containerClass } = getSlideTypographyClasses(slide.text);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0B0D13] text-[#F8FAFC] flex flex-col justify-between p-6 sm:p-10 select-none animate-fadeIn">
+    <div className="absolute inset-0 z-40 bg-[#0B0D13] text-[#F8FAFC] flex flex-col justify-between p-6 sm:p-10 select-none animate-fadeIn">
       {/* Cabeçalho Solene */}
       <header className="flex items-center justify-between border-b border-stone-800/80 pb-4">
         <div className="flex items-center gap-3">
