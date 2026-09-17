@@ -62,8 +62,7 @@ export function useHolyricsSync(holyricsUrl?: string | null): UseHolyricsSyncRet
         const tid = setTimeout(() => controller.abort(), 3000);
 
         const res = await fetch(fetchUrl, {
-          signal: controller.signal,
-          headers: { 'ngrok-skip-browser-warning': 'true' }
+          signal: controller.signal
         });
         clearTimeout(tid);
 
