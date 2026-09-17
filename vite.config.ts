@@ -57,6 +57,10 @@ function localApiPlugin(): Plugin {
               const blockMod = await import('./api/block');
               return await blockMod.default(req, res);
             }
+            if (parsed.pathname === '/api/holyrics') {
+              const holyricsMod = await import('./api/holyrics');
+              return await holyricsMod.default(req, res);
+            }
             if (parsed.pathname === '/api/health') {
               const healthMod = await import('./api/health');
               return await healthMod.default(req, res);
