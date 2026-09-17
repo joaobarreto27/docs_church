@@ -18,8 +18,7 @@ export async function testHolyricsEndpoint(rawUrl: string): Promise<ConnectionTe
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const res = await fetch(testEndpoint, {
-      signal: controller.signal,
-      headers: { 'ngrok-skip-browser-warning': 'true' }
+      signal: controller.signal
     });
     clearTimeout(timeoutId);
 
