@@ -122,16 +122,16 @@ export const ControladorPanel: React.FC = () => {
       {/* MODAL DE CONFIGURAÇÃO DO HOLYRICS (TELÃO) */}
       <ControladorHolyricsModal
         isOpen={showHolyricsModal}
-        currentUrl={room.holyrics_url || ''}
+        hasHolyrics={Boolean(room.has_holyrics)}
         onClose={() => setShowHolyricsModal(false)}
-        onSave={async (url) => {
-          const res = await updateHolyricsUrl(url);
+        onSave={async (url, adminKey) => {
+          const res = await updateHolyricsUrl(url, adminKey);
           if (res.success) {
             triggerFeedback(url ? 'Configuração do Holyrics salva na sala!' : 'Integração do Holyrics desativada.');
             return true;
           } else {
             triggerFeedback(res.error || 'Erro ao salvar configuração.');
-            return false;
+            return res;
           }
         }}
       />
