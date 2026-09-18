@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tv, X, Check, AlertCircle, Loader2, Link2, Trash2, KeyRound, ShieldCheck } from 'lucide-react';
+import { Tv, X, Check, AlertCircle, Loader2, Link2, Unlink, Power, KeyRound, ShieldCheck } from 'lucide-react';
 import { testHolyricsEndpoint, ConnectionTestResult } from '../../holyrics/utils/testHolyricsConnection';
 
 export interface ControladorHolyricsModalProps {
@@ -136,10 +136,11 @@ export const ControladorHolyricsModal: React.FC<ControladorHolyricsModalProps> =
                 type="button"
                 onClick={() => handleExecute(null)}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-title text-[11px] font-medium transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-title text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                title="Desconectar Holyrics da sala"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Desativar Integração</span>
+                <Unlink className="w-3.5 h-3.5 text-red-600" />
+                <span>Desconectar Holyrics</span>
               </button>
             )}
           </div>
@@ -167,10 +168,10 @@ export const ControladorHolyricsModal: React.FC<ControladorHolyricsModalProps> =
             type="button"
             onClick={() => handleExecute(url)}
             disabled={isSaving || !url.trim()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-title text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-sm disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-title text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-sm disabled:opacity-50 cursor-pointer"
           >
-            {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            <span>Salvar com Chave Mestra</span>
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5 text-[#D4AF37]" />}
+            <span>Conectar Holyrics</span>
           </button>
         </div>
       </div>
