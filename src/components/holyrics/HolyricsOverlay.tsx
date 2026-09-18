@@ -32,9 +32,16 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
         aria-hidden="true"
       />
 
-      {/* Topo: Identificação Centralizada + Botão Ver Roteiro */}
-      <header className="relative z-10 flex items-start justify-between pb-3 border-b border-stone-800/80">
-        <div className="w-10 sm:w-28 shrink-0" aria-hidden="true" />
+      {/* Topo: Logotipo Oficial (Esquerda) + Identificação Centralizada + Botão Ver Roteiro (Direita) */}
+      <header className="relative z-10 flex items-start justify-between pb-3 border-b border-stone-800/80 gap-2">
+        {/* Logotipo Oficial no Canto Superior Esquerdo */}
+        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+          <img
+            src="/assets/logo-adutinga-horizontal.png"
+            alt="A.D. Utinga"
+            className="h-6 sm:h-8 md:h-9 w-auto object-contain brightness-110 drop-shadow-sm"
+          />
+        </div>
 
         {/* Centro do Topo: Título da Bíblia ou Indicador Discreto de Louvor */}
         <div className="flex-1 flex flex-col items-center text-center px-2">
@@ -95,9 +102,9 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
         </button>
       </header>
 
-      {/* Área Central: Versículo / Letra 100% Centralizado (Horizontal e Vertical) */}
+      {/* Área Central: Versículo / Letra com fonte sem-serifa moderna, nítida e ampliada */}
       <main className={`relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 my-auto mx-auto w-full ${containerClass}`}>
-        <p className={`font-serif ${fontSizeClass} ${lineHeightClass} text-white whitespace-pre-line tracking-wide drop-shadow-md text-center max-w-full`}>
+        <p className={`font-sans font-medium sm:font-semibold ${fontSizeClass} ${lineHeightClass} text-white whitespace-pre-line tracking-normal sm:tracking-wide drop-shadow-md text-center max-w-full`}>
           {slide.text}
         </p>
       </main>
