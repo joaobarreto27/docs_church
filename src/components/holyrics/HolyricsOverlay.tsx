@@ -22,7 +22,7 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
     : '';
 
   return (
-    <div className="absolute inset-0 z-40 bg-[#0B0D12] bg-gradient-to-b from-[#11131A] via-[#0B0D12] to-[#07080B] text-[#F8FAFC] flex flex-col justify-between p-5 sm:p-8 md:p-10 select-none animate-fadeIn border border-[#C59B4B]/20 sm:rounded-2xl shadow-[inset_0_0_80px_rgba(0,0,0,0.7)]">
+    <div className="fixed inset-0 z-50 bg-[#0B0D12] bg-gradient-to-b from-[#11131A] via-[#0B0D12] to-[#07080B] text-[#F8FAFC] flex flex-col justify-between p-5 sm:p-8 md:p-10 select-none animate-fadeIn overflow-hidden">
       {/* Halo de Luz Dourada Solene no Topo Central (Atmosfera Sagrada / Púlpito Zen) */}
       <div
         className="absolute top-0 left-0 right-0 h-48 pointer-events-none opacity-60"
@@ -33,9 +33,9 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
       />
 
       {/* Topo: Logotipo Oficial (Esquerda) + Identificação Centralizada + Botão Ver Roteiro (Direita) */}
-      <header className="relative z-10 flex items-start justify-between pb-3 border-b border-stone-800/80 gap-2">
+      <header className="relative z-10 flex items-center justify-between pb-3 gap-2 border-b border-stone-800/40">
         {/* Logotipo Oficial no Canto Superior Esquerdo */}
-        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+        <div className="flex items-center gap-2 shrink-0">
           <img
             src="/assets/logo-adutinga-horizontal.png"
             alt="A.D. Utinga"
@@ -102,7 +102,7 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
         </button>
       </header>
 
-      {/* Área Central: Versículo / Letra com fonte sem-serifa moderna, nítida e ampliada */}
+      {/* Área Central: Versículo / Letra 100% Centralizado (Horizontal e Vertical) */}
       <main className={`relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 my-auto mx-auto w-full ${containerClass}`}>
         <p className={`font-sans font-medium sm:font-semibold ${fontSizeClass} ${lineHeightClass} text-white whitespace-pre-line tracking-normal sm:tracking-wide drop-shadow-md text-center max-w-full`}>
           {slide.text}
@@ -110,7 +110,7 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
       </main>
 
       {/* Rodapé Institucional Solene */}
-      <footer className="relative z-10 flex items-center justify-between border-t border-stone-800/80 pt-3 text-xs text-stone-400">
+      <footer className="relative z-10 flex items-center justify-between border-t border-stone-800/40 pt-3 text-xs text-stone-400">
         <span className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-500/50" />
           <span className="font-sans font-medium text-stone-300">Projeção Sincronizada • Holyrics</span>
