@@ -29,14 +29,13 @@ export const PulpitView: React.FC = () => {
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  // Sincronização nativa da projeção do Holyrics (Push / WebSocket)
   const {
     slide: holyricsSlide,
     isProjecting: isHolyricsProjecting,
     isMinimized: isHolyricsMinimized,
     dismiss: dismissHolyrics,
-    restore: restoreHolyrics,
-  } = useHolyricsSync(room?.holyrics_url);
+    restore: restoreHolyrics
+  } = useHolyricsSync(room?.id, room?.has_holyrics);
 
   if (!room) return <LoadingScreen />;
 
