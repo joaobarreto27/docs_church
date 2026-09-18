@@ -42,6 +42,14 @@ function getDatabaseUrl(): string {
   return url.replace(/^["']+|["']+$/g, '').trim();
 }
 
+interface CacheEntry {
+  url: string | null;
+  expiresAt: number;
+}
+
+const roomUrlCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 30 * 1000; // 30s de cache para evitar sobrecarga no Neon
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -53,29 +61,46 @@ export default async function handler(req: any, res: any) {
 
   const roomId = String(req.query?.roomId || req.body?.roomId || '').trim();
   let targetUrl = String(req.query?.url || req.body?.url || '').trim();
+  const forceFresh = req.query?.fresh === '1';
 
-  // 1. Se roomId for fornecido, busca a URL em segredo no banco (Caixa Preta)
+  // 1. Se roomId for fornecido, busca no cache ou consulta o banco Neon (Caixa Preta)
   if (roomId) {
-    try {
-      const dbUrl = getDatabaseUrl();
-      if (!dbUrl) {
-        return res.status(500).json({ error: 'Configuração de banco indisponível no servidor.' });
-      }
-      const sql = neon(dbUrl);
-      const roomRows = await sql`
-        SELECT holyrics_url 
-        FROM rooms 
-        WHERE (id::text = ${roomId} OR UPPER(code) = ${roomId.toUpperCase()}) 
-          AND status = 'active' 
-        LIMIT 1
-      `;
+    const cacheKey = roomId.toUpperCase();
+    const cached = roomUrlCache.get(cacheKey);
 
-      if (!roomRows || roomRows.length === 0 || !roomRows[0].holyrics_url) {
-        return res.status(204).end(); // Sem projeção ativa para esta sala
+    if (!forceFresh && cached && cached.expiresAt > Date.now()) {
+      if (!cached.url) {
+        return res.status(204).end();
       }
-      targetUrl = String(roomRows[0].holyrics_url).trim();
-    } catch (err: any) {
-      return res.status(500).json({ error: 'Erro ao consultar status da sala.' });
+      targetUrl = cached.url;
+    } else {
+      try {
+        const dbUrl = getDatabaseUrl();
+        if (!dbUrl) {
+          return res.status(500).json({ error: 'Configuração de banco indisponível no servidor.' });
+        }
+        const sql = neon(dbUrl);
+        const roomRows = await sql`
+          SELECT holyrics_url 
+          FROM rooms 
+          WHERE (id::text = ${roomId} OR UPPER(code) = ${cacheKey}) 
+            AND status = 'active' 
+          LIMIT 1
+        `;
+
+        const foundUrl = roomRows?.[0]?.holyrics_url ? String(roomRows[0].holyrics_url).trim() : null;
+        roomUrlCache.set(cacheKey, {
+          url: foundUrl,
+          expiresAt: Date.now() + (foundUrl ? CACHE_TTL_MS : 10000)
+        });
+
+        if (!foundUrl) {
+          return res.status(204).end(); // Sem projeção ativa para esta sala
+        }
+        targetUrl = foundUrl;
+      } catch (err: any) {
+        return res.status(500).json({ error: 'Erro ao consultar status da sala.' });
+      }
     }
   }
 

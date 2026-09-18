@@ -20,8 +20,9 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef<boolean>(true);
-  const pollIntervalRef = useRef<any>(null);
+  const pollTimeoutRef = useRef<any>(null);
   const isFetchingRef = useRef<boolean>(false);
+  const isProjectingRef = useRef<boolean>(false);
 
   const dismiss = useCallback(() => setIsMinimized(true), []);
   const restore = useCallback(() => setIsMinimized(false), []);
@@ -31,22 +32,25 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
     if (parsed) {
       setSlide(parsed);
       setIsProjecting(true);
+      isProjectingRef.current = true;
     } else {
       setSlide(null);
       setIsProjecting(false);
+      isProjectingRef.current = false;
       setIsMinimized(false);
     }
     setError(null);
+    return Boolean(parsed);
   }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
     const target = (roomIdOrUrl || '').trim();
 
-    // Se hasHolyricsFlag for explicitamente falso ou não houver target, desativa
     if (!target || hasHolyricsFlag === false) {
       setSlide(null);
       setIsProjecting(false);
+      isProjectingRef.current = false;
       setIsMinimized(false);
       setIsConnected(false);
       return;
@@ -57,23 +61,38 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
       ? `/api/holyrics?url=${encodeURIComponent(sanitizeHolyricsBaseUrl(target))}`
       : `/api/holyrics?roomId=${encodeURIComponent(target)}`;
 
+    const scheduleNext = (delayMs: number) => {
+      if (!isMountedRef.current) return;
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = setTimeout(poll, delayMs);
+    };
+
     const poll = async () => {
       if (!isMountedRef.current || isFetchingRef.current) return;
       isFetchingRef.current = true;
+      let hadActiveSlide = isProjectingRef.current;
+      let requestSuccess = false;
+
       try {
         const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 3000);
+        const tid = setTimeout(() => controller.abort(), 2500);
 
-        const res = await fetch(fetchUrl, {
-          signal: controller.signal
-        });
+        const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(tid);
 
         if (res.ok) {
           const data = await res.json();
           if (isMountedRef.current) {
-            handleIncomingData(data);
+            hadActiveSlide = handleIncomingData(data);
             setIsConnected(true);
+            requestSuccess = true;
+          }
+        } else if (res.status === 204) {
+          // 204: Sem projeção ativa
+          if (isMountedRef.current) {
+            handleIncomingData(null);
+            setIsConnected(true);
+            requestSuccess = true;
           }
         } else {
           if (isMountedRef.current) setIsConnected(false);
@@ -82,27 +101,38 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
         if (isMountedRef.current) setIsConnected(false);
       } finally {
         isFetchingRef.current = false;
+        if (isMountedRef.current) {
+          const isHidden = typeof document !== 'undefined' && document.hidden;
+          let nextDelay = 3500;
+          if (isHidden) {
+            nextDelay = 6000;
+          } else if (!requestSuccess) {
+            nextDelay = 4000; // Backoff anti-sobrecarga em caso de falha de conexão
+          } else if (hadActiveSlide) {
+            nextDelay = 1400; // Polling ágil durante o louvor com cache no servidor
+          }
+          scheduleNext(nextDelay);
+        }
       }
     };
 
     poll();
-    const intervalMs = typeof document !== 'undefined' && document.hidden ? 5000 : 1200;
-    pollIntervalRef.current = setInterval(poll, intervalMs);
 
     const handleVisibilityChange = () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      const newInterval = document.hidden ? 5000 : 1200;
-      pollIntervalRef.current = setInterval(poll, newInterval);
-      if (!document.hidden) poll();
+      if (typeof document !== 'undefined' && !document.hidden) {
+        // Ao voltar à aba, consulta imediatamente
+        if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+        poll();
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMountedRef.current = false;
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
