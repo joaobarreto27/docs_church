@@ -103,8 +103,8 @@ export const HolyricsOverlay: React.FC<HolyricsOverlayProps> = ({ slide, onMinim
       </header>
 
       {/* Área Central: Versículo / Letra 100% Centralizado (Horizontal e Vertical) */}
-      <main className={`relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 my-auto mx-auto w-full ${containerClass}`}>
-        <p className={`font-sans font-medium sm:font-semibold ${fontSizeClass} ${lineHeightClass} text-white whitespace-pre-line tracking-normal sm:tracking-wide drop-shadow-md text-center max-w-full`}>
+      <main className={`relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4 sm:px-6 my-auto mx-auto w-full overflow-y-auto max-h-[75vh] py-2 scrollbar-none ${containerClass}`}>
+        <p className={`font-sans font-medium sm:font-semibold ${fontSizeClass} ${lineHeightClass} text-white whitespace-pre-line tracking-normal sm:tracking-wide drop-shadow-md text-center max-w-full my-auto`}>
           {slide.text}
         </p>
       </main>

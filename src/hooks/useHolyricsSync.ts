@@ -92,12 +92,12 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
     };
 
     poll();
-    const intervalMs = typeof document !== 'undefined' && document.hidden ? 4000 : 1000;
+    const intervalMs = typeof document !== 'undefined' && document.hidden ? 4000 : 1100;
     pollIntervalRef.current = setInterval(poll, intervalMs);
 
     const handleVisibilityChange = () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      const newInterval = typeof document !== 'undefined' && document.hidden ? 4000 : 1000;
+      const newInterval = typeof document !== 'undefined' && document.hidden ? 4000 : 1100;
       pollIntervalRef.current = setInterval(poll, newInterval);
       if (typeof document !== 'undefined' && !document.hidden) poll();
     };
