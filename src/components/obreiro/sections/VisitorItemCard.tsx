@@ -44,8 +44,28 @@ export const VisitorItemCard: React.FC<VisitorItemCardProps> = ({
           <textarea
             rows={1}
             value={editingText}
-            onChange={(e) => setEditingText(e.target.value)}
-            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none resize-none leading-relaxed font-medium"
+            onChange={(e) => {
+              e.target.style.height = 'auto';
+              e.target.style.height = `${Math.max(36, e.target.scrollHeight)}px`;
+              setEditingText(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSave();
+              } else if (e.key === 'Escape') {
+                setIsEditing(false);
+              }
+            }}
+            ref={(el) => {
+              if (el) {
+                el.style.height = 'auto';
+                el.style.height = `${Math.max(36, el.scrollHeight)}px`;
+              }
+            }}
+            autoFocus
+            className="flex-1 bg-transparent py-1.5 px-1 text-sm sm:text-base font-sans text-church-charcoal border-b-2 border-church-gold outline-none resize-none overflow-hidden leading-relaxed break-words font-medium"
+            style={{ minHeight: '36px' }}
           />
         </div>
         <div className="flex items-center justify-end gap-2 pt-1 border-t border-church-sand/50">
