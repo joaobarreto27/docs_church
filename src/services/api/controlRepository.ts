@@ -62,12 +62,13 @@ export const controlRepository = {
     });
   },
 
-  async updateRoomHolyricsUrl(roomId: string, url: string | null, token?: string): Promise<{ success: boolean; holyrics_url?: string | null; error?: string }> {
+  async updateRoomHolyricsUrl(roomId: string, url: string | null, adminKey: string, token?: string): Promise<{ success: boolean; has_holyrics?: boolean; error?: string }> {
     try {
-      return await postApi<{ success: boolean; holyrics_url?: string | null; error?: string }>('/api/room', {
+      return await postApi<{ success: boolean; has_holyrics?: boolean; error?: string }>('/api/room', {
         action: 'update-holyrics-url',
         roomId,
         url,
+        adminKey,
         sessionToken: token,
       }, token);
     } catch (err: any) {

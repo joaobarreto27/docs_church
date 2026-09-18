@@ -124,7 +124,7 @@ export default async function handler(req: any, res: any) {
       version,
       active_alert: row.active_alert ?? null,
       current_page: Number(row.current_page ?? 1),
-      holyrics_url: row.holyrics_url ?? null,
+      has_holyrics: Boolean(row.holyrics_url),
       blocks,
       hasChanged,
     });

@@ -1,7 +1,10 @@
+import { neon } from '@neondatabase/serverless';
+
 /**
- * Proxy serverless para buscar dados do Holyrics via ngrok.
- * Contorna CORS (Holyrics não responde OPTIONS) e restringe
- * domínios de destino para evitar abuso como proxy SSRF aberto.
+ * Proxy serverless seguro para o Holyrics.
+ * - Caixa Preta: busca a holyrics_url no Postgres Neon a partir do roomId.
+ * - O frontend (pastor/controlador) NUNCA recebe ou envia a URL no tráfego de produção.
+ * - Valida whitelist estrita de hostnames permitidos (anti-SSRF).
  */
 
 const ALLOWED_HOSTNAME_PATTERNS = [
@@ -24,6 +27,21 @@ function isAllowedUrl(raw: string): boolean {
   }
 }
 
+function getDatabaseUrl(): string {
+  const raw = process.env.DATABASE_URL || 
+              process.env.POSTGRES_URL || 
+              process.env.NEON_DATABASE_URL || 
+              process.env.DATABASE_URL_UNPOOLED ||
+              process.env.VITE_DATABASE_URL;
+  if (!raw) return '';
+  let url = raw.trim();
+  if (url.startsWith('DATABASE_URL=')) url = url.substring('DATABASE_URL='.length).trim();
+  else if (url.startsWith('POSTGRES_URL=')) url = url.substring('POSTGRES_URL='.length).trim();
+  else if (url.startsWith('NEON_DATABASE_URL=')) url = url.substring('NEON_DATABASE_URL='.length).trim();
+  else if (url.startsWith('VITE_DATABASE_URL=')) url = url.substring('VITE_DATABASE_URL='.length).trim();
+  return url.replace(/^["']+|["']+$/g, '').trim();
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -33,12 +51,39 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
-  const rawUrl = String(req.query?.url || req.body?.url || '').trim();
-  if (!rawUrl) {
-    return res.status(400).json({ error: 'Parâmetro url é obrigatório' });
+  const roomId = String(req.query?.roomId || req.body?.roomId || '').trim();
+  let targetUrl = String(req.query?.url || req.body?.url || '').trim();
+
+  // 1. Se roomId for fornecido, busca a URL em segredo no banco (Caixa Preta)
+  if (roomId) {
+    try {
+      const dbUrl = getDatabaseUrl();
+      if (!dbUrl) {
+        return res.status(500).json({ error: 'Configuração de banco indisponível no servidor.' });
+      }
+      const sql = neon(dbUrl);
+      const roomRows = await sql`
+        SELECT holyrics_url 
+        FROM rooms 
+        WHERE (id::text = ${roomId} OR UPPER(code) = ${roomId.toUpperCase()}) 
+          AND status = 'active' 
+        LIMIT 1
+      `;
+
+      if (!roomRows || roomRows.length === 0 || !roomRows[0].holyrics_url) {
+        return res.status(204).end(); // Sem projeção ativa para esta sala
+      }
+      targetUrl = String(roomRows[0].holyrics_url).trim();
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Erro ao consultar status da sala.' });
+    }
   }
 
-  let cleanBase = rawUrl.replace(/\/$/, '');
+  if (!targetUrl) {
+    return res.status(400).json({ error: 'Parâmetro roomId ou url é obrigatório.' });
+  }
+
+  let cleanBase = targetUrl.replace(/\/$/, '');
   cleanBase = cleanBase.replace(/\/view\/text(\.json)?$/, '');
   cleanBase = cleanBase.replace(/\/view\/widescreen$/, '');
   cleanBase = cleanBase.replace(/\/view$/, '');

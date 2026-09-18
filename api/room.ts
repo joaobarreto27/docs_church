@@ -193,8 +193,9 @@ export default async function handler(req: any, res: any) {
       }
 
       const room = roomRows[0];
-      const blocks = await getRoomBlocks(room.id);
-      return res.status(200).json({ room, blocks });
+      const { controller_pin: _p, holyrics_url, ...safeRoom } = room;
+      const blocks = await getRoomBlocks(safeRoom.id);
+      return res.status(200).json({ room: { ...safeRoom, has_holyrics: !!holyrics_url }, blocks });
     }
 
     // 2. JOIN: Entra na sala e valida PIN se papel for 'controlador'
@@ -243,13 +244,13 @@ export default async function handler(req: any, res: any) {
         sessionToken = signControllerToken(roomRow.id, pin);
       }
 
-      // Remove controller_pin antes de devolver ao cliente
-      const { controller_pin, ...safeRoom } = roomRow;
+      // Remove controller_pin e holyrics_url antes de devolver ao cliente (Caixa Preta)
+      const { controller_pin, holyrics_url, ...safeRoom } = roomRow;
       const blocks = await getRoomBlocks(safeRoom.id);
 
       return res.status(200).json({
         success: true,
-        room: safeRoom,
+        room: { ...safeRoom, has_holyrics: !!holyrics_url },
         blocks,
         sessionToken
       });
@@ -275,10 +276,10 @@ export default async function handler(req: any, res: any) {
         SET title = ${title}, controller_pin = ${pin}, status = 'active', updated_at = NOW()
         RETURNING id, code, title, service_date, active_alert, current_page, version, status, holyrics_url, created_at, updated_at
       `;
-      const room = roomRows[0];
+      const { holyrics_url, ...safeRoom } = roomRows[0];
 
       // Garante os blocos litúrgicos padrão
-      const existing = await getRoomBlocks(room.id);
+      const existing = await getRoomBlocks(safeRoom.id);
       let blocks = existing;
 
       if (!existing || existing.length === 0) {
@@ -305,20 +306,20 @@ export default async function handler(req: any, res: any) {
         for (const b of defaultBlocks) {
           await sql`
             INSERT INTO liturgical_blocks (room_id, block_type, title, content, order_index, sheet_assignment)
-            VALUES (${room.id}, ${b.type}, ${b.title}, ${JSON.stringify(b.content)}::jsonb, ${b.order}, ${b.sheet})
+            VALUES (${safeRoom.id}, ${b.type}, ${b.title}, ${JSON.stringify(b.content)}::jsonb, ${b.order}, ${b.sheet})
             ON CONFLICT (room_id, block_type) DO NOTHING
           `;
         }
-        blocks = await getRoomBlocks(room.id);
+        blocks = await getRoomBlocks(safeRoom.id);
       }
 
-      const sessionToken = signControllerToken(room.id, pin);
+      const sessionToken = signControllerToken(safeRoom.id, pin);
       return res.status(200).json({
         success: true,
-        room,
+        room: { ...safeRoom, has_holyrics: !!holyrics_url },
         blocks,
         sessionToken,
-        code: room.code
+        code: safeRoom.code
       });
     }
 
@@ -383,6 +384,24 @@ export default async function handler(req: any, res: any) {
         return res.status(401).json({ success: false, error: 'Acesso não autorizado ao controlador.' });
       }
 
+      // Validação Inviolável da Chave Mestra de Administração (Caixa Preta)
+      const adminKey = String(body.adminKey || body.admin_key || '').trim();
+      const expectedKey = String(process.env.HOLYRICS_ADMIN_KEY || '').trim();
+
+      if (!expectedKey) {
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Chave Mestra não configurada no servidor (HOLYRICS_ADMIN_KEY).' 
+        });
+      }
+
+      if (!adminKey || adminKey !== expectedKey) {
+        return res.status(403).json({ 
+          success: false, 
+          error: 'Chave Mestra de Administração incorreta.' 
+        });
+      }
+
       const rawUrl = String(body.url ?? '').trim();
       const holyricsUrl = rawUrl ? rawUrl.slice(0, 255) : null;
 
@@ -395,7 +414,8 @@ export default async function handler(req: any, res: any) {
         SET holyrics_url = ${holyricsUrl}, version = version + 1, updated_at = NOW()
         WHERE id::text = ${roomId}
       `;
-      return res.status(200).json({ success: true, holyrics_url: holyricsUrl });
+      // Retorno estrito: NUNCA expõe a URL ou a Chave
+      return res.status(200).json({ success: true, has_holyrics: !!holyricsUrl });
     }
 
     if (action === 'send-alert') {

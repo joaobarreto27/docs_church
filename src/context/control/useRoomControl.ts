@@ -139,12 +139,12 @@ export function useRoomControl({
   );
 
   const updateHolyricsUrl = useCallback(
-    async (newUrl: string | null): Promise<{ success: boolean; error?: string }> => {
+    async (newUrl: string | null, adminKey: string): Promise<{ success: boolean; error?: string }> => {
       if (!room) return { success: false, error: 'Nenhuma sala ativa.' };
       try {
-        const res = await updateRoomHolyricsUrl(room.id, newUrl, sessionToken);
+        const res = await updateRoomHolyricsUrl(room.id, newUrl, adminKey, sessionToken);
         if (res.success) {
-          setRoom((prev) => (prev ? { ...prev, holyrics_url: res.holyrics_url ?? null } : null));
+          setRoom((prev) => (prev ? { ...prev, has_holyrics: res.has_holyrics ?? false } : null));
           broadcastLocalChange();
           return { success: true };
         }

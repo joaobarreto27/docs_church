@@ -12,7 +12,7 @@ export interface UseHolyricsSyncReturn {
   restore: () => void;
 }
 
-export function useHolyricsSync(holyricsUrl?: string | null): UseHolyricsSyncReturn {
+export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: boolean): UseHolyricsSyncReturn {
   const [slide, setSlide] = useState<HolyricsSlide | null>(null);
   const [isProjecting, setIsProjecting] = useState<boolean>(false);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
@@ -41,9 +41,10 @@ export function useHolyricsSync(holyricsUrl?: string | null): UseHolyricsSyncRet
 
   useEffect(() => {
     isMountedRef.current = true;
-    const cleanBase = sanitizeHolyricsBaseUrl(holyricsUrl || '');
+    const target = (roomIdOrUrl || '').trim();
 
-    if (!cleanBase) {
+    // Se hasHolyricsFlag for explicitamente falso ou não houver target, desativa
+    if (!target || hasHolyricsFlag === false) {
       setSlide(null);
       setIsProjecting(false);
       setIsMinimized(false);
@@ -51,7 +52,10 @@ export function useHolyricsSync(holyricsUrl?: string | null): UseHolyricsSyncRet
       return;
     }
 
-    const fetchUrl = `/api/holyrics?url=${encodeURIComponent(cleanBase)}`;
+    const isDirectUrl = target.startsWith('http://') || target.startsWith('https://');
+    const fetchUrl = isDirectUrl
+      ? `/api/holyrics?url=${encodeURIComponent(sanitizeHolyricsBaseUrl(target))}`
+      : `/api/holyrics?roomId=${encodeURIComponent(target)}`;
 
     const poll = async () => {
       if (!isMountedRef.current || isFetchingRef.current) return;
@@ -102,7 +106,7 @@ export function useHolyricsSync(holyricsUrl?: string | null): UseHolyricsSyncRet
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [holyricsUrl, handleIncomingData]);
+  }, [roomIdOrUrl, hasHolyricsFlag, handleIncomingData]);
 
   return {
     slide,
