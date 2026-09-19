@@ -58,6 +58,7 @@ export function usePulpitLayout() {
   });
 
   const [activeTab, setActiveTab] = useState<PulpitActiveTab>('prayers');
+  const [isPreachingMode, setIsPreachingMode] = useState<boolean>(false);
 
   const handleToggleSheetLayout = (mode: SheetLayoutMode) => {
     setSheetLayout(mode);
@@ -65,6 +66,9 @@ export function usePulpitLayout() {
       localStorage.setItem('pulpit_sheet_layout', mode);
     } catch {}
   };
+
+  const handleEnterPreachingMode = () => setIsPreachingMode(true);
+  const handleExitPreachingMode = () => setIsPreachingMode(false);
 
   const effectiveLayout = isMobilePhone && sheetLayout === 'two-sheets' ? 'four-views' : sheetLayout;
 
@@ -76,6 +80,11 @@ export function usePulpitLayout() {
     effectiveLayout,
     activeTab,
     setActiveTab,
+    isPreachingMode,
+    setIsPreachingMode,
+    handleEnterPreachingMode,
+    handleExitPreachingMode,
     handleToggleSheetLayout,
   };
 }
+

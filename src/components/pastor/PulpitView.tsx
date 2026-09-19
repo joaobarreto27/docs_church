@@ -10,6 +10,7 @@ import {
   PulpitSingleSheetView,
   PulpitFooter,
   PulpitLeaveConfirmModal,
+  PulpitPreachingView,
 } from './components';
 import { useHolyricsSync } from '../../hooks';
 import { HolyricsOverlay, HolyricsReturnPill } from '../holyrics';
@@ -24,6 +25,9 @@ export const PulpitView: React.FC = () => {
     effectiveLayout,
     activeTab,
     setActiveTab,
+    isPreachingMode,
+    handleEnterPreachingMode,
+    handleExitPreachingMode,
     handleToggleSheetLayout,
   } = usePulpitLayout();
 
@@ -34,42 +38,24 @@ export const PulpitView: React.FC = () => {
     isProjecting: isHolyricsProjecting,
     isMinimized: isHolyricsMinimized,
     dismiss: dismissHolyrics,
-    restore: restoreHolyrics
+    restore: restoreHolyrics,
   } = useHolyricsSync(room?.id, room?.has_holyrics);
 
   if (!room) return <LoadingScreen />;
 
   const {
-    visitors,
-    prayers,
-    youtube,
-    opps,
-    choirs,
-    fourViewsPrayersLeft,
-    fourViewsPrayersRight,
-    prayersSplitIdx,
-    fourViewsYoutubeLeft,
-    fourViewsYoutubeRight,
-    youtubeSplitIdx,
-    fourViewsVisitorsLeft,
-    fourViewsVisitorsRight,
-    visitorsSplitIdx,
-    sheet1Prayers,
-    overflowPresencial
+    visitors, prayers, youtube, opps, choirs,
+    fourViewsPrayersLeft, fourViewsPrayersRight, prayersSplitIdx,
+    fourViewsYoutubeLeft, fourViewsYoutubeRight, youtubeSplitIdx,
+    fourViewsVisitorsLeft, fourViewsVisitorsRight, visitorsSplitIdx,
+    sheet1Prayers, overflowPresencial,
   } = extractPulpitData(blocks);
 
   const {
-    sheet1ScrollRef,
-    sheet2ScrollRef,
-    hasMoreSheet1,
-    isSheet1Scrolled,
-    hasMoreSheet2,
-    isSheet2Scrolled,
-    checkScrollState,
-    handleScrollSheet1Down,
-    handleScrollSheet1Up,
-    handleScrollSheet2Down,
-    handleScrollSheet2Up,
+    sheet1ScrollRef, sheet2ScrollRef,
+    hasMoreSheet1, isSheet1Scrolled, hasMoreSheet2, isSheet2Scrolled,
+    checkScrollState, handleScrollSheet1Down, handleScrollSheet1Up,
+    handleScrollSheet2Down, handleScrollSheet2Up,
   } = usePulpitScroll([visitors, prayers, youtube, fontScale, opps, choirs, effectiveLayout]);
 
   return (
@@ -80,7 +66,14 @@ export const PulpitView: React.FC = () => {
         className="flex-1 overflow-hidden h-full max-h-full min-h-0 flex flex-col"
         style={{ fontSize: `${fontScale}rem` }}
       >
-        {effectiveLayout === 'four-views' ? (
+        {isPreachingMode ? (
+          <PulpitPreachingView
+            roomTitle={room.title}
+            holyricsSlide={holyricsSlide}
+            isHolyricsProjecting={Boolean(isHolyricsProjecting && holyricsSlide)}
+            onExitPreaching={handleExitPreachingMode}
+          />
+        ) : effectiveLayout === 'four-views' ? (
           <PulpitMobileView
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -138,18 +131,21 @@ export const PulpitView: React.FC = () => {
         )}
       </main>
 
-      <PulpitFooter
-        effectiveLayout={effectiveLayout}
-        roomTitle={room.title}
-        fontScale={fontScale}
-        isConnected={isConnected}
-        isFastSync={isFastSync}
-        hasFreshUpdates={hasFreshUpdates}
-        isMobilePhone={isMobilePhone}
-        onToggleSheetLayout={handleToggleSheetLayout}
-        onFontChange={handleFontChange}
-        onOpenLeaveConfirm={() => setShowLeaveConfirm(true)}
-      />
+      {!isPreachingMode && (
+        <PulpitFooter
+          effectiveLayout={effectiveLayout}
+          roomTitle={room.title}
+          fontScale={fontScale}
+          isConnected={isConnected}
+          isFastSync={isFastSync}
+          hasFreshUpdates={hasFreshUpdates}
+          isMobilePhone={isMobilePhone}
+          onToggleSheetLayout={handleToggleSheetLayout}
+          onFontChange={handleFontChange}
+          onEnterPreachingMode={handleEnterPreachingMode}
+          onOpenLeaveConfirm={() => setShowLeaveConfirm(true)}
+        />
+      )}
 
       <PulpitLeaveConfirmModal
         isOpen={showLeaveConfirm}
@@ -157,20 +153,14 @@ export const PulpitView: React.FC = () => {
         onConfirm={leaveRoom}
       />
 
-      {/* TELA CHEIA NATIVA DO TELÃO (QUANDO HOUVER PROJEÇÃO ATIVA E NÃO MINIMIZADA) */}
-      {isHolyricsProjecting && !isHolyricsMinimized && holyricsSlide && (
-        <HolyricsOverlay
-          slide={holyricsSlide}
-          onMinimize={dismissHolyrics}
-        />
+      {/* TELÃO (QUANDO HOUVER PROJEÇÃO ATIVA E NÃO MINIMIZADA, FORA DO MODO PREGAÇÃO) */}
+      {!isPreachingMode && isHolyricsProjecting && !isHolyricsMinimized && holyricsSlide && (
+        <HolyricsOverlay slide={holyricsSlide} onMinimize={dismissHolyrics} />
       )}
 
-      {/* BOTÃO FLUTUANTE DE RETORNO (QUANDO MINIMIZADO NO PÚLPITO DURANTE A PROJEÇÃO) */}
-      {isHolyricsProjecting && isHolyricsMinimized && holyricsSlide && (
-        <HolyricsReturnPill
-          slide={holyricsSlide}
-          onRestore={restoreHolyrics}
-        />
+      {/* BOTÃO FLUTUANTE DE RETORNO DO TELÃO */}
+      {!isPreachingMode && isHolyricsProjecting && isHolyricsMinimized && holyricsSlide && (
+        <HolyricsReturnPill slide={holyricsSlide} onRestore={restoreHolyrics} />
       )}
     </div>
   );
