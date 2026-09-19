@@ -10,4 +10,5 @@ export * from './PulpitLeaveConfirmModal';
 export * from './PulpitYoutubePrayers';
 export * from './PulpitOpportunitiesList';
 export * from './PulpitChoirsList';
+export * from './PulpitPreachingView';
 export * from './tabs';
