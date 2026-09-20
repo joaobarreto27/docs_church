@@ -39,32 +39,29 @@ export const ChoirsChecklistSection: React.FC<ChoirsChecklistSectionProps> = ({
       id: Date.now().toString(),
       name: newChoirName.trim(),
       checked: true,
+      status: 'ready',
     };
 
     onAppendItems(blockId, [newItem]);
     setNewChoirName('');
-    showFeedback('Departamento adicionado com sucesso!');
+    showFeedback('Departamento adicionado e confirmado com sucesso!');
   };
 
-  const handleToggleChoir = (id: string) => {
-    if (!blockId) return;
-    const updated = choirsList.map((ch) => (ch.id === id ? { ...ch, checked: !ch.checked } : ch));
-    onUpdateBlock(blockId, updated);
-  };
-
-  const handleToggleChoirStatus = (id: string, status?: 'idle' | 'ready' | 'done') => {
+  const handleCycleChoirStatus = (id: string) => {
     if (!blockId) return;
     const updated = choirsList.map((ch) => {
       if (ch.id !== id) return ch;
-      const nextStatus =
-        status !== undefined
-          ? status
-          : ch.status === 'ready'
-          ? 'done'
-          : ch.status === 'done'
-          ? 'idle'
-          : 'ready';
-      return { ...ch, status: nextStatus, checked: true };
+      // Ciclo: 
+      // 0 (!checked) -> 1 (checked: true, status: 'ready')
+      // 1 (checked && status !== 'done') -> 2 (checked: true, status: 'done')
+      // 2 (checked && status === 'done') -> 0 (checked: false, status: 'idle')
+      if (!ch.checked) {
+        return { ...ch, checked: true, status: 'ready' as const };
+      }
+      if (ch.status === 'done') {
+        return { ...ch, checked: false, status: 'idle' as const };
+      }
+      return { ...ch, checked: true, status: 'done' as const };
     });
     onUpdateBlock(blockId, updated);
   };
@@ -155,8 +152,7 @@ export const ChoirsChecklistSection: React.FC<ChoirsChecklistSectionProps> = ({
                 onSaveEdit={handleSaveChoirName}
                 onCancelEdit={() => setEditingChoirId(null)}
                 onEditingNameChange={setEditingChoirName}
-                onToggleChecked={handleToggleChoir}
-                onToggleStatus={handleToggleChoirStatus}
+                onCycleStatus={handleCycleChoirStatus}
                 onDelete={handleDeleteChoir}
               />
             ))
@@ -164,7 +160,7 @@ export const ChoirsChecklistSection: React.FC<ChoirsChecklistSectionProps> = ({
         </div>
       </div>
       <p className="text-[11px] text-church-muted mt-4 font-serif italic border-t border-church-sand/50 pt-2">
-        * Toque no botão de status para marcar nos Departamentos do púlpito. Use o lápis para renomear ou a lixeira para excluir.
+        * Toque no botão de status para avançar o ciclo (Confirmar Presença ➔ Confirmado ➔ Já Louvou). Use o lápis para renomear ou a lixeira para excluir.
       </p>
     </section>
   );

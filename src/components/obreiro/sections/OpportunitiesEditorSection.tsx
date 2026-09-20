@@ -48,10 +48,11 @@ export const OpportunitiesEditorSection: React.FC<OpportunitiesEditorSectionProp
     const newItems: OpportunityItem[] = linesToProcess.map((name, idx) => ({
       id: `${Date.now()}_opp_${idx}`,
       name,
+      status: 'ready',
     }));
     onAppendItems(blockId, newItems);
     handleClearBatch();
-    showFeedback(`${newItems.length} oportunidade(s) adicionada(s) ao púlpito!`);
+    showFeedback(`${newItems.length} oportunidade(s) adicionada(s) e confirmada(s) no púlpito!`);
   };
 
   const handleStartEdit = (op: OpportunityItem) => {
@@ -72,7 +73,7 @@ export const OpportunitiesEditorSection: React.FC<OpportunitiesEditorSectionProp
     if (!blockId) return;
     const updated = oppsList.map((op) => {
       if (op.id !== id) return op;
-      const nextStatus = status !== undefined ? status : op.status === 'ready' ? 'done' : op.status === 'done' ? 'idle' : 'ready';
+      const nextStatus = status !== undefined ? status : op.status === 'done' ? 'ready' : 'done';
       return { ...op, status: nextStatus };
     });
     onUpdateBlock(blockId, updated);

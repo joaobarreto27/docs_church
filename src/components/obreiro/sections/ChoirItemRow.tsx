@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, Check, X, CheckCircle2, Clock } from 'lucide-react';
+import { Pencil, Trash2, Check, X, CheckCircle2, Plus } from 'lucide-react';
 import { ChoirItem } from '../../../types/liturgy';
 
 interface ChoirItemRowProps {
@@ -10,8 +10,7 @@ interface ChoirItemRowProps {
   onSaveEdit: (id: string) => void;
   onCancelEdit: () => void;
   onEditingNameChange: (name: string) => void;
-  onToggleChecked: (id: string) => void;
-  onToggleStatus: (id: string, status?: 'idle' | 'ready' | 'done') => void;
+  onCycleStatus: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -23,14 +22,18 @@ export const ChoirItemRow: React.FC<ChoirItemRowProps> = ({
   onSaveEdit,
   onCancelEdit,
   onEditingNameChange,
-  onToggleChecked,
-  onToggleStatus,
+  onCycleStatus,
   onDelete,
 }) => {
+  const isDone = ch.checked && ch.status === 'done';
+  const isConfirmed = ch.checked && !isDone;
+
   return (
     <div
-      className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all ${
-        ch.checked
+      className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-colors ${
+        isDone
+          ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
+          : isConfirmed
           ? 'bg-church-gold/10 border-church-gold text-church-charcoal'
           : 'bg-church-parchment/40 border-church-sand text-church-muted hover:bg-white'
       }`}
@@ -56,6 +59,7 @@ export const ChoirItemRow: React.FC<ChoirItemRowProps> = ({
             type="button"
             onClick={() => onSaveEdit(ch.id)}
             className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+            title="Salvar nome"
           >
             <Check className="w-3.5 h-3.5" />
           </button>
@@ -63,64 +67,64 @@ export const ChoirItemRow: React.FC<ChoirItemRowProps> = ({
             type="button"
             onClick={onCancelEdit}
             className="p-1.5 rounded-lg bg-stone-200 text-stone-700 hover:bg-stone-300 transition-colors cursor-pointer"
+            title="Cancelar edição"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 flex-1 min-w-0 mr-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
+          {/* Botão Único de Ciclo: [+ Confirmar] -> [Confirmado] -> [Já Louvou] -> [+ Confirmar] */}
           <button
             type="button"
-            onClick={() => onToggleChecked(ch.id)}
-            className={`text-xs px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
-              ch.checked
-                ? 'bg-church-gold text-white shadow-xs'
-                : 'bg-church-sand/70 text-church-muted hover:bg-church-sand'
+            onClick={() => onCycleStatus(ch.id)}
+            className={`text-xs px-2.5 sm:px-3 py-1.5 rounded-lg font-title font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 active:scale-[0.98] ${
+              isDone
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                : isConfirmed
+                ? 'bg-church-gold text-white shadow-xs hover:bg-church-gold-dark'
+                : 'bg-church-sand/50 text-church-charcoal/70 border border-church-sand hover:bg-church-sand hover:text-church-charcoal'
             }`}
+            title={
+              isDone
+                ? 'Já louvou no culto. Toque para desmarcar'
+                : isConfirmed
+                ? 'Confirmado no culto! Toque quando terminar de louvar'
+                : 'Toque para confirmar a presença deste departamento no culto'
+            }
           >
-            {ch.checked ? 'Confirmado' : 'Não participa'}
+            {isDone ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Já Louvou</span>
+              </>
+            ) : isConfirmed ? (
+              <>
+                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Confirmado</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Confirmar Presença</span>
+                <span className="xs:hidden">Confirmar</span>
+              </>
+            )}
           </button>
+
           <span
-            onClick={() => onToggleChecked(ch.id)}
-            className={`font-title text-sm cursor-pointer select-none truncate ${
-              ch.checked ? 'font-bold text-church-charcoal' : 'text-church-muted'
+            onClick={() => onCycleStatus(ch.id)}
+            className={`font-title text-sm cursor-pointer select-none truncate transition-colors ${
+              isDone
+                ? 'line-through text-emerald-900/80 font-semibold'
+                : isConfirmed
+                ? 'font-bold text-church-charcoal'
+                : 'text-church-muted'
             }`}
+            title="Toque para alternar o status do departamento"
           >
             {ch.name}
           </span>
-
-          {ch.checked && (
-            <div className="sm:ml-auto shrink-0 flex items-center gap-1">
-              {ch.status === 'done' ? (
-                <button
-                  type="button"
-                  onClick={() => onToggleStatus(ch.id, 'ready')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-title font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>Já Louvou / OK</span>
-                </button>
-              ) : ch.status === 'ready' ? (
-                <button
-                  type="button"
-                  onClick={() => onToggleStatus(ch.id, 'done')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-title font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs hover:bg-amber-600 transition-all cursor-pointer animate-pulse"
-                >
-                  <Clock className="w-3 h-3 text-white" />
-                  <span>Vai Cantar ➔ OK</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onToggleStatus(ch.id, 'ready')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-title font-semibold uppercase tracking-wider bg-church-parchment text-church-charcoal/80 border border-church-sand hover:bg-amber-50 hover:text-amber-900 transition-all cursor-pointer"
-                >
-                  <Clock className="w-3 h-3 text-church-gold" />
-                  <span>Escalar</span>
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
 
