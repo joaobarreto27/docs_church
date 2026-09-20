@@ -1,6 +1,10 @@
 import React from 'react';
 import { LayoutList, BookOpen, FileText, ZoomIn, ZoomOut, LogOut, Mic } from 'lucide-react';
 import { SheetLayoutMode } from '../hooks';
+import { PulpitClock } from './PulpitClock';
+
+// Feature Flag: altere para true para voltar a exibir o seletor de visualizações (4 Visões / 2 Folhas / Folha Única) no front
+const SHOW_LAYOUT_SELECTOR = false;
 
 export interface PulpitFooterProps {
   effectiveLayout: SheetLayoutMode;
@@ -140,9 +144,12 @@ export const PulpitFooter: React.FC<PulpitFooterProps> = ({
     <footer className="bg-church-parchment/90 border-t border-church-sand/70 px-2 sm:px-4 py-1.5 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-church-muted shrink-0 gap-1.5 sm:gap-2 select-none">
       {/* DESKTOP / TABLET (1 linha fluida) */}
       <div className="hidden sm:flex items-center justify-between w-full">
-        {statusIndicator}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {statusIndicator}
+          <PulpitClock />
+        </div>
         <div className="flex items-center gap-2">
-          {viewSelector}
+          {SHOW_LAYOUT_SELECTOR && viewSelector}
           {preachingButton}
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -154,14 +161,19 @@ export const PulpitFooter: React.FC<PulpitFooterProps> = ({
 
       {/* MOBILE (2 linhas organizadas) */}
       <div className="flex sm:hidden items-center justify-between gap-1 w-full">
-        {viewSelector}
-        {onEnterPreachingMode && (
-          <button type="button" onClick={onEnterPreachingMode} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-church-gold text-white text-[10px] font-title font-black uppercase tracking-wider cursor-pointer border border-church-gold-dark" title="Modo Pregação">
-            <Mic className="w-3 h-3 text-white shrink-0" />
-            <span>Pregação</span>
-          </button>
-        )}
-        {zoomControls}
+        <div className="flex items-center gap-1.5">
+          {SHOW_LAYOUT_SELECTOR && viewSelector}
+          <PulpitClock />
+        </div>
+        <div className="flex items-center gap-1">
+          {onEnterPreachingMode && (
+            <button type="button" onClick={onEnterPreachingMode} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-church-gold text-white text-[10px] font-title font-black uppercase tracking-wider cursor-pointer border border-church-gold-dark" title="Modo Pregação">
+              <Mic className="w-3 h-3 text-white shrink-0" />
+              <span>Pregação</span>
+            </button>
+          )}
+          {zoomControls}
+        </div>
       </div>
       <div className="flex sm:hidden items-center justify-between gap-2 w-full pt-1 border-t border-church-sand/40">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">

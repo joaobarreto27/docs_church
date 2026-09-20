@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mic, BookOpen, ArrowLeft } from 'lucide-react';
 import { HolyricsSlide } from '../../../types/holyrics';
+import { PulpitClock } from './PulpitClock';
 
 export interface PulpitPreachingViewProps {
   roomTitle: string;
@@ -34,6 +35,7 @@ export const PulpitPreachingView: React.FC<PulpitPreachingViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <PulpitClock />
           <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200">
             <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[11px] sm:text-xs font-bold text-emerald-800">Culto Ao Vivo</span>

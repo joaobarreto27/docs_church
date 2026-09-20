@@ -70,7 +70,14 @@ export function usePulpitLayout() {
   const handleEnterPreachingMode = () => setIsPreachingMode(true);
   const handleExitPreachingMode = () => setIsPreachingMode(false);
 
-  const effectiveLayout = isMobilePhone && sheetLayout === 'two-sheets' ? 'four-views' : sheetLayout;
+  // Forçar modo 4 visões no front-end mantendo código e lógica prontos para fácil reversão no futuro
+  const FORCE_FOUR_VIEWS = true;
+
+  const effectiveLayout = FORCE_FOUR_VIEWS
+    ? 'four-views'
+    : isMobilePhone && sheetLayout === 'two-sheets'
+    ? 'four-views'
+    : sheetLayout;
 
   return {
     fontScale,

@@ -11,4 +11,5 @@ export * from './PulpitYoutubePrayers';
 export * from './PulpitOpportunitiesList';
 export * from './PulpitChoirsList';
 export * from './PulpitPreachingView';
+export * from './PulpitClock';
 export * from './tabs';
