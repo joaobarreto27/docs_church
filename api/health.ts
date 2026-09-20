@@ -2,6 +2,9 @@ import { neon } from '@neondatabase/serverless';
 
 function getDatabaseUrl(): string {
   const raw = process.env.DATABASE_URL || 
+              process.env.DATABSE || 
+              process.env.DATABASE || 
+              process.env.DATABSE_URL || 
               process.env.POSTGRES_URL || 
               process.env.NEON_DATABASE_URL || 
               process.env.DATABASE_URL_UNPOOLED ||
@@ -14,6 +17,9 @@ function getDatabaseUrl(): string {
 
   let url = raw.trim();
   if (url.startsWith('DATABASE_URL=')) url = url.substring('DATABASE_URL='.length).trim();
+  else if (url.startsWith('DATABSE=')) url = url.substring('DATABSE='.length).trim();
+  else if (url.startsWith('DATABASE=')) url = url.substring('DATABASE='.length).trim();
+  else if (url.startsWith('DATABSE_URL=')) url = url.substring('DATABSE_URL='.length).trim();
   else if (url.startsWith('POSTGRES_URL=')) url = url.substring('POSTGRES_URL='.length).trim();
   else if (url.startsWith('NEON_DATABASE_URL=')) url = url.substring('NEON_DATABASE_URL='.length).trim();
   else if (url.startsWith('VITE_DATABASE_URL=')) url = url.substring('VITE_DATABASE_URL='.length).trim();

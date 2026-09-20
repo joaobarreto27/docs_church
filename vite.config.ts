@@ -78,7 +78,7 @@ function localApiPlugin(): Plugin {
 
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  process.env.DATABASE_URL = env.DATABASE_URL || env.VITE_DATABASE_URL || process.env.DATABASE_URL;
+  process.env.DATABASE_URL = env.DATABASE_URL || env.DATABSE || env.DATABASE || env.DATABSE_URL || env.VITE_DATABASE_URL || process.env.DATABASE_URL || process.env.DATABSE || process.env.DATABASE || process.env.DATABSE_URL;
 
   return {
     plugins: [
