@@ -19,7 +19,7 @@ interface OpportunityItemCardProps {
 export const OpportunityItemCard: React.FC<OpportunityItemCardProps> = ({
   op,
   index,
-  role,
+  role: _role,
   isEditing,
   editingText,
   onStartEdit,
@@ -93,49 +93,64 @@ export const OpportunityItemCard: React.FC<OpportunityItemCardProps> = ({
     );
   }
 
+  const isDone = op.status === 'done';
+
   return (
-    <div className="flex items-center justify-between p-2.5 rounded-xl bg-church-parchment/60 border border-church-sand hover:bg-church-parchment transition-colors">
-      <div className="text-sm font-sans flex-1">
-        <span className="font-mono text-xs font-bold text-church-gold-dark mr-1.5">{index + 1}.</span>
-        <span className="font-title text-sm font-semibold text-church-charcoal">{op.name}</span>
+    <div
+      className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
+        isDone
+          ? 'bg-emerald-50/50 border-emerald-200 text-emerald-950'
+          : 'bg-church-parchment/60 border-church-sand hover:bg-church-parchment'
+      }`}
+    >
+      <div className="text-sm font-sans flex-1 min-w-0 mr-2">
+        <span
+          className={`font-mono text-xs font-bold mr-1.5 ${
+            isDone ? 'text-emerald-700' : 'text-church-gold-dark'
+          }`}
+        >
+          {index + 1}.
+        </span>
+        <span
+          className={`font-title text-sm truncate ${
+            isDone
+              ? 'line-through text-emerald-900/80 font-semibold'
+              : 'font-semibold text-church-charcoal'
+          }`}
+        >
+          {op.name}
+        </span>
       </div>
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {role === 'controlador' && (
-          <>
-            {op.status === 'done' ? (
-              <button
-                type="button"
-                onClick={() => onToggleStatus(op.id, 'idle')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-colors cursor-pointer"
-                title="Já cantou no culto. Toque para reabrir se necessário"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden xs:inline">Já Louvou / OK</span>
-                <span className="xs:hidden">OK</span>
-              </button>
-            ) : op.status === 'ready' ? (
-              <button
-                type="button"
-                onClick={() => onToggleStatus(op.id, 'done')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs hover:bg-amber-600 transition-all cursor-pointer animate-pulse"
-                title="Cantando agora ou a seguir! Toque para marcar que já cantou"
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Vai Cantar ➔ OK</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onToggleStatus(op.id, 'ready')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-semibold uppercase tracking-wider text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer"
-                title="Toque para colocar como próximo cantor no púlpito (Vai Cantar)"
-              >
-                <Clock className="w-3.5 h-3.5 text-church-gold" />
-                <span>Vai Cantar</span>
-              </button>
-            )}
-          </>
-        )}
+        {/* Alternância Direta de 1 Toque: [Vai Louvar] <-> [Já Louvou] */}
+        <button
+          type="button"
+          onClick={() => onToggleStatus(op.id)}
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-bold uppercase tracking-wider transition-colors cursor-pointer active:scale-[0.98] ${
+            isDone
+              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+              : 'bg-amber-100/90 text-amber-950 border border-amber-300 hover:bg-amber-200'
+          }`}
+          title={
+            isDone
+              ? 'Já cantou no culto. Toque para retornar para a fila'
+              : 'Confirmado para louvar! Toque quando terminar de cantar'
+          }
+        >
+          {isDone ? (
+            <>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden xs:inline">Já Louvou</span>
+              <span className="xs:hidden">OK</span>
+            </>
+          ) : (
+            <>
+              <Clock className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden xs:inline">Vai Louvar</span>
+              <span className="xs:hidden">Cantar</span>
+            </>
+          )}
+        </button>
 
         <button
           type="button"
