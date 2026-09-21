@@ -3,17 +3,17 @@ name: frontend-director
 description: >
   Orquestrador mestre de UI/UX, Frontend e Arquitetura React para o Smart Finance Tracker.
   Coordena as skills de design de elite (high-end-visual-design, design-taste-frontend,
-  ui-ux-pro-max, impeccable, frontend-design, imagegen-frontend-web, imagegen-frontend-mobile)
+  ui-ux-pro-max, impeccable, frontend-design, real-ui-mockup)
   e as de engenharia Vercel (vercel-composition-patterns e web-design-guidelines).
   Exige leitura profunda (deep-reading via view_file) de cada skill correspondente à fase.
-  Inclui Visual Preview Gate (mockups via IA), esteira de qualidade de 5 fases e integração
+  Inclui Visual Preview Gate (mockups em pixels reais via /real-ui-mockup), esteira de qualidade de 5 fases e integração
   com prompt-engineer para geração de prompts determinísticos.
   Trigger: /director, /frontend, "orquestrar frontend", "novo componente", "redesenhar tela", "estilizar".
 ---
 
 # Frontend Director — Orquestrador Mestre de UI/UX & Engenharia React
 
-O **Frontend Director** é a mente orquestradora do frontend do projeto. Ele centraliza e **garante a execução em profundidade** de 9 skills especializadas, evitando atalhos, inconsistências visuais, o visual amador de IA e a proliferação descontrolada de boolean props em componentes React.
+O **Frontend Director** é a mente orquestradora do frontend do projeto. Ele centraliza e **garante a execução em profundidade** de 8 skills especializadas, evitando atalhos, inconsistências visuais, o visual amador de IA e a proliferação descontrolada de boolean props em componentes React.
 
 ---
 
@@ -25,8 +25,7 @@ O **Frontend Director** é a mente orquestradora do frontend do projeto. Ele cen
 
 | Fase | Skill a Carregar | Caminho Relativo ao Workspace | Link Relativo |
 |---|---|---|---|
-| **Fase 0 (Mockup Web)** | `imagegen-frontend-web` | `.agents/skills/imagegen-frontend-web/SKILL.md` | [imagegen-frontend-web/SKILL.md](../imagegen-frontend-web/SKILL.md) |
-| **Fase 0 (Mockup Mobile)** | `imagegen-frontend-mobile` | `.agents/skills/imagegen-frontend-mobile/SKILL.md` | [imagegen-frontend-mobile/SKILL.md](../imagegen-frontend-mobile/SKILL.md) |
+| **Fase 0 (Mockup Real UI)** | `real-ui-mockup` | `.agents/skills/real-ui-mockup/SKILL.md` | [real-ui-mockup/SKILL.md](../real-ui-mockup/SKILL.md) |
 | **Fase 1 (Anti-Slop & Mood)** | `design-taste-frontend` | `.agents/skills/design-taste-frontend/SKILL.md` | [design-taste-frontend/SKILL.md](../design-taste-frontend/SKILL.md) |
 | **Fase 1 (Design Intencional)** | `frontend-design` | `.agents/skills/frontend-design/SKILL.md` | [frontend-design/SKILL.md](../frontend-design/SKILL.md) |
 | **Fase 2 (Superfícies de Luxo)** | `high-end-visual-design` | `.agents/skills/high-end-visual-design/SKILL.md` | [high-end-visual-design/SKILL.md](../high-end-visual-design/SKILL.md) |
@@ -54,7 +53,7 @@ Esta skill deve ser acionada em:
 ```mermaid
 flowchart TD
     A["Solicitação de UI / Nova Feature"] --> B{"Fase 0: Visual Preview Gate<br/>Deseja Mockup Visual?"}
-    B -- "Sim" --> C["Lê imagegen-web/mobile via view_file<br/>e gera imagem de alta fidelidade"]
+    B -- "Sim" --> C["Lê real-ui-mockup via view_file<br/>e captura pixels reais via CDP"]
     C --> D["Aprovação do Usuário"]
     D --> E["Fase 1: Direção de Arte & Anti-Slop<br/>Lê design-taste e frontend-design"]
     B -- "Não (ou já aprovado)" --> E
@@ -67,11 +66,11 @@ flowchart TD
 
 ---
 
-### 🛡️ Fase 0: Visual Preview Gate (Mockup com IA)
+### 🛡️ Fase 0: Visual Preview Gate (Mockup em Pixels Reais via /real-ui-mockup)
 * **Ação Obrigatória do Agente**:
   1. Perguntar explicitamente ao usuário:
-     > *"Você gostaria de ver um mockup visual gerado por IA antes de implementarmos no código, ou prefere ir direto para a implementação?"*
-  2. Se **Sim**: O agente **deve ler via `view_file`** o arquivo `.agents/skills/imagegen-frontend-web/SKILL.md` (ou `imagegen-frontend-mobile/SKILL.md`), gerar as imagens conceituais seguindo suas regras de composição e aguardar o feedback do usuário.
+     > *"Você gostaria de ver um mockup visual em pixels reais antes de consolidarmos no código, ou prefere ir direto para a implementação?"*
+  2. Se **Sim**: O agente **deve ler via `view_file`** o arquivo `.agents/skills/real-ui-mockup/SKILL.md`, utilizar o script do Chrome Headless via CDP (`mockup-runner.cjs`) em sandbox ou com dados mockados para gerar capturas fiéis de pixels reais e aguardar o feedback do usuário.
   3. Se **Não**: Avançar diretamente para a Fase 1.
 
 ---
