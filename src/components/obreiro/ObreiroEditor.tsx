@@ -22,7 +22,17 @@ interface ObreiroEditorProps {
 }
 
 export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true }) => {
-  const { room, blocks, updateBlock, appendItemsToBlock, removeItemFromBlock, role, setPulpitPreviewActive } = useRoom();
+  const { 
+    room, 
+    blocks, 
+    updateBlock, 
+    appendItemsToBlock, 
+    removeItemFromBlock, 
+    role, 
+    setPulpitPreviewActive,
+    isConnected,
+    isFastSync
+  } = useRoom();
   const { activeSection, scrollToSection } = useObreiroScrollSpy(role);
 
   const [showPulpitConfirm, setShowPulpitConfirm] = useState(false);
@@ -154,6 +164,18 @@ export const ObreiroEditor: React.FC<ObreiroEditorProps> = ({ showHeader = true 
             setShowPulpitPreview(false);
           }}
         />
+
+        {/* Rodapé Sutil de Informação de Conexão no Mobile */}
+        <footer className="sm:hidden text-center py-6 text-[10px] font-mono text-church-muted flex items-center justify-center gap-1.5 opacity-70">
+          <span className={`w-1.5 h-1.5 rounded-full ${!isConnected ? 'bg-amber-500' : isFastSync ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+          <span>
+            {!isConnected
+              ? 'Modo Offline (Gravado localmente)'
+              : isFastSync
+              ? 'Sincronização Rápida (2.5s)'
+              : 'Sincronizado (6s)'}
+          </span>
+        </footer>
       </main>
     </div>
   );

@@ -81,10 +81,10 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false, onOpenPulpitPre
             )}
           </div>
 
-          {/* Badge de Sincronização Inteligente ao lado de Ao Vivo */}
+          {/* Badge de Sincronização Inteligente (Apenas no Desktop/Tablet; no mobile segue o padrão minimalista do Púlpito) */}
           {isConnected && (
             <div 
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-title font-bold uppercase tracking-wider border shadow-2xs transition-colors ${
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-title font-bold uppercase tracking-wider border shadow-2xs transition-colors shrink-0 ${
                 isFastSync 
                   ? 'bg-amber-50 border-amber-300 text-amber-900' 
                   : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -106,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false, onOpenPulpitPre
               type="button"
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-xs font-title font-semibold uppercase tracking-wider cursor-pointer"
+              className="inline-flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-xs font-title font-semibold uppercase tracking-wider cursor-pointer shrink-0"
               title="Sincronizar anotações com o servidor agora"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-church-gold-dark ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -119,16 +119,16 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false, onOpenPulpitPre
             <button
               type="button"
               onClick={onOpenPulpitPreview}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-church-gold/15 hover:bg-church-gold/25 text-church-charcoal border border-church-gold/40 transition-colors text-xs font-title font-bold uppercase tracking-wider cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 rounded-lg bg-church-gold/15 hover:bg-church-gold/25 text-church-charcoal border border-church-gold/40 transition-colors text-xs font-title font-bold uppercase tracking-wider cursor-pointer shadow-2xs shrink-0"
               title="Abrir pré-visualização da tela do Púlpito"
             >
               <Tablet className="w-3.5 h-3.5 text-church-gold-dark shrink-0" />
-              <span className="text-[11px]">Púlpito</span>
+              <span className="text-[10px] sm:text-[11px]">Púlpito</span>
             </button>
           )}
 
           {/* Papel Ativo */}
-          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-title font-bold uppercase tracking-wider ${
+          <span className={`px-2 py-0.5 sm:px-2.5 rounded-full text-[10px] font-title font-bold uppercase tracking-wider shrink-0 ${
             role === 'pastor' 
               ? 'bg-church-gold/15 text-church-gold-dark border border-church-gold/30'
               : role === 'controlador'
@@ -143,10 +143,10 @@ export const Header: React.FC<HeaderProps> = ({ minimal = false, onOpenPulpitPre
             <button
               type="button"
               onClick={() => setShowLeaveConfirm(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-xs font-title font-semibold uppercase tracking-wider cursor-pointer"
+              className="inline-flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1 rounded-lg text-church-muted hover:text-church-charcoal hover:bg-white border border-transparent hover:border-church-sand transition-colors text-xs font-title font-semibold uppercase tracking-wider cursor-pointer shrink-0"
               title="Sair do Culto e voltar à tela inicial"
             >
-              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <LogOut className="w-3.5 h-3.5 text-rose-600 shrink-0" />
               <span className="hidden sm:inline">Sair</span>
             </button>
           )}
