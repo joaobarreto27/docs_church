@@ -73,48 +73,10 @@ export const ChoirItemRow: React.FC<ChoirItemRowProps> = ({
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
-          {/* Botão Único de Ciclo: [+ Confirmar] -> [Confirmado] -> [Já Louvou] -> [+ Confirmar] */}
-          <button
-            type="button"
-            onClick={() => onCycleStatus(ch.id)}
-            className={`text-xs px-2.5 sm:px-3 py-1.5 rounded-lg font-title font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 active:scale-[0.98] ${
-              isDone
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
-                : isConfirmed
-                ? 'bg-church-gold text-white shadow-xs hover:bg-church-gold-dark'
-                : 'bg-church-sand/50 text-church-charcoal/70 border border-church-sand hover:bg-church-sand hover:text-church-charcoal'
-            }`}
-            title={
-              isDone
-                ? 'Já louvou no culto. Toque para desmarcar'
-                : isConfirmed
-                ? 'Confirmado no culto! Toque quando terminar de louvar'
-                : 'Toque para confirmar a presença deste departamento no culto'
-            }
-          >
-            {isDone ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Já Louvou</span>
-              </>
-            ) : isConfirmed ? (
-              <>
-                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Confirmado</span>
-              </>
-            ) : (
-              <>
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Confirmar Presença</span>
-                <span className="xs:hidden">Confirmar</span>
-              </>
-            )}
-          </button>
-
+        <>
           <span
             onClick={() => onCycleStatus(ch.id)}
-            className={`font-title text-sm cursor-pointer select-none truncate transition-colors ${
+            className={`font-title text-xs sm:text-sm cursor-pointer select-none truncate transition-colors flex-1 min-w-0 mr-2 ${
               isDone
                 ? 'line-through text-emerald-900/80 font-semibold'
                 : isConfirmed
@@ -125,28 +87,63 @@ export const ChoirItemRow: React.FC<ChoirItemRowProps> = ({
           >
             {ch.name}
           </span>
-        </div>
-      )}
 
-      {!isEditing && (
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => onStartEdit(ch)}
-            className="p-1.5 text-church-muted hover:text-church-charcoal hover:bg-church-sand/50 rounded-lg transition-colors cursor-pointer"
-            title="Editar nome do departamento"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(ch.id)}
-            className="p-1.5 text-church-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-            title="Remover departamento"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Botão de Ação Direta com Verbo Explícito */}
+            <button
+              type="button"
+              onClick={() => onCycleStatus(ch.id)}
+              className={`text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-lg font-title font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 inline-flex items-center gap-1 active:scale-[0.98] ${
+                isDone
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                  : isConfirmed
+                  ? 'bg-church-gold hover:bg-church-gold-dark text-white shadow-xs'
+                  : 'bg-church-sand/50 text-church-charcoal/70 border border-church-sand hover:bg-church-sand hover:text-church-charcoal'
+              }`}
+              title={
+                isDone
+                  ? 'Já louvou no culto. Toque para retornar para a fila'
+                  : isConfirmed
+                  ? 'Toque quando o conjunto terminar de louvar'
+                  : 'Toque para confirmar a presença deste departamento no culto'
+              }
+            >
+              {isDone ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span><span className="hidden sm:inline">Já </span>Louvou ✓</span>
+                </>
+              ) : isConfirmed ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span><span className="hidden sm:inline">Marcar que </span>Louvou ✓</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span><span className="hidden sm:inline">Confirmar </span>Presença</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStartEdit(ch)}
+              className="p-1.5 text-church-muted hover:text-church-charcoal hover:bg-church-sand/50 rounded-lg transition-colors cursor-pointer"
+              title="Editar nome do departamento"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(ch.id)}
+              className="p-1.5 text-church-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              title="Remover departamento"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

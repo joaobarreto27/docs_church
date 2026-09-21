@@ -34,9 +34,9 @@ export const PastoralAlertBar: React.FC<PastoralAlertBarProps> = ({
   };
 
   return (
-    <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200">
+    <div className="p-3.5 rounded-xl bg-church-parchment/80 border border-church-sand">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-title text-xs font-bold uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+        <span className="font-title text-xs font-bold uppercase tracking-wider text-church-charcoal flex items-center gap-1.5">
           <AlertTriangle className="w-4 h-4 text-amber-600" />
           Faixa de Aviso no Púlpito
         </span>
@@ -45,7 +45,7 @@ export const PastoralAlertBar: React.FC<PastoralAlertBarProps> = ({
             Aviso exibido na tela do Púlpito
           </span>
         ) : (
-          <span className="text-[11px] text-purple-700 font-medium">
+          <span className="text-[11px] text-church-muted font-medium">
             Nenhum aviso ativo no momento
           </span>
         )}
@@ -58,12 +58,12 @@ export const PastoralAlertBar: React.FC<PastoralAlertBarProps> = ({
           placeholder="Ex: 5 min restantes | Liberar carro ABC-123"
           value={alertInput}
           onChange={(e) => setAlertInput(e.target.value)}
-          className="flex-1 min-w-0 text-xs font-sans p-2.5 rounded-lg border border-purple-300 bg-white focus:border-purple-600 outline-none text-church-charcoal"
+          className="flex-1 min-w-0 text-xs font-sans p-2.5 rounded-lg border border-church-sand bg-white focus:border-church-gold focus:ring-1 focus:ring-church-gold outline-none text-church-charcoal"
         />
         <button
           type="submit"
           disabled={!alertInput.trim()}
-          className="px-3 sm:px-4 py-2 bg-purple-700 text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-purple-800 disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+          className="px-3 sm:px-4 py-2 bg-church-gold text-white rounded-lg font-title text-xs font-bold uppercase tracking-wider hover:bg-church-gold-dark disabled:opacity-50 transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
         >
           <Send className="w-3.5 h-3.5" />
           Transmitir
@@ -82,13 +82,13 @@ export const PastoralAlertBar: React.FC<PastoralAlertBarProps> = ({
 
       {/* Presets Litúrgicos Rápidos */}
       <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] uppercase font-bold text-purple-700 tracking-wider">Atalhos:</span>
+        <span className="text-[10px] uppercase font-bold text-church-muted tracking-wider">Atalhos:</span>
         {PRESET_ALERTS.map((preset) => (
           <button
             key={preset}
             type="button"
             onClick={() => handleSelectPreset(preset)}
-            className="text-[11px] px-2 py-0.5 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 transition-colors cursor-pointer"
+            className="text-[11px] px-2 py-0.5 rounded-md bg-white hover:bg-church-parchment text-church-charcoal border border-church-sand transition-colors cursor-pointer"
           >
             {preset}
           </button>

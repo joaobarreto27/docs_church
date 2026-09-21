@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, Check, X, Clock, CheckCircle2 } from 'lucide-react';
+import { Pencil, Trash2, Check, X, CheckCircle2 } from 'lucide-react';
 import { OpportunityItem, UserRole } from '../../../types/liturgy';
 
 interface OpportunityItemCardProps {
@@ -122,32 +122,30 @@ export const OpportunityItemCard: React.FC<OpportunityItemCardProps> = ({
         </span>
       </div>
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* Alternância Direta de 1 Toque: [Vai Louvar] <-> [Já Louvou] */}
+        {/* Alternância de Status com Ação Verbal Direta */}
         <button
           type="button"
           onClick={() => onToggleStatus(op.id)}
-          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-title font-bold uppercase tracking-wider transition-colors cursor-pointer active:scale-[0.98] ${
+          className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-title font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-[0.98] ${
             isDone
               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
-              : 'bg-amber-100/90 text-amber-950 border border-amber-300 hover:bg-amber-200'
+              : 'bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200 shadow-2xs'
           }`}
           title={
             isDone
               ? 'Já cantou no culto. Toque para retornar para a fila'
-              : 'Confirmado para louvar! Toque quando terminar de cantar'
+              : 'Toque quando o cantor terminar de louvar'
           }
         >
           {isDone ? (
             <>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden xs:inline">Já Louvou</span>
-              <span className="xs:hidden">OK</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span><span className="hidden sm:inline">Já </span>Cantou ✓</span>
             </>
           ) : (
             <>
-              <Clock className="w-3.5 h-3.5 text-amber-700" />
-              <span className="hidden xs:inline">Vai Louvar</span>
-              <span className="xs:hidden">Cantar</span>
+              <Check className="w-3.5 h-3.5 text-amber-800 stroke-[2.5] shrink-0" />
+              <span><span className="hidden sm:inline">Marcar que </span>Cantou ✓</span>
             </>
           )}
         </button>
