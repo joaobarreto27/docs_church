@@ -16,6 +16,15 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// Registro seguro do Service Worker (PWA) com proteção contra erros no Android 4.4.4 KitKat
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('[PWA] Falha ao registrar Service Worker:', err);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
