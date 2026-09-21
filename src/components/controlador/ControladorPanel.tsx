@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useRoom } from '../../context/RoomContext';
-import { PrayerItem } from '../../types/liturgy';
-import { ObreiroEditor } from '../obreiro/ObreiroEditor';
 import { Header } from '../common/Header';
 import { LoadingScreen } from '../common/LoadingScreen';
 import { Check } from 'lucide-react';
-import { YoutubeSection } from './media';
-import { PastoralAlertBar, ServiceMetadataBar, ResetServiceModal } from './alerts';
-import { LiturgyExportModal, PulpitPreviewModal, ControladorHolyricsModal } from './modals';
+import { PastoralAlertBar, ServiceMetadataBar } from './alerts';
+import { ControladorModalsContainer } from './modals';
+import { ControladorSectionNav } from './nav';
+import { ControladorLiturgyWorkspace } from './sections';
+import { useControladorScrollSpy } from './hooks';
 import { ExportSection } from '../../services/export';
+import { BlockType } from '../../types/liturgy';
 
 export const ControladorPanel: React.FC = () => {
   const { 
     room, 
     blocks, 
-    isFastSync, 
     appendItemsToBlock, 
     removeItemFromBlock, 
+    updateBlock,
     sendAlert, 
     resetCurrentService, 
     updateTitle, 
@@ -25,20 +26,20 @@ export const ControladorPanel: React.FC = () => {
     setPulpitPreviewActive 
   } = useRoom();
 
+  const { activeSection, scrollToSection } = useControladorScrollSpy();
+
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showEditTitleModal, setShowEditTitleModal] = useState(false);
+  const [showEditCodeModal, setShowEditCodeModal] = useState(false);
   const [showPulpitPreview, setShowPulpitPreview] = useState(false);
   const [showHolyricsModal, setShowHolyricsModal] = useState(false);
   const [showFullListModal, setShowFullListModal] = useState(false);
   const [fullListTab, setFullListTab] = useState<ExportSection>('all');
-  const [newTitleInput, setNewTitleInput] = useState('Culto de Celebração');
+  const [newTitleInput, setNewTitleInput] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ type: 'visitors' | 'prayers'; count: number } | null>(null);
 
-  // Garante que o polling de 8s volte aos 30s se o componente for desmontado
-  useEffect(() => {
-    return () => {
-      setPulpitPreviewActive(false);
-    };
-  }, [setPulpitPreviewActive]);
+  useEffect(() => () => setPulpitPreviewActive(false), [setPulpitPreviewActive]);
 
   if (!room) return <LoadingScreen />;
 
@@ -51,50 +52,77 @@ export const ControladorPanel: React.FC = () => {
     await sendAlert(text);
     triggerFeedback('Aviso enviado ao Púlpito!');
   };
-
   const handleClearAlert = async () => {
     await sendAlert(null);
     triggerFeedback('Aviso removido do Púlpito.');
   };
-
   const handleConfirmReset = async () => {
     if (!newTitleInput.trim()) return;
     await resetCurrentService(newTitleInput.trim());
     setShowResetModal(false);
     triggerFeedback('Culto arquivado e nova folha iniciada!');
   };
+  const handleSaveTitle = async (newTitle: string) => {
+    await updateTitle(newTitle);
+    triggerFeedback('Nome do culto atualizado!');
+  };
+  const handleSaveCode = async (newCode: string) => {
+    const res = await updateCode(newCode);
+    if (res.success) triggerFeedback(`Chave do culto alterada para ${newCode}!`);
+    return res;
+  };
+  const handleSaveHolyrics = async (url: string | null, adminKey: string) => {
+    const res = await updateHolyricsUrl(url, adminKey);
+    triggerFeedback(res.success ? (url ? 'Holyrics salvo!' : 'Holyrics desativado.') : (res.error || 'Erro ao salvar.'));
+    return res.success ? true : res;
+  };
 
-  const youtubeBlock = blocks.find(b => b.block_type === 'youtube');
-  const youtubeList = ((youtubeBlock?.content || []) as PrayerItem[]);
+  const getBlockContent = (t: BlockType) => blocks.find(b => b.block_type === t)?.content || [];
+  const visitorsCount = getBlockContent('visitors').length;
+  const prayersCount = getBlockContent('prayer').length;
+  const youtubeCount = getBlockContent('youtube').length;
+  const oppsCount = getBlockContent('opportunities').length;
+  const choirsCount = (getBlockContent('choirs') as any[]).filter(c => c.checked).length;
+
+  const handleExecuteClearAll = () => {
+    if (!confirmModal) return;
+    const block = blocks.find(b => b.block_type === (confirmModal.type === 'visitors' ? 'visitors' : 'prayer'));
+    if (block) {
+      updateBlock(block.id, []);
+      triggerFeedback(confirmModal.type === 'visitors' ? 'Visitantes apagados.' : 'Orações apagadas.');
+    }
+    setConfirmModal(null);
+  };
 
   return (
-    <div className="min-h-screen bg-church-parchment flex flex-col">
+    <div className="min-h-screen bg-church-parchment flex flex-col font-sans antialiased text-church-charcoal">
       <Header />
 
       {feedback && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-purple-800 text-white px-4 py-1.5 rounded-full text-xs font-title font-bold flex items-center gap-2 shadow-lg animate-fadeIn">
-          <Check className="w-4 h-4" />
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-church-charcoal text-white px-4 py-1.5 rounded-full text-xs font-title font-bold flex items-center gap-2 shadow-lg animate-fadeIn border border-church-sand/30">
+          <Check className="w-4 h-4 text-church-gold" />
           {feedback}
         </div>
       )}
 
-      {/* PAINEL DE CONTROLE MESTRE DA CABINE (BARRA SUPERIOR ROXA/OURO) */}
-      <section className="bg-white border-b-2 border-purple-200 px-4 py-4 shadow-sm">
-        <div className="max-w-4xl mx-auto space-y-4">
+      {/* 1. PAINEL DE CONTROLE MESTRE DA CABINE */}
+      <section className="bg-white border-b border-church-sand px-3 sm:px-6 py-4 shadow-xs">
+        <div className="max-w-5xl mx-auto space-y-4">
           <ServiceMetadataBar
             title={room.title}
             code={room.code}
-            isFastSync={isFastSync}
-            onUpdateTitle={updateTitle}
-            onUpdateCode={updateCode}
+            onOpenEditTitle={() => setShowEditTitleModal(true)}
+            onOpenEditCode={() => setShowEditCodeModal(true)}
             onOpenFullList={() => { setFullListTab('all'); setShowFullListModal(true); }}
             onOpenPulpitPreview={() => {
               setPulpitPreviewActive(true);
               setShowPulpitPreview(true);
             }}
-            onOpenResetModal={() => setShowResetModal(true)}
+            onOpenResetModal={() => {
+              setNewTitleInput(room.title);
+              setShowResetModal(true);
+            }}
             onOpenHolyricsModal={() => setShowHolyricsModal(true)}
-            triggerFeedback={triggerFeedback}
           />
 
           <PastoralAlertBar
@@ -105,63 +133,57 @@ export const ControladorPanel: React.FC = () => {
         </div>
       </section>
 
-      {/* SEÇÃO EXCLUSIVA DO CONTROLADOR: TRANSMISSÃO AO VIVO / YOUTUBE COM PRINTS */}
-      <YoutubeSection
-        youtubeList={youtubeList}
-        blockId={youtubeBlock?.id}
+      {/* 2. NAVEGAÇÃO DE SEÇÕES DA CABINE */}
+      <ControladorSectionNav
+        activeSection={activeSection}
+        onSelectSection={scrollToSection}
+        visitorsCount={visitorsCount}
+        prayersCount={prayersCount}
+        youtubeCount={youtubeCount}
+        musicCount={oppsCount + choirsCount}
+      />
+
+      {/* 3. ÁREA DE TRABALHO LITÚRGICA DA CABINE */}
+      <ControladorLiturgyWorkspace
+        room={room}
+        blocks={blocks}
         onAppendItems={appendItemsToBlock}
         onRemoveItem={removeItemFromBlock}
+        onUpdateBlock={updateBlock}
+        onOpenMassDeletePrayers={() => setConfirmModal({ type: 'prayers', count: prayersCount })}
         triggerFeedback={triggerFeedback}
       />
 
-      {/* REAPROVEITA TODA A ÁREA DE EDIÇÃO DO OBREIRO */}
-      <div className="flex-1">
-        <ObreiroEditor showHeader={false} />
-      </div>
-
-      {/* MODAL DE CONFIGURAÇÃO DO HOLYRICS (TELÃO) */}
-      <ControladorHolyricsModal
-        isOpen={showHolyricsModal}
-        hasHolyrics={Boolean(room.has_holyrics)}
-        onClose={() => setShowHolyricsModal(false)}
-        onSave={async (url, adminKey) => {
-          const res = await updateHolyricsUrl(url, adminKey);
-          if (res.success) {
-            triggerFeedback(url ? 'Configuração do Holyrics salva na sala!' : 'Integração do Holyrics desativada.');
-            return true;
-          } else {
-            triggerFeedback(res.error || 'Erro ao salvar configuração.');
-            return res;
-          }
-        }}
-      />
-
-      {/* MODAL DE CONFIRMAÇÃO DE NOVO CULTO */}
-      <ResetServiceModal
-        isOpen={showResetModal}
-        newTitle={newTitleInput}
+      {/* 4. CONTAINER DE MODAIS DO CONTROLADOR */}
+      <ControladorModalsContainer
+        room={room}
+        blocks={blocks}
+        showHolyricsModal={showHolyricsModal}
+        onCloseHolyricsModal={() => setShowHolyricsModal(false)}
+        onSaveHolyrics={handleSaveHolyrics}
+        showResetModal={showResetModal}
+        newTitleInput={newTitleInput}
         onChangeNewTitle={setNewTitleInput}
-        onClose={() => setShowResetModal(false)}
-        onConfirm={handleConfirmReset}
-      />
-
-      {/* MODAL DE PRÉVIA EM TEMPO REAL DO PÚLPITO (TABLET PEEK) */}
-      <PulpitPreviewModal
-        isOpen={showPulpitPreview}
-        onClose={() => {
+        onCloseResetModal={() => setShowResetModal(false)}
+        onConfirmReset={handleConfirmReset}
+        showPulpitPreview={showPulpitPreview}
+        onClosePulpitPreview={() => {
           setPulpitPreviewActive(false);
           setShowPulpitPreview(false);
         }}
-      />
-
-      {/* MODAL DA LISTA COMPLETA DO CULTO (EXPORTAÇÃO: DOCS, WHATSAPP, HOLYRICS) */}
-      <LiturgyExportModal
-        isOpen={showFullListModal}
-        onClose={() => setShowFullListModal(false)}
-        room={room}
-        blocks={blocks}
-        initialSection={fullListTab}
+        showFullListModal={showFullListModal}
+        onCloseFullListModal={() => setShowFullListModal(false)}
+        fullListTab={fullListTab}
         onCopiedFeedback={triggerFeedback}
+        confirmModal={confirmModal}
+        onCloseConfirmModal={() => setConfirmModal(null)}
+        onConfirmClearAll={handleExecuteClearAll}
+        showEditTitleModal={showEditTitleModal}
+        onCloseEditTitleModal={() => setShowEditTitleModal(false)}
+        onSaveTitle={handleSaveTitle}
+        showEditCodeModal={showEditCodeModal}
+        onCloseEditCodeModal={() => setShowEditCodeModal(false)}
+        onSaveCode={handleSaveCode}
       />
     </div>
   );
