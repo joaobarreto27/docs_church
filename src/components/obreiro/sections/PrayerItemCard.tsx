@@ -108,7 +108,7 @@ export const PrayerItemCard: React.FC<PrayerItemCardProps> = ({
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-title font-bold uppercase tracking-wider text-church-gold-dark bg-church-gold/15 hover:bg-church-gold/25 border border-church-gold/30 cursor-pointer"
         >
           <Pencil className="w-3.5 h-3.5" />
-          <span>Corrigindo</span>
+          <span>Corrigir</span>
         </button>
         <button
           type="button"
