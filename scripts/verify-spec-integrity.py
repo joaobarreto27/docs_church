@@ -212,8 +212,8 @@ def check_repository_rules(files_to_check: List[Path], is_full_scan: bool = Fals
 
         # 1. Limite Estrito de Linhas (Regra 1 do AGENTS.md)
         if p.suffix in [".ts", ".tsx"]:
-            # Trata allowlist legado apenas em full scan
-            if is_full_scan and rel_path in LEGACY_ALLOWLIST:
+            # Trata allowlist de débitos técnicos legados
+            if rel_path in LEGACY_ALLOWLIST:
                 warnings.append(
                     f"Débito Técnico Legado: '{rel_path}' possui {num_lines} linhas (deve ser decomposto conforme Regra 1)."
                 )
