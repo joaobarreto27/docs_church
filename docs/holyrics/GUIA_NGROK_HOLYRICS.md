@@ -79,7 +79,23 @@ ngrok config add-authtoken SEU_AUTHTOKEN_AQUI
 ngrok config add-authtoken SEU_AUTHTOKEN_AQUI
 ```
 
-### 🚀 2. Iniciar o Túnel para o Holyrics (Porta 8081)
+### 🚀 2. Iniciar o Túnel para o Holyrics
+
+Existem duas formas válidas de apontar o ngrok para o Holyrics:
+
+#### Opção A: Apontando direto para o IP Local da Igreja (Mais Compatível)
+Use o IP que o próprio Holyrics exibe na janela do Plugin/Servidor (exemplo: `192.168.1.50:8081`):
+```bash
+# No Windows (CMD / PowerShell):
+C:\ngrok\ngrok.exe http 192.168.1.50:8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
+
+# No Mac (Terminal):
+ngrok http 192.168.1.50:8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
+```
+> *Por que usar o IP?* Algumas versões do Holyrics vinculam o servidor web estritamente à placa de rede Wi-Fi/Ethernet da máquina. Se `localhost` não responder, colocar o IP exato resolve na hora.
+
+#### Opção B: Apontando apenas para a Porta (Sem se preocupar com IP mudando)
+Se o Holyrics na sua máquina aceitar conexões via `localhost`:
 ```bash
 # No Windows (CMD / PowerShell):
 C:\ngrok\ngrok.exe http 8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
@@ -87,6 +103,7 @@ C:\ngrok\ngrok.exe http 8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
 # No Mac (Terminal):
 ngrok http 8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
 ```
+> *Vantagem:* Se o roteador da igreja reiniciar e mudar o IP do computador (ex: de `.50` para `.55`), o comando com a porta pura não quebra.
 
 ### 🔍 3. Painel Web de Diagnóstico em Tempo Real
 Enquanto o ngrok estiver rodando, abra no navegador do mesmo computador:
@@ -128,12 +145,14 @@ Para que os operadores voluntários não precisem digitar comandos de terminal a
 
 ### Passo 3: Criar o Script de Execução Automática (`iniciar_ngrok.bat`)
 1. Abra o **Bloco de Notas**.
-2. Digite as seguintes linhas (substitua pelo seu domínio reservado e a porta do Holyrics, geralmente `8081`):
+2. Digite as seguintes linhas (substitua pelo seu domínio reservado e a porta do Holyrics):
    ```bat
    @echo off
    cd /d C:\ngrok
    ngrok http 8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
    ```
+   > 💡 **Nota sobre o IP da Igreja:** Se o Holyrics da igreja estiver vinculado estritamente à placa de rede local e não responder em `localhost`, você pode colocar o IP da máquina antes da porta:  
+   > `ngrok http 192.168.1.50:8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app`
 3. No Bloco de Notas, vá em **Arquivo > Salvar como...**.
 4. Em *Tipo*, selecione **Todos os arquivos (*.*)**.
 5. Salve com o nome: `iniciar_ngrok.bat` dentro de `C:\ngrok`.
