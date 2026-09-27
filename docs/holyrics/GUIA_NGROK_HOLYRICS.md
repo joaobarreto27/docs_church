@@ -308,3 +308,10 @@ Durante a concepção técnica, foram superados os desafios críticos de hardwar
 - O pastor pode ter tocado acidentalmente no botão **`[✕ Minimizar]`**.
 - Basta tocar no **Pill Flutuante** no rodapé (`[ 🎵 Telão Ativo • ⛶ Voltar para o Telão ]`) para restaurar a projeção em tela cheia imediatamente.
 - Se o operador limpou a projeção no Holyrics (tecla F5), a tela fecha sozinha para priorizar a leitura do roteiro de orações.
+
+### E. Erro "502 Bad Gateway" (ERR_NGROK_502) no log do ngrok
+- **O que significa:** O ngrok recebeu a requisição vinda da internet com sucesso, mas quando tentou repassar para o Holyrics no computador, **não encontrou nada escutando naquele IP/porta**.
+- **Causas mais comuns e como resolver:**
+  1. **O Holyrics está fechado ou o Plugin desligou:** Abra o Holyrics e certifique-se de que o Plugin/Servidor HTTP está ativo.
+  2. **O IP do computador mudou no Wi-Fi:** O roteador da igreja pode ter trocado o IP do computador (ex: era `192.168.1.50` e mudou para `192.168.1.55`). Verifique no Holyrics qual é o IP atual e ajuste no comando do ngrok.
+  3. **Porta divergente:** O ngrok foi iniciado apontando para uma porta (ex: `8081`), mas o Holyrics está rodando em outra (ex: `8080`). Ajuste a porta para ficarem iguais.
