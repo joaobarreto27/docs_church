@@ -66,6 +66,49 @@ A configuração da conta é realizada **uma única vez** pelo navegador:
 
 ---
 
+## 2.1. 📋 Cola Rápida de Comandos Práticos (Cheat Sheet)
+
+Se você precisa apenas copiar e colar os comandos no terminal, utilize este resumo:
+
+### ⚙️ 1. Configurar Token da Conta (Executa apenas UMA vez no computador)
+```bash
+# No Windows (com prompt de comando aberto na pasta C:\ngrok):
+ngrok config add-authtoken SEU_AUTHTOKEN_AQUI
+
+# No Mac (pelo Terminal):
+ngrok config add-authtoken SEU_AUTHTOKEN_AQUI
+```
+
+### 🚀 2. Iniciar o Túnel para o Holyrics (Porta 8081)
+```bash
+# No Windows (CMD / PowerShell):
+C:\ngrok\ngrok.exe http 8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
+
+# No Mac (Terminal):
+ngrok http 8081 --url=SEU-DOMINIO-AQUI.ngrok-free.app
+```
+
+### 🔍 3. Painel Web de Diagnóstico em Tempo Real
+Enquanto o ngrok estiver rodando, abra no navegador do mesmo computador:
+```text
+http://localhost:4040
+```
+> *Permite ver todas as requisições que chegam do tablet, status HTTP (200 OK), tempo de resposta em milissegundos e dados do JSON enviado.*
+
+### 🛠️ 4. Comandos de Manutenção e Teste
+```bash
+# Verificar se o token foi gravado corretamente:
+ngrok config check
+
+# Ver a versão instalada do ngrok:
+ngrok version
+
+# Para encerrar o ngrok manualmente:
+# Aperte Ctrl + C na janela preta do terminal
+```
+
+---
+
 ## 3. Configuração no Windows da Igreja (100% Automático)
 
 Para que os operadores voluntários não precisem digitar comandos de terminal antes do culto, o ngrok deve iniciar automaticamente em segundo plano ao ligar o computador.
