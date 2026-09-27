@@ -58,7 +58,7 @@ Use para documentar uma fase individual de implementação com nível de detalhe
 3. **Gerar documento** seguindo o template em `references/phase-template.md`
 4. **Salvar** em `docs/[feature]/fases/fase-[NUM]-[nome].md`
 
-### Seções Obrigatórias (7 seções)
+### Seções Obrigatórias (8 seções)
 
 ```markdown
 ## 1. Objetivo da Fase
@@ -68,6 +68,7 @@ Use para documentar uma fase individual de implementação com nível de detalhe
 ## 5. Exemplo de Código (Antes vs. Depois)
 ## 6. Apontamento de Anomalias em Regras de Negócio (Se houver)
 ## 7. Critérios de Aceite e Verificação
+## 8. Verificação de Integridade e Rastreabilidade RTM (spec-compliance-guardian)
 ```
 
 ### Benchmarks de Qualidade

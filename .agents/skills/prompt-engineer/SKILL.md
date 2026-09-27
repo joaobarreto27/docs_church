@@ -104,9 +104,11 @@ RESTRIÇÕES:
 
 Antes de entregar, verifique:
 - [ ] Todos os nomes de componentes, variáveis e arquivos são REAIS (não placeholders)
-- [ ] Cada passo é independente e testável
+- [ ] Cada requisito possui identificador atômico rastreável (`LIT-XX`, `UI-XX`, `SEC-XX`, `COMPAT-XX`, `DATA-XX`)
+- [ ] Cada passo é independente e testável com critério binário de aceite
 - [ ] As restrições impedem efeitos colaterais indesejados
 - [ ] Se patterns foram injetados, eles estão aplicados nos passos (não só na seção de diretrizes)
+- [ ] O bloco final exige a execução de `python3 scripts/verify-spec-integrity.py` e a apresentação da Matriz RTM preenchida
 - [ ] O prompt pode ser executado por outra IA sem contexto adicional
 
 ---

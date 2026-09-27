@@ -149,3 +149,22 @@ Antes de finalizar qualquer tarefa ou enviar alterações para o repositório, e
 
 - [ ] **4. Auditoria de Limite de Linhas:**
   - Garantir que nenhum novo arquivo criado ultrapasse 200 linhas (meta: 80 a 150 linhas).
+
+- [ ] **5. Execução do Spec Compliance Verifier:**
+  ```bash
+  python3 scripts/verify-spec-integrity.py
+  ```
+  *(Resultado esperado: Quality Gate 100% Aprovado com código 0).*
+
+---
+
+## 7. Diretriz Inviolável de Conformidade de Especificação (Zero Pontas Soltas)
+
+1. **Proibição de Falsa Conclusão:**
+   - É terminantemente proibido declarar qualquer fase, plano de decomposição ou especificação técnica como "concluído" apenas executando `tsc` ou `build`.
+2. **Matriz de Rastreabilidade (RTM) Obrigatória:**
+   - Toda entrega baseada em especificações, PRDs ou planos DEVE conter a tabela RTM com todos os requisitos mapeados para `[Arquivo:Linhas]` com status auditado (`✅ CONFORME`).
+3. **Execução Mandatória do Script de Integridade:**
+   - Antes de finalizar, o agente DEVE executar `python3 scripts/verify-spec-integrity.py`. Qualquer erro de componente órfão, barrel sem consumo, excesso de linhas ou violação de segurança/KitKat deve ser corrigido autonomamente no mesmo turno.
+4. **Autocorreção em Turno Único:**
+   - Se a auditoria final apontar qualquer divergência frente à especificação original ou se algum componente não estiver consumido/montado na árvore ativa, o agente deve implementar o código faltante antes de notificar o usuário.
