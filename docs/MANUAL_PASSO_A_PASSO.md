@@ -153,6 +153,14 @@ No próximo culto (por exemplo, na terça-feira ou no domingo seguinte):
 1. Clique no botão **"NOVO CULTO"**.
 2. Digite o nome do novo culto e confirme. O sistema arquiva as anotações antigas e abre uma folha limpa mantendo o mesmo código de sala.
 
+### 5. Projeção de Louvores e Versículos (Holyrics / Telão)
+A cabine de mídia pode conectar a projeção do Holyrics ao tablet do púlpito através do botão **`[🎵 Holyrics]`**:
+1. Clique no botão **`[🎵 Holyrics]`** no topo do painel.
+2. Informe o endereço seguro do ngrok configurado no PC da igreja (ex: `https://ad-utinga-projecao.ngrok-free.app`).
+3. Clique em **"Testar Conexão"** e depois em **"Salvar na Sala"**.
+4. Quando uma música ou versículo for projetado no telão, o tablet do púlpito exibe a projeção automaticamente em tela cheia com fundo preto anti-reflexo.
+> 📄 Para o passo a passo técnico de configuração do ngrok no computador da igreja, consulte o [Guia de Configuração do ngrok e Holyrics](holyrics/GUIA_NGROK_HOLYRICS.md).
+
 ---
 
 ## 🛠️ O que fazer se... (Perguntas Frequentes)
