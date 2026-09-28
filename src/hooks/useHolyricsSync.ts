@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { HolyricsSlide } from '../types/holyrics';
 import { sanitizeHolyricsBaseUrl, parseHolyricsSlide } from '../components/holyrics/utils/holyricsParser';
+import {
+  getMockHolyricsSlide,
+  getActiveMockParam,
+  registerMockHolyricsListener
+} from '../components/holyrics/utils/mockHolyrics';
 
 export interface UseHolyricsSyncReturn {
   slide: HolyricsSlide | null;
@@ -41,14 +46,48 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
 
   useEffect(() => {
     isMountedRef.current = true;
+
+    // 1. Simulação Local sem Holyrics (via URL ?mock_holyrics=... ou storage)
+    const activeMock = getActiveMockParam();
+    if (activeMock) {
+      const mockSlide = getMockHolyricsSlide(activeMock);
+      if (mockSlide) {
+        setSlide(mockSlide);
+        setIsProjecting(true);
+        setIsConnected(true);
+        setError(null);
+      }
+    }
+
+    const cleanupMock = registerMockHolyricsListener((s) => {
+      setSlide(s);
+      setIsProjecting(Boolean(s));
+      if (s) {
+        setIsMinimized(false);
+        setIsConnected(true);
+      }
+    });
+
+    if (activeMock && getMockHolyricsSlide(activeMock)) {
+      return () => {
+        isMountedRef.current = false;
+        cleanupMock();
+      };
+    }
+
     const target = (roomIdOrUrl || '').trim();
 
     if (!target || hasHolyricsFlag === false) {
-      setSlide(null);
-      setIsProjecting(false);
-      setIsMinimized(false);
-      setIsConnected(false);
-      return;
+      if (!activeMock) {
+        setSlide(null);
+        setIsProjecting(false);
+        setIsMinimized(false);
+        setIsConnected(false);
+      }
+      return () => {
+        isMountedRef.current = false;
+        cleanupMock();
+      };
     }
 
     const isDirectUrl = target.startsWith('http://') || target.startsWith('https://');
@@ -111,6 +150,7 @@ export function useHolyricsSync(roomIdOrUrl?: string | null, hasHolyricsFlag?: b
         pollIntervalRef.current = null;
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      cleanupMock();
     };
   }, [roomIdOrUrl, hasHolyricsFlag, handleIncomingData]);
 
