@@ -273,14 +273,14 @@ Durante a concepção técnica, foram superados os desafios críticos de hardwar
 
 ## 8. Checklist Operacional para o Dia de Culto
 
-| Ordem | Ação | Responsável | Verificação |
-| :---: | :--- | :---: | :--- |
-| **1** | Ligar o computador da transmissão/som | Operador do Som | O ícone do ngrok abre minimizado na barra de tarefas. |
-| **2** | Abrir o software Holyrics | Operador de Projeção | Garantir que o plugin está ativo (porta 8081). |
-| **3** | Acessar o Painel do Culto (`docs_church`) | Controlador | Entrar com o código da sala e PIN de 4 dígitos. |
-| **4** | Clicar no botão `[🎵 Holyrics]` no topo | Controlador | Verificar se a URL estática está preenchida. |
-| **5** | Clicar em **"Testar Conexão"** | Controlador | Badge verde: *"✅ Conectado com sucesso!"*. |
-| **6** | Liberar o tablet do Púlpito para o Pastor | Obreiro | Projeção e roteiro de folhas operando sincronizados. |
+| Ordem | Ação                                      |     Responsável      | Verificação                                           |
+| :---: | :---------------------------------------- | :------------------: | :---------------------------------------------------- |
+| **1** | Ligar o computador da transmissão/som     |   Operador do Som    | O ícone do ngrok abre minimizado na barra de tarefas. |
+| **2** | Abrir o software Holyrics                 | Operador de Projeção | Garantir que o plugin está ativo (porta 8081).        |
+| **3** | Acessar o Painel do Culto (`docs_church`) |     Controlador      | Entrar com o código da sala e PIN de 4 dígitos.       |
+| **4** | Clicar no botão `[🎵 Holyrics]` no topo    |     Controlador      | Verificar se a URL estática está preenchida.          |
+| **5** | Clicar em **"Testar Conexão"**            |     Controlador      | Badge verde: *"✅ Conectado com sucesso!"*.            |
+| **6** | Liberar o tablet do Púlpito para o Pastor |       Obreiro        | Projeção e roteiro de folhas operando sincronizados.  |
 
 ---
 
