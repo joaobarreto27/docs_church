@@ -4,6 +4,8 @@ import { Clock } from 'lucide-react';
 export interface PulpitClockProps {
   className?: string;
   showIcon?: boolean;
+  variant?: 'default' | 'large';
+  colorScheme?: 'dark' | 'light';
 }
 
 /**
@@ -18,6 +20,11 @@ function getCurrentTimeString(): string {
   return padZero(now.getHours()) + ':' + padZero(now.getMinutes());
 }
 
+const LARGE_CLOCK_THEMES: Record<'dark' | 'light', string> = {
+  light: 'bg-white border-2 border-[#C59B4B]/60 text-[#7A5515] shadow-md shadow-[#C59B4B]/10',
+  dark: 'bg-stone-900/90 border border-[#C59B4B]/40 text-[#D4AF37] shadow-md',
+};
+
 /**
  * Relógio discreto para o Púlpito do Pastor
  * - Sem segundos piscantes para não atrair atenção periférica nem distrair a congregação/pregador.
@@ -26,7 +33,12 @@ function getCurrentTimeString(): string {
  *   os eventos 'visibilitychange', 'focus' e 'pageshow' atualizam o horário no exato milissegundo do retorno.
  * - 100% compatível com Android 4.4.4 (Chrome 30-36).
  */
-export const PulpitClock: React.FC<PulpitClockProps> = ({ className = '', showIcon = true }) => {
+export const PulpitClock: React.FC<PulpitClockProps> = ({
+  className = '',
+  showIcon = true,
+  variant = 'default',
+  colorScheme = 'dark',
+}) => {
   const [timeStr, setTimeStr] = useState<string>(getCurrentTimeString);
 
   useEffect(() => {
@@ -57,6 +69,21 @@ export const PulpitClock: React.FC<PulpitClockProps> = ({ className = '', showIc
       window.removeEventListener('pageshow', handleWakeup);
     };
   }, []);
+
+  if (variant === 'large') {
+    const baseColorClass = LARGE_CLOCK_THEMES[colorScheme] || LARGE_CLOCK_THEMES.dark;
+
+    return (
+      <div
+        className={`inline-flex items-center gap-2 sm:gap-2.5 px-3.5 py-1 sm:px-5 sm:py-1.5 rounded-2xl font-title font-bold text-base sm:text-2xl md:text-3xl select-none tabular-nums shrink-0 tracking-tight drop-shadow-sm ${baseColorClass} ${className}`}
+        title="Horário do Culto"
+        aria-label={`Horário atual: ${timeStr}`}
+      >
+        {showIcon && <Clock className="w-4 h-4 sm:w-6 sm:h-6 text-[#C59B4B] shrink-0" />}
+        <span>{timeStr}</span>
+      </div>
+    );
+  }
 
   return (
     <div

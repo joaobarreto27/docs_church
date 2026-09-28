@@ -16,8 +16,17 @@ export const PulpitPreachingView: React.FC<PulpitPreachingViewProps> = ({
   isHolyricsProjecting,
   onExitPreaching,
 }) => {
-  const hasSlide = isHolyricsProjecting && holyricsSlide && holyricsSlide.text;
+  const hasSlide = Boolean(isHolyricsProjecting && holyricsSlide && holyricsSlide.text);
   const slideRef = holyricsSlide?.title || (holyricsSlide?.type === 'bible' ? 'BÍBLIA SAGRADA' : 'PROJEÇÃO ATIVA');
+  const textLength = holyricsSlide?.text?.trim().length || 0;
+  const preachingTypographyClass =
+    textLength < 100
+      ? 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-black leading-tight sm:leading-snug'
+      : textLength <= 240
+      ? 'text-xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-sans font-extrabold leading-snug sm:leading-normal'
+      : textLength <= 450
+      ? 'text-lg sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-sans font-bold leading-snug sm:leading-relaxed'
+      : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-sans font-bold leading-relaxed';
 
   return (
     <div className="h-full w-full flex flex-col bg-[#FAF8F5] text-[#1C1917] select-none overflow-hidden font-sans relative">
@@ -35,7 +44,6 @@ export const PulpitPreachingView: React.FC<PulpitPreachingViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <PulpitClock />
           <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200">
             <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[11px] sm:text-xs font-bold text-emerald-800">Culto Ao Vivo</span>
@@ -46,22 +54,22 @@ export const PulpitPreachingView: React.FC<PulpitPreachingViewProps> = ({
         </div>
       </header>
 
-      {/* Área Central: Projeção de Versículo Gigante OU Logo Expandida da Igreja */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 md:px-12 text-center max-w-5xl mx-auto w-full overflow-y-auto">
-        {hasSlide ? (
-          <div className="w-full bg-white rounded-3xl p-5 sm:p-8 md:p-10 border-2 border-[#C59B4B] shadow-xl shadow-[#C59B4B]/15 text-center my-auto">
+      {/* Área Central: Retângulo de Pregação expandido ocupando toda a tela com borda dourada solene */}
+      <main className="flex-1 min-h-0 w-full p-2.5 sm:p-4 md:p-6 flex flex-col justify-center items-center">
+        {hasSlide && holyricsSlide ? (
+          <div className="flex-1 w-full bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-12 border-3 sm:border-4 border-[#C59B4B] shadow-2xl shadow-[#C59B4B]/15 text-center flex flex-col justify-center items-center overflow-y-auto">
             {/* Badge com a Referência Bíblica */}
-            <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-1.5 rounded-full bg-[#C59B4B]/15 border border-[#C59B4B]/35 text-[#8A631E] mb-4 sm:mb-6">
+            <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-[#C59B4B]/20 border-2 border-[#C59B4B]/50 text-[#7A5515] mb-3 sm:mb-6 shadow-sm shrink-0">
               <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-[#C59B4B] shrink-0" />
-              <span className="text-sm sm:text-base font-title font-black uppercase tracking-wider">
+              <span className="text-xs sm:text-base font-title font-black uppercase tracking-wider">
                 {slideRef}
               </span>
             </div>
 
-            {/* Texto Bíblico Gigante para Leitura Confortável por Idosos */}
-            <blockquote className="font-serif italic font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#1C1917] leading-relaxed sm:leading-loose max-w-4xl mx-auto whitespace-pre-line">
-              "{holyricsSlide.text}"
-            </blockquote>
+            {/* Texto Bíblico Gigante Sans-Serif e Preto Profundo para Leitura Confortável por Idosos */}
+            <p className={`${preachingTypographyClass} text-black max-w-5xl mx-auto whitespace-pre-line tracking-tight drop-shadow-2xs`}>
+              {holyricsSlide.text}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center my-auto">
@@ -83,16 +91,27 @@ export const PulpitPreachingView: React.FC<PulpitPreachingViewProps> = ({
         )}
       </main>
 
-      {/* Rodapé: SOMENTE O BOTÃO DE SAIR (Zero Distração durante a ministração) */}
-      <footer className="bg-white border-t-2 border-[#EAE5DF] p-3 sm:p-4 shadow-2xl shrink-0 flex items-center justify-center">
-        <button
-          type="button"
-          onClick={onExitPreaching}
-          className="w-full max-w-md h-13 sm:h-16 inline-flex items-center justify-center gap-3 px-6 sm:px-8 rounded-2xl bg-[#C59B4B] hover:bg-[#B0893D] text-white font-title font-black text-sm sm:text-base uppercase tracking-wider shadow-md hover:shadow-lg transition-all cursor-pointer border-2 border-[#8A631E] active:scale-95"
-        >
-          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white shrink-0" />
-          <span>Sair Modo Pregação</span>
-        </button>
+      {/* Rodapé: Botão de Sair e Relógio Oficial do Púlpito Responsivo */}
+      <footer className="bg-white border-t-2 border-[#EAE5DF] p-3 sm:px-6 sm:py-3.5 shadow-2xl shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Relógio Grande Solene na Paleta Clara do Púlpito Zen (No tablet: canto esquerdo; no mobile: abaixo do botão) */}
+        <div className="w-full sm:w-auto sm:flex-1 flex justify-center sm:justify-start order-2 sm:order-1">
+          <PulpitClock variant="large" colorScheme="light" className="shadow-md" />
+        </div>
+
+        {/* Botão Sair Modo Pregação (No mobile: acima do relógio; no tablet/desktop: centralizado) */}
+        <div className="w-full sm:w-auto flex justify-center order-1 sm:order-2">
+          <button
+            type="button"
+            onClick={onExitPreaching}
+            className="w-full sm:w-auto min-w-[240px] sm:min-w-[280px] h-12 sm:h-14 inline-flex items-center justify-center gap-2.5 sm:gap-3 px-6 sm:px-8 rounded-2xl bg-[#C59B4B] hover:bg-[#B0893D] text-white font-title font-black text-sm sm:text-base uppercase tracking-wider shadow-md hover:shadow-lg transition-all cursor-pointer border-2 border-[#8A631E] active:scale-95"
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
+            <span>Sair Modo Pregação</span>
+          </button>
+        </div>
+
+        {/* Espaçador simétrico no canto direito para garantir centralização matemática do botão em tablets */}
+        <div className="hidden sm:flex sm:flex-1 justify-end" aria-hidden="true" />
       </footer>
     </div>
   );
