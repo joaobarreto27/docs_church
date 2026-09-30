@@ -99,6 +99,16 @@ Se o agente identificar que um botão foi esquecido, um componente não foi mont
 - **NÃO diga que ficou para depois.**
 - Implemente imediatamente o código faltante, reexecute o script e atualize a tabela até que todos os itens estejam com status `✅ CONFORME`.
 
+#### 3.5 Rastreabilidade Opcional de Critérios do Notion (`PDC-X`)
+Quando a demanda ou fase tiver origem em um cartão do Notion (ex: `PDC-4`):
+1. O agente consulta os critérios de aceite do card:
+   ```bash
+   python3 scripts/notion-sync.py --get-task PDC-4
+   ```
+2. Mapeia cada critério da descrição/corpo do Notion como um requisito (`REQ-X` ou `UI-X`) na tabela RTM.
+3. Garante que todos os critérios definidos no Notion estejam com `✅ CONFORME` antes de autorizar o commit.
+*(Nota: Se a demanda não vier do Notion, o guardião segue seu fluxo padrão via especificação local em docs/).*
+
 ---
 
 ### 🎯 Etapa 4: Entrega Consolidada

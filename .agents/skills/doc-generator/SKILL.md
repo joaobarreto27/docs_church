@@ -87,6 +87,27 @@ Consulte `references/phase-example.md` para um exemplo real de fase implementada
 
 ---
 
+## Modo 3: Integração Opcional com Notion Backlog (`PDC-X`)
+
+Quando o usuário solicitar um PRD ou documento de fase mencionando uma tarefa do Notion (ex: `/doc criar PRD para PDC-4`):
+
+1. **Extração de Contexto Remoto:**
+   O agente busca automaticamente os dados da tarefa e imagens anexadas:
+   ```bash
+   python3 scripts/notion-sync.py --get-task PDC-4
+   ```
+2. **Geração do Rascunho Local em `docs/`:**
+   O documento é criado localmente para revisão e economia de chamadas de API. O título referencia o identificador: `# PRD: [PDC-4] Alerta Pastoral com Modo Silencioso`.
+3. **Sua Aprovação & Publicação Atômica no Notion:**
+   Após a aprovação do documento pelo usuário, o agente sincroniza o documento no corpo da página e pode criar as subtarefas das fases filhas:
+   ```bash
+   python3 scripts/notion-sync.py --sync-doc docs/meu-prd.md --parent PDC-4
+   python3 scripts/notion-sync.py --create-subtask PDC-4 "Fase 1: Transmissão em tempo real" "Feature" "Alta" "Púlpito (Pastor)" "Especificação da fase 1."
+   ```
+*(Nota: Se o usuário NÃO passar nenhum ID PDC-X, o doc-generator funciona normalmente no modo local tradicional).*
+
+---
+
 ## Regras Gerais (ambos os modos)
 
 1. **Nomes reais, nunca placeholders:** Referencie arquivos, funções, e linhas reais

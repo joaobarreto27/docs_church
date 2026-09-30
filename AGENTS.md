@@ -25,13 +25,14 @@ As seguintes regras de negócio do **Painel do Culto** são **IMUTÁVEIS E INVIO
 
 ## 1. Limite Estrito de Linhas por Arquivo
 
-- **Tamanho Máximo Permitido:** Nenhum novo arquivo `.tsx` ou `.ts` pode ultrapassar **200 linhas** (meta de excelência: **80 a 150 linhas** por componente/módulo).
-- **Barreira de Complexidade:** Qualquer componente ou hook que se aproxime de **180 linhas** DEVE ser decomposto antes de receber novas funcionalidades ou refatorações adicionais.
+- **Tamanho Máximo Permitido:** Nenhum novo arquivo `.tsx`, `.ts` ou `.py` pode ultrapassar **200 linhas** (meta de excelência: **80 a 150 linhas** por componente/módulo/script).
+- **Barreira de Complexidade:** Qualquer componente, hook ou script que se aproxime de **180 linhas** DEVE ser decomposto antes de receber novas funcionalidades ou refatorações adicionais.
+- **Scripts de Automação Python:** Scripts auxiliares sob `scripts/` devem seguir os mesmos princípios de modularidade e separação de responsabilidades (camadas Client, Service, Converter e CLI), mantendo-se rigorosamente dentro do limite de linhas.
 - **Single Responsibility Principle (SRP):** Cada arquivo deve ter apenas um motivo para mudar:
   - Hooks gerenciam estado/efeitos.
   - Componentes de apresentação renderizam JSX e emitem eventos.
-  - Utilitários executam funções puras e determinísticas.
-  - Repositórios mediam transporte de dados com a API.
+  - Utilitários e scripts executam funções puras, determinísticas ou fluxos orquestrados coesos.
+  - Repositórios e clients mediam transporte de dados com a API.
 
 ---
 
@@ -97,7 +98,7 @@ Os 6 arquivos monolíticos identificados no plano mestre [`docs/decomposicao/REA
 
 ---
 
-## 5. Diretrizes Litúrgicas e Ergonomia Visual A.D. Utinga (`/frontend-design` & `/prd`)
+## 5. Diretrizes Litúrgicas, Ergonomia Visual & Zero Sparkles (`/frontend-design` & `/prd`)
 
 1. **Compatibilidade Estrita com Android 4.4.4 KitKat:**
    - O tablet do púlpito roda WebViews antigas (Chrome 30-55).
@@ -118,7 +119,16 @@ Os 6 arquivos monolíticos identificados no plano mestre [`docs/decomposicao/REA
    - Em tablets ou celulares na horizontal, a leitura do pastor opera estritamente no estilo **livro aberto (spread de duas páginas lado a lado)**.
    - O conteúdo nunca deve ter barra de rolagem vertical. O avanço ocorre por toque suave de paginação lateral.
 
-4. **Resiliência Offline e Cold Start do Neon:**
+4. **Proibição Terminante de Ícones Sparkles / Estrelas de IA (Zero Sparkles):**
+   - É terminantemente proibido o uso de ícones `Sparkles` (`lucide-react` ou qualquer SVG representativo de estrelas/faíscas/brilhos de IA mágica) no aplicativo.
+   - Substitutos Autorizados: Utilize sempre ícones litúrgicos, solenes e sóbrios alinhados à identidade eclesiástica da congregação (ex: `BookOpen`, `Scroll`, `Users`, `Flame`, `Shield`, `HeartHandshake`, `Clock`, `Settings`).
+
+5. **Paridade Obrigatória Multi-dispositivo & Mobile-First (Desde o Dia Zero):**
+   - Toda funcionalidade ou bloco litúrgico DEVE ser concebido para operar com paridade entre os papéis: Púlpito (Tablet), Obreiro (Mobile) e Controlador (Mesa/Desktop).
+   - Touch targets mínimos de **44px** (Apple HIG / Android HIG) para manipulação rápida e confiável durante os cultos.
+   - Modais complexos respondem como Bottom Sheets táteis no mobile do obreiro.
+
+6. **Resiliência Offline e Cold Start do Neon:**
    - Todo o estado recebido deve ser salvo imediatamente no `localStorage`.
    - Se o Wi-Fi da igreja oscilar durante o culto, a tela do pastor NUNCA deve piscar em branco ou travar.
    - Ao despertar o banco Neon de repouso, exibir com clareza: *"Conectando à igreja... Por favor aguarde uns segundos"*.
@@ -148,7 +158,7 @@ Antes de finalizar qualquer tarefa ou enviar alterações para o repositório, e
   *(Resultado esperado: 0 ocorrências).*
 
 - [ ] **4. Auditoria de Limite de Linhas:**
-  - Garantir que nenhum novo arquivo criado ultrapasse 200 linhas (meta: 80 a 150 linhas).
+  - Garantir que nenhum novo arquivo criado ultrapasse 200 linhas (meta: 80 a 150 linhas), aplicando-se a arquivos `.tsx`, `.ts` e scripts `.py`.
 
 - [ ] **5. Execução do Spec Compliance Verifier:**
   ```bash
@@ -160,11 +170,13 @@ Antes de finalizar qualquer tarefa ou enviar alterações para o repositório, e
 
 ## 7. Diretriz Inviolável de Conformidade de Especificação (Zero Pontas Soltas)
 
-1. **Proibição de Falsa Conclusão:**
-   - É terminantemente proibido declarar qualquer fase, plano de decomposição ou especificação técnica como "concluído" apenas executando `tsc` ou `build`.
-2. **Matriz de Rastreabilidade (RTM) Obrigatória:**
-   - Toda entrega baseada em especificações, PRDs ou planos DEVE conter a tabela RTM com todos os requisitos mapeados para `[Arquivo:Linhas]` com status auditado (`✅ CONFORME`).
-3. **Execução Mandatória do Script de Integridade:**
-   - Antes de finalizar, o agente DEVE executar `python3 scripts/verify-spec-integrity.py`. Qualquer erro de componente órfão, barrel sem consumo, excesso de linhas ou violação de segurança/KitKat deve ser corrigido autonomamente no mesmo turno.
-4. **Autocorreção em Turno Único:**
+1. **Leitura Total Obrigatória da Skill (`spec-compliance-guardian`):**
+   - É TERMINANTEMENTE OBRIGATÓRIO executar a leitura completa (`view_file`) da skill `.agents/skills/spec-compliance-guardian/SKILL.md` antes de planejar, codificar ou auditar qualquer tarefa que possua especificação técnica, PRD, plano de fase (`docs/`) ou múltiplos requisitos.
+2. **Proibição de Falsa Conclusão:**
+   - É terminantemente proibido declarar qualquer fase, plano de decomposição ou especificação técnica como "concluído" apenas executando `tsc` ou `build`, sem auditar casos de borda e avisos consultivos.
+3. **Matriz de Rastreabilidade (RTM) Obrigatória com Teste Adversário:**
+   - Toda entrega baseada em especificações, PRDs ou planos DEVE conter a tabela RTM com todos os requisitos mapeados para `[Arquivo:Linhas]` com status auditado (`✅ CONFORME`) e validação de casos de estresse.
+4. **Execução Mandatória do Script de Integridade:**
+   - Antes de finalizar, o agente DEVE executar `python3 scripts/verify-spec-integrity.py`. Qualquer erro de componente órfão, paridade quebrada, barrel sem consumo, excesso de linhas ou violação de segurança/KitKat/Sparkles deve ser corrigido autonomamente no mesmo turno.
+5. **Autocorreção em Turno Único:**
    - Se a auditoria final apontar qualquer divergência frente à especificação original ou se algum componente não estiver consumido/montado na árvore ativa, o agente deve implementar o código faltante antes de notificar o usuário.
