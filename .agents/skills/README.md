@@ -15,6 +15,7 @@ Skills são extensões que ampliam as capacidades do agente para tarefas especia
 | [`doc-generator`](./doc-generator/SKILL.md) | Gera PRDs e documentos de fase no formato Staff-level | `/doc` |
 | [`refactoring-planner`](./refactoring-planner/SKILL.md) | Plano de refatoração por fases + decomposição + auditoria | `/refactor-plan` |
 | [`category-management`](./category-management/SKILL.md) | Análise e migração de categorias de transações | — |
+| [`notion-backlog-triage`](./notion-backlog-triage/SKILL.md) | Triagem, enriquecimento técnico e organização do backlog Notion com suporte a prints | `/triage`, `/backlog` |
 
 ## Skills de Frontend, UI/UX & Arquitetura React 19
 

@@ -53,6 +53,13 @@ Quando invocada (via `/canonical-commit`, "commit canonico", "commit e merge pad
    - Suba as alterações da main para o remoto: `git push origin main`
 5. **Retornar para a Branch de Trabalho:**
    - Volte imediatamente para a branch `dev`: `git checkout dev`
+6. **Sincronização Opcional com Notion (`PDC-X`):**
+   - Se o commit ou branch fizer referência a uma tarefa do Notion (ex: `[PDC-4]` ou `feat/PDC-4-...`):
+     - Atualize o status do cartão no Notion para **Concluído**:
+       ```bash
+       python3 scripts/notion-sync.py --update-status PDC-4 "Concluído"
+       ```
+   - *(Nota: Se o usuário não mencionar nenhum ID PDC-X, o commit encerra normalmente sem tocar no Notion).*
 
 ---
 ## Referências Complementares
