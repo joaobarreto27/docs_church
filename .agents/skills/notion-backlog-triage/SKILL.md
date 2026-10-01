@@ -31,8 +31,12 @@ Esta skill automatiza a triagem, o refinamento técnico e a esteira ágil de dem
    🔵 3. EM PROGRESSO
           │  - Tarefa sendo codificada e testada
           │
-          ▼  [ Validação & Quality Gate ]
-   🟢 4. CONCLUÍDO
+          ▼  [ PR Aberto / Teste Local Concluído ]
+   🟣 4. EM VALIDAÇÃO (ou Em Teste)
+          │  - PR submetido, aguardando aprovação final ou homologação visual
+          │
+          ▼  [ Merge & Deploy ]
+   🟢 5. CONCLUÍDO
 ```
 
 ---
@@ -43,13 +47,30 @@ Esta skill automatiza a triagem, o refinamento técnico e a esteira ágil de dem
 
 ---
 
+## Hierarquia de Tarefas: Épico, Pai e Filho
+
+Nem toda demanda deve ser tratada com a mesma profundidade. A hierarquia organiza o nível de esforço e onde os artefatos são salvos:
+
+| Nível | Quando Usar | Onde Salvar Artefatos (Docs, Prompts, Mockups) | Estrutura no Notion |
+|---|---|---|---|
+| **1. Card Simples** (Quick Task / Bug) | Correções rápidas (< 1h), ajustes visuais, bugs pontuais ou pequenas melhorias. | Tudo direto no corpo do card (Contexto, Critérios de Aceite e link do PR). | Card individual sem subtarefas. |
+| **2. Tarefa Pai + Filhos** (Feature Modular) | Demandas litúrgicas completas que envolvem 2 ou mais frentes (ex: backend API + tela púlpito + mobile obreiro). | Prompt inicial e critérios gerais no card Pai; fatias de entrega atômicas nos cards Filhos. | Card Pai com relação `Subtarefas` vinculando cada etapa filha. |
+| **3. Épico / Tema Master** (Grande Refatoração / Novo Módulo) | Projetos complexos de múltiplas fases (ex: decomposição de monolito como em `docs/decomposicao`, refatoração offline Neon). | **Econômico em `docs/`:** PRD, matriz RTM, prompts e planos de fase no Git (`docs/[tema]/`). O Notion recebe o Épico Master e as fases aprovadas via `--sync-doc`. | Card Master com subtarefas para cada Fase (`Fase 1`, `Fase 2`...). |
+
+### Onde Guardar Cada Artefato:
+- **Prompts de IA e Planos de Fase:** Se forem extensos (> 50 linhas), guarde em `docs/[tema]/` no Git para versionamento e economia de contexto/tokens. Anexe o link ou resumo executivo no card do Notion.
+- **Mockups e Evidências:** Screenshots de celular vão anexados no card do Notion. Mockups gerados via script headless vão na pasta do projeto e são referenciados no PR.
+- **Pull Requests:** Sempre vinculados ao corpo do card via `notion-sync.py --update-task PDC-X --append-body` após o push.
+
+---
+
 ## Estrutura do Banco no Notion
 - **Página Principal:** [Painel Culto](https://app.notion.com/p/Painel-Culto-3eb6be234d6b80b5a5bcd581493ffef3)
 - **Database:** `Backlog & Implementações` (`d0c6be23-4d6b-833a-a997-81d04492c78c`)
 - **Propriedades Padronizadas:**
   - `Identificador`: ID Único automático com prefixo `PDC-X`
   - `Nome`: Título técnico executivo
-  - `Status`: `Backlog`, `A Fazer`, `Em Progresso`, `Concluído`
+  - `Status`: `Backlog`, `A Fazer`, `Em Progresso`, `Em Validação`, `Concluído`
   - `Tipo`: `Feature` (🚀), `Bug` (🐛), `Melhoria` (⚡), `Débito Técnico` (🛠️)
   - `Prioridade`: `Alta`, `Média`, `Baixa`
   - `Módulo`: 
@@ -62,17 +83,6 @@ Esta skill automatiza a triagem, o refinamento técnico e a esteira ágil de dem
   - `Tarefa Pai` e `Subtarefas`: Auto-relação hierárquica (Épico ➔ Fases ➔ Subtarefas)
   - `Descrição`: Resumo textual curto da demanda
   - `Origem`: `Manual`, `Mobile`
-
----
-
-## Fluxo "Zero Docs / Notion-First" com Rascunho Local Opcional
-
-Para planejar grandes épicos ou temas complexos (ex: decomposições litúrgicas):
-1. **Rascunho Local em `docs/`:** O agente elabora a especificação localmente sem consumir chamadas da API do Notion.
-2. **Aprovação do Desenvolvedor:** O usuário revisa o rascunho e dá o comando para sincronizar.
-3. **Publicação Atômica no Notion:**
-   - O documento é publicado direto no corpo do card Notion (`--sync-doc`).
-   - As fases são criadas automaticamente como subtarefas aninhadas (`--create-subtask`).
 
 ---
 

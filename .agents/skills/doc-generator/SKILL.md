@@ -87,24 +87,41 @@ Consulte `references/phase-example.md` para um exemplo real de fase implementada
 
 ---
 
-## Modo 3: Integração Opcional com Notion Backlog (`PDC-X`)
+## Modo 3: Fluxo Econômico de PRD & Fases (Draft Local ➔ Aprovação ➔ Notion)
 
-Quando o usuário solicitar um PRD ou documento de fase mencionando uma tarefa do Notion (ex: `/doc criar PRD para PDC-4`):
+Para maximizar a **economia de tokens** e a **velocidade de iteração**, a documentação de temas, fases e subfases segue um protocolo de quatro etapas:
 
-1. **Extração de Contexto Remoto:**
-   O agente busca automaticamente os dados da tarefa e imagens anexadas:
-   ```bash
-   python3 scripts/notion-sync.py --get-task PDC-4
-   ```
-2. **Geração do Rascunho Local em `docs/`:**
-   O documento é criado localmente para revisão e economia de chamadas de API. O título referencia o identificador: `# PRD: [PDC-4] Alerta Pastoral com Modo Silencioso`.
-3. **Sua Aprovação & Publicação Atômica no Notion:**
-   Após a aprovação do documento pelo usuário, o agente sincroniza o documento no corpo da página e pode criar as subtarefas das fases filhas:
-   ```bash
-   python3 scripts/notion-sync.py --sync-doc docs/meu-prd.md --parent PDC-4
-   python3 scripts/notion-sync.py --create-subtask PDC-4 "Fase 1: Transmissão em tempo real" "Feature" "Alta" "Púlpito (Pastor)" "Especificação da fase 1."
-   ```
-*(Nota: Se o usuário NÃO passar nenhum ID PDC-X, o doc-generator funciona normalmente no modo local tradicional).*
+### 1. Etapa 1: Elaboração Local (Zero Consumo de API)
+* O PRD, a decomposição ou os documentos de fase são criados e refinados primeiramente em arquivos locais dentro de `docs/` (ex: `docs/decomposicao/README.md`, `docs/fase-1/...`).
+* Se houver uma tarefa-origem no Notion (`PDC-X`), o agente lê o contexto inicial uma única vez:
+  ```bash
+  python3 scripts/notion-sync.py --get-task PDC-X
+  ```
+* O usuário e o agente refinam o conteúdo livremente no Markdown local sem gastar chamadas nem tokens repetidos da API do Notion.
+
+### 2. Etapa 2: Gate de Aprovação do Usuário
+* O agente apresenta o resumo do plano elaborado e aguarda a aprovação explícita do usuário:
+  > *"O plano técnico da fase foi estruturado em `docs/...`. Posso sincronizar com o Notion?"*
+
+### 3. Etapa 3: Publicação em Lote & Criação de Tarefas-Filhas
+Após a aprovação, o agente publica atomicamente o documento completo no Notion:
+* **Publicar Documento como Tarefa ou Subtarefa:**
+  ```bash
+  python3 scripts/notion-sync.py --sync-doc docs/meu-plano.md --parent PDC-X --tipo "Feature" --prioridade "Alta" --modulo "Liturgia & Blocos"
+  ```
+  O script cria o card no Notion, vincula a relação pai-filho e injeta todo o Markdown no corpo da página.
+
+### 4. Etapa 4: Edições e Atualizações no Notion
+Se for necessário atualizar propriedades ou complementar o corpo de uma tarefa existente no Notion:
+* **Atualizar propriedades:**
+  ```bash
+  python3 scripts/notion-sync.py --update-task PDC-4 --title "Novo Título" --prioridade "Alta" --status "Em Progresso"
+  ```
+* **Anexar conteúdo Markdown no corpo do card:**
+  ```bash
+  python3 scripts/notion-sync.py --update-task PDC-4 --append-body "### 📝 Atualização Litúrgica..."
+  ```
+*(Nota: Se o usuário NÃO desejar sincronizar com o Notion, o doc-generator preserva apenas o arquivo em docs/ normalmente).*
 
 ---
 
